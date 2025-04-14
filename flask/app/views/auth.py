@@ -99,8 +99,8 @@ class ResetPassword(Resource):
         auth_service = AuthService(config)
         access_token, expiry, person_obj = auth_service.reset_user_password(token, uidb64, parsed_body.get('password'))
         return get_success_response(
-            message="Your password has been updated!", 
-            access_token=access_token, 
+            message="Your password has been updated!",
+            access_token=access_token,
             expiry=expiry,
             person=person_obj.as_dict()
         )
