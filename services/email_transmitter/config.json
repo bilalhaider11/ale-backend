@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "provider": "mailjet",
+            "sourceEmail": "SecondSight <system@secondsight.ai>",
+            "errorReportingEmail": "asymlabs@gmail.com"
+        }
+    ],
+    "events": {
+        "WELCOME_EMAIL": {
+            "subject": "Welcome {{var:recipient_name}}",
+            "templateName": "Welcome (PROD and TEST)",
+            "id": {
+                "mailjet": 4777555
+            }
+        },
+        "RESET_PASSWORD": {
+            "subject": "Reset your password",
+            "templateName": "Reset Password (PROD and TEST)",
+            "id": {
+                "mailjet": 4781139
+            }
+        }
+    }
+}
