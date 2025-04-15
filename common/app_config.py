@@ -49,6 +49,12 @@ class Config(BaseConfig):
     QUEUE_NAME_PREFIX: str = Field(env='QUEUE_NAME_PREFIX', default='')
     EMAIL_SERVICE_PROCESSOR_QUEUE_NAME: str = Field(env='EmailServiceProcessor_QUEUE_NAME', default='email-transmitter')
 
+    AWS_ACCESS_KEY_ID: str = Field(env="AWS_ACCESS_KEY_ID")
+    AWS_ACCESS_KEY_SECRET: str = Field(env="AWS_ACCESS_KEY_SECRET")
+    AWS_REGION = Field(env="AWS_REGION", default="us-west-2")
+    AWS_S3_BUCKET_NAME: str = Field(env="AWS_S3_BUCKET_NAME")
+    AWS_S3_KEY_PREFIX: str = Field(env="AWS_S3_KEY_PREFIX", default="")
+
     @property
     def DEFAULT_USER_PASSWORD(self):
         import random, string
