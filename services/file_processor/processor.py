@@ -2,6 +2,7 @@ from rococo.messaging import BaseServiceProcessor
 
 from common.app_logger import create_logger, set_rollbar_exception_catch
 
+from lib.file_handler import process_message
 
 class FileProcessor(BaseServiceProcessor):  # pylint: disable=R0903
     """
@@ -17,5 +18,7 @@ class FileProcessor(BaseServiceProcessor):  # pylint: disable=R0903
         try:
             self.logger.info("Processing message: %s", message)
             self.logger.info("Message type: %s", type(message))
+
+            process_message(message)
         except Exception as e:
             self.logger.exception(e)

@@ -16,6 +16,5 @@ class S3ClientService:
 
     def download_file(self, s3_key, local_path):
         """Download a file from S3 to a local path."""
-        full_s3_key = os.path.join(self.key_prefix, s3_key)
-        self.s3.download_file(self.bucket_name, full_s3_key, local_path)
-        print(f"Downloaded {full_s3_key} to {local_path}")
+        self.s3.download_file(self.bucket_name, s3_key, local_path)
+        print(f"Downloaded {s3_key} to {local_path}")
