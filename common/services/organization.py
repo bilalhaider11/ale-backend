@@ -1,7 +1,6 @@
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models import Organization
 
-
 class OrganizationService:
 
     def __init__(self, config):
@@ -20,3 +19,7 @@ class OrganizationService:
     def get_organizations_with_roles_by_person(self, person_id: str):
         results = self.organization_repo.get_organizations_by_person_id(person_id)
         return results
+
+    def get_persons_with_roles_in_organization(self, organization_id: str):
+        organization_repo = self.repository_factory.get_repository(RepoType.PERSON_ORGANIZATION_ROLE)
+        return organization_repo.get_persons_with_roles_in_organization(organization_id)
