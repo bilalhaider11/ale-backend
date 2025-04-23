@@ -1,12 +1,12 @@
 services:
   rabbitmq:
-    image: al_backend_rabbitmq
-    container_name: al_backend_rabbitmq
+    image: ale_backend_rabbitmq
+    container_name: ale_backend_rabbitmq
     build:
       context: ./services/rabbitmq
       dockerfile: Dockerfile
     volumes:
-      - al-backend-rabbitmq-data:/var/lib/rabbitmq/mnesia/
+      - ale-backend-rabbitmq-data:/var/lib/rabbitmq/mnesia/
     networks:
         - backnet
     env_file:
@@ -22,9 +22,9 @@ services:
         retries: 10
 
   postgres:
-    image: al_backend_postgres
+    image: ale_backend_postgres
     platform: linux/amd64
-    container_name: al_backend_postgres
+    container_name: ale_backend_postgres
     build:
       context: ./services/postgres
       dockerfile: Dockerfile
@@ -35,7 +35,7 @@ services:
       - .env.secrets
       - ${APP_ENV}.env
     volumes:
-        - al-backend-postgres-data:/var/lib/postgresql/data
+        - ale-backend-postgres-data:/var/lib/postgresql/data
     ports:
         - "5432:5432"
     healthcheck:
@@ -48,8 +48,8 @@ services:
 
   api:
     restart: always
-    image: al_backend_api
-    container_name: al_backend_api
+    image: ale_backend_api
+    container_name: ale_backend_api
     build:
         context: .
         dockerfile: ./flask/Dockerfile
@@ -71,7 +71,7 @@ services:
 
   email_transmitter:
     image: ecorrouge/email-transmitter:latest
-    container_name: al_backend_email_transmitter
+    container_name: ale_backend_email_transmitter
     restart: unless-stopped
     networks:
       - backnet
@@ -89,12 +89,30 @@ services:
     volumes:
       - ./services/email_transmitter/config.json:/app/src/services/email_transmitter/src/config.json
 
+  file_processor:
+    image: ale_file_processor
+    container_name: ale_file_processor
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/file_processor/Dockerfile
+    networks:
+      - backnet
+    volumes:
+      - ./common:/src/common
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+          condition: service_healthy
+
 
 volumes:
-  al-backend-postgres-data:
-    name: al-backend-postgres-data
-  al-backend-rabbitmq-data:
-    name: al-backend-rabbitmq-data
+  ale-backend-postgres-data:
+    name: ale-backend-postgres-data
+  ale-backend-rabbitmq-data:
+    name: ale-backend-rabbitmq-data
     driver: local
 
 networks:

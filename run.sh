@@ -41,9 +41,9 @@ else
 fi
 
 if "$FORCE_BUILD"; then
-  echo "Recreating and running docker images of veylan backend..."
+  echo "Recreating and running docker images of ALE backend..."
   docker compose --env-file "${APP_ENV}.env" up -d --build --force-recreate
 else
-  echo "Running docker images of veylan backend..."
+  echo "Running docker images of ALE backend..."
   docker compose --env-file "${APP_ENV}.env" up -d
 fi

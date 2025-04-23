@@ -1,5 +1,5 @@
 from flask import current_app as app
-from app.helpers.exceptions import InputValidationError
+from common.helpers.exceptions import InputValidationError
 
 
 def parse_request_body(request, keys, default_value=None):
