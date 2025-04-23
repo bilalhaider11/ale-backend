@@ -12,9 +12,9 @@ from werkzeug.security import check_password_hash
 import jwt
 import time
 
-from app.helpers.string_utils import urlsafe_base64_encode, force_bytes
-from app.helpers.string_utils import force_str, urlsafe_base64_decode
-from app.helpers.exceptions import InputValidationError, APIException
+from common.helpers.string_utils import urlsafe_base64_encode, force_bytes
+from common.helpers.string_utils import force_str, urlsafe_base64_decode
+from common.helpers.exceptions import InputValidationError, APIException
 
 
 class AuthService:

@@ -62,6 +62,7 @@ class RepoType(Enum):
     EMAIL = auto()
     LOGIN_METHOD = auto()
     PERSON_ORGANIZATION_ROLE = auto()
+    FILE = auto()
 
 
 class RepositoryFactory:
@@ -74,7 +75,8 @@ class RepositoryFactory:
         RepoType.ORGANIZATION: OrganizationRepository,
         RepoType.EMAIL: EmailRepository,
         RepoType.LOGIN_METHOD: LoginMethodRepository,
-        RepoType.PERSON_ORGANIZATION_ROLE: PersonOrganizationRoleRepository
+        RepoType.PERSON_ORGANIZATION_ROLE: PersonOrganizationRoleRepository,
+        RepoType.FILE: FileRepository
     }
 
     def get_db_connection(self):
@@ -104,7 +106,6 @@ class RepositoryFactory:
         repo_class = self._repositories.get(repo_type)
 
         if repo_class:
-            import threading
             return repo_class(adapter, message_adapter, message_queue_name, person_id)
 
         raise ValueError(f"No repository found with the name '{repo_type}'")

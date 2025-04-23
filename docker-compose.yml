@@ -99,11 +99,14 @@ services:
     networks:
       - backnet
     volumes:
-      - ./services/file_processor:/src
       - ./common:/src/common
     env_file:
       - ./.env.secrets
       - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+          condition: service_healthy
+
 
 volumes:
   ale-backend-postgres-data:
