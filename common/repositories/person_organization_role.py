@@ -68,3 +68,31 @@ class PersonOrganizationRoleRepository(BaseRepository):
 
         # Return as a list in the same order we inserted (most recent first)
         return list(persons.values())
+
+    def get_roles_for_person_in_organization(self, person_id: str, organization_id: str):
+        """
+        Fetch all role names for a specific person in a given organization.
+        Only roles in VALID_ROLES are returned.
+        """
+        # Build an IN-clause with placeholders for valid roles
+        placeholders = ", ".join(["%s"] * len(self.VALID_ROLES))
+
+        query = f"""
+            SELECT
+                por.role
+            FROM person_organization_role AS por
+            WHERE por.person_id = %s
+              AND por.organization_id = %s
+              AND por.role IN ({placeholders})
+            ORDER BY por.changed_on DESC;
+        """
+
+        # Parameters: person_id, organization_id, then each role value
+        params = (person_id, organization_id, *self.VALID_ROLES)
+
+        with self.adapter:
+            rows = self.adapter.execute_query(query, params)
+
+        # Extract role names
+        roles = [row["role"] for row in rows]
+        return roles

@@ -22,6 +22,7 @@ class Config(BaseConfig):
 
     ACCESS_TOKEN_EXPIRE: int = Field(env='ACCESS_TOKEN_EXPIRE', default=3600)
     RESET_TOKEN_EXPIRE: int = Field(env='ACCESS_TOKEN_EXPIRE', default=60*60*24*3)  # 3 days
+    INVITATION_TOKEN_EXPIRE: int = Field(env='INVITATION_TOKEN_EXPIRE', default=60*60*24*3)
 
     MIME_TYPE: str = 'application/json'
 

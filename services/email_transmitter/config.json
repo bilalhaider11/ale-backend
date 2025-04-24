@@ -13,6 +13,13 @@
             "id": {
                 "mailjet": 6901972
             }
+        },
+        "INVITATION": {
+            "subject": "Invitation: Join Our Team",
+            "templateName": "Invitation",
+            "id": {
+                "mailjet": 6917606
+            }
         }
     }
 }
