@@ -108,13 +108,12 @@ class OrganizationInvite(Resource):
         )
         invitation_service.send_invitation_email(invitation, organization.name, person)
 
-        return get_success_response(message=f"Invitation sent successfully.")
+        return get_success_response(message="Invitation sent successfully.")
 
 
 @organization_api.route('/accept-invitation/<string:token>')
 class AcceptInvitation(Resource):
-    @login_required()
-    def get(self, token, person):
+    def get(self, token):
         person_organization_role_service = PersonOrganizationRoleService(config)
         invitation_service = PersonOrganizationInvitationService(config, person_organization_role_service)
         email_service = EmailService(config)
@@ -127,18 +126,13 @@ class AcceptInvitation(Resource):
             if not invitation:
                 return get_failure_response(message="Invalid or expired invitation.", status_code=400)
 
-            # Verify person_id match
-            if payload['person_id'] != person.entity_id:
-                return get_failure_response(message="You are not authorized to accept this invitation.", status_code=403)
-
             # Verify email match
             user_email = email_service.get_email_by_email_address(invitation.email)
-
             if not user_email or user_email.email != invitation.email:
-                return get_failure_response(message=f"You are not authorized to accept this invitation. {user_email}, {invitation.email} {person.entity_id}", status_code=403)
+                return get_failure_response(message="You are not authorized to accept this invitation.", status_code=403)
 
             # Accept invitation
-            invitation_service.accept_invitation(invitation, person.entity_id)
+            invitation_service.accept_invitation(invitation, payload['person_id'])
             return get_success_response(message="Invitation accepted successfully.")
         except APIException as e:
             return get_failure_response(message=str(e), status_code=400)
