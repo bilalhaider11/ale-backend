@@ -68,7 +68,7 @@ class PersonOrganizationInvitationService:
 
     def send_invitation_email(self, invitation, organization_name, person):
         """Send an invitation email with an acceptance link."""
-        invitation_link = f"{self.config.VUE_APP_URI}/accept-invitation/{invitation.token}"
+        invitation_link = f"{self.config.VUE_APP_URI}/accept-invitation?token={invitation.token}"
         message = {
             "event": "INVITATION",
             "data": {
