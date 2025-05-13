@@ -4,4 +4,7 @@ from .login_method import LoginMethodService
 from .organization import OrganizationService
 from .person_organization_role import PersonOrganizationRoleService
 from .person_organization_invite import PersonOrganizationInvitationService
+from .s3_client import S3ClientService
+from .filestack_client import FileStackClient
+from .file import FileService
 from .auth import AuthService

@@ -49,6 +49,17 @@ class Config(BaseConfig):
 
     QUEUE_NAME_PREFIX: str = Field(env='QUEUE_NAME_PREFIX', default='')
     EMAIL_SERVICE_PROCESSOR_QUEUE_NAME: str = Field(env='EmailServiceProcessor_QUEUE_NAME', default='email-transmitter')
+    FILE_PROCESSOR_QUEUE_NAME: str = Field(env='FileProcessor_QUEUE_NAME', default='file-processor')
+    DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME: str = Field(env='DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME', default="document-analysis-response")
+
+    AWS_ACCESS_KEY_ID: str = Field(env="AWS_ACCESS_KEY_ID")
+    AWS_ACCESS_KEY_SECRET: str = Field(env="AWS_ACCESS_KEY_SECRET")
+    AWS_REGION: str = Field(env="AWS_REGION", default="us-west-2")
+    AWS_S3_BUCKET_NAME: str = Field(env="AWS_S3_BUCKET_NAME")
+    AWS_S3_KEY_PREFIX: str = Field(env="AWS_S3_KEY_PREFIX", default="")
+
+    FILESTACK_API_KEY: str = Field(env="FILESTACK_API_KEY")
+    FILESTACK_APP_SECRET: str = Field(env="FILESTACK_APP_SECRET")
 
     @property
     def DEFAULT_USER_PASSWORD(self):
@@ -57,6 +68,19 @@ class Config(BaseConfig):
             return ''.join(random.choices(string.ascii_letters + string.digits, k=12))
         else:
             return 'Default@Password123'
+
+    @property
+    def PREFIXED_DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME(self):
+        if self.QUEUE_NAME_PREFIX:
+            return f"{self.QUEUE_NAME_PREFIX}{self.DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME}"
+        return self.DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME
+
+    @property
+    def PREFIXED_FILE_PROCESSOR_QUEUE_NAME(self):
+        if self.QUEUE_NAME_PREFIX:
+            return f"{self.QUEUE_NAME_PREFIX}{self.FILE_PROCESSOR_QUEUE_NAME}"
+        return self.FILE_PROCESSOR_QUEUE_NAME
+
 
 def get_config() -> Config:
     conf = Config()

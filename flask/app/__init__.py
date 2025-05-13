@@ -6,7 +6,7 @@ from flask_cors import CORS
 from rococo.plugins.pooled_connection import PooledConnectionPlugin
 from rococo.models.versioned_model import ModelValidationError
 
-from app.helpers.exceptions import InputValidationError, APIException
+from common.helpers.exceptions import InputValidationError, APIException
 
 from common.app_config import get_config
 from common.utils.version import get_service_version, get_project_name
