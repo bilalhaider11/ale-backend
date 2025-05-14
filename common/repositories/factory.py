@@ -75,7 +75,7 @@ class RepositoryFactory:
         RepoType.EMAIL: EmailRepository,
         RepoType.LOGIN_METHOD: LoginMethodRepository,
         RepoType.PERSON_ORGANIZATION_ROLE: PersonOrganizationRoleRepository,
-        RepoType.PERSON_ORGANIZATION_INVITATION: PersonOrganizationInvitationRepository
+        RepoType.PERSON_ORGANIZATION_INVITATION: PersonOrganizationInvitationRepository,
         RepoType.FILE: FileRepository
     }
 
