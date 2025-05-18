@@ -22,3 +22,8 @@ class PersonOrganizationRoleService:
             "organization_id": organization_id
         })
         return person_organization_role
+
+    def get_roles_of_person_in_organization(self, person_id: str, organization_id: str):
+        """Retrieve all role names for a person in a specific organization."""
+        roles = self.person_organization_role_repo.get_roles_for_person_in_organization(person_id, organization_id)
+        return roles

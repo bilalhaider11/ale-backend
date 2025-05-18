@@ -13,6 +13,20 @@
             "id": {
                 "mailjet": 6901972
             }
+        },
+        "WELCOME_EMAIL": {
+            "subject": "Welcome",
+            "templateName": "Welcome (PROD and TEST)",
+            "id": {
+                "mailjet": 6901972
+            }
+        },
+        "INVITATION": {
+            "subject": "Invitation: Join Our Team",
+            "templateName": "Invitation",
+            "id": {
+                "mailjet": 6929722
+            }
         }
     }
 }

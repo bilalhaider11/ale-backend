@@ -1,8 +1,6 @@
 revision = "0000000006"
 down_revision = "0000000005"
 
-
-
 def upgrade(migration):
     # write migration here
     migration.create_table(
