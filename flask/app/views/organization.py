@@ -18,7 +18,7 @@ from app.helpers.decorators import (login_required,
                                     organization_required,
                                     has_role
                                     )
-from app.helpers.exceptions import APIException
+from common.helpers.exceptions import APIException
 
 # Create the organization blueprint
 organization_api = Namespace('organization', description="Organization-related APIs")

@@ -4,7 +4,7 @@ import jwt
 import time
 from datetime import datetime, timezone
 from common.tasks.send_message import MessageSender
-from app.helpers.exceptions import APIException
+from common.helpers.exceptions import APIException
 
 class PersonOrganizationInvitationService:
 
