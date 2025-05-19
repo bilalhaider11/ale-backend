@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "rococo-sample-flask"
+name = "ALE HealthTech"
 version = "0.1.2"
 description = "Flask-based API for Rococo Sample backend"
 authors = ["Asim <asymlabs@gmail.com>"]
