@@ -7,6 +7,7 @@ echo Done db stuff
 python3 version.py
 if [ "$APP_ENV" == "production" ] || [ "$APP_ENV" == "test" ]
 then
+    poetry install --no-dev
     waitress-serve --port=5000 --call 'main:create_app'
 else
     python3 main.py
