@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "file-processor-service"
-version = "0.0.1"
+version = "0.0.2"
 description = "Service to process files in ALE backend."
 authors = ["Jay Grieves <jaygrieves@gmail.com>"]
 readme = "README.md"
 packages = [{include = "file_processor"}]
 
 [tool.poetry.dependencies]
-python = "3.10.14"
+python = "^3.11"
 certifi = "2024.7.4"
 charset-normalizer = "2.1.1"
 idna = "3.7"
@@ -21,13 +21,13 @@ six = "1.16.0"
 urllib3 = "1.26.19"
 pymysql = "1.1.1"
 pusher = "3.3.0"
-cryptography = "43.0.1"
+cryptography = "44.0.1"
 dbutils = "^3.0.3"
 rococo = "^1.0.33"
 boto3 = "1.28.55"
 botocore = "1.31.55"
 tldextract = "^5.1.2"
-werkzeug = "^3.0.3"
+werkzeug = "^3.0.6"
 pydantic-settings = "^2.2.1"
 pyjwt = "^2.10.1"
 filestack-python = "^4.0.0"
