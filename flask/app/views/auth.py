@@ -41,7 +41,7 @@ class Signup(Resource):
         return get_success_response(message="User signed up successfully and verification email is sent.")
 
 
-@auth_api.route('/login')
+@auth_api.route('/login', methods=['POST'])
 class Login(Resource):
     @auth_api.expect(
         {'type': 'object', 'properties': {
