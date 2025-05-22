@@ -1,5 +1,5 @@
 # Use the base image as a parent image
-FROM ecorrouge/rococo-service-host:python-3.10
+FROM ecorrouge/rococo-service-host:python-3.11
 
 # Path to organisation import service
 ARG SERVICEPATH=./services/file_processor
