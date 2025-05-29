@@ -1,5 +1,8 @@
+import re
+import base64
 from flask_restx import Namespace, Resource
 from flask import request
+from werkzeug.datastructures import FileStorage
 from app.helpers.response import (
     get_success_response,
     get_failure_response,
@@ -35,14 +38,63 @@ class Organizations(Resource):
     @login_required()
     @organization_required(with_roles=["admin"])
     def put(self, organization):
-        parsed_body = parse_request_body(request, ["name"])
-        validate_required_fields(parsed_body)
-        
-        organization_service = OrganizationService(config)
-        organization.name = parsed_body["name"]
-        organization_service.save_organization(organization)
+        try:
+            # Extract form data
+            name = request.form.get("name")
+            subdomain = request.form.get("subdomain")
+            logo_file = request.files.get("logo")
 
-        return get_success_response(message="Organization updated successfully.", organization=organization)
+            validate_required_fields({'name': name})
+
+            # Initialize update data
+            update_data = {"name": name}
+
+            # Validate and add subdomain if provided
+            if subdomain:
+                if not re.match(r'^[a-z0-9-]+$', subdomain):
+                    return get_failure_response(
+                        message="Subdomain must contain only lowercase letters, numbers, and hyphens.",
+                        status_code=400
+                    )
+                update_data["subdomain"] = subdomain
+
+            # Process logo file if provided
+            if logo_file and isinstance(logo_file, FileStorage):
+                try:
+                    update_data["logo_data"] = {
+                        "content": base64.b64encode(logo_file.read()).decode('utf-8'),
+                        "filename": logo_file.filename,
+                        "content_type": logo_file.content_type or 'image/jpeg'
+                    }
+                except Exception as e:
+                    return get_failure_response(
+                        message=f"Error processing logo file: {str(e)}",
+                        status_code=500
+                    )
+
+            # Update organization
+            organization_service = OrganizationService(config)
+            updated_org = organization_service.update_organization(
+                organization.entity_id,
+                update_data
+            )
+
+            if not updated_org:
+                return get_failure_response(
+                    message="Failed to update organization.",
+                    status_code=500
+                )
+
+            return get_success_response(
+                message="Organization updated successfully.",
+                organization=updated_org
+            )
+
+        except Exception as e:
+            return get_failure_response(
+                message=f"Unexpected error: {str(e)}",
+                status_code=500
+            )
 
 @has_role("admin")
 @organization_api.route('/<string:organization_id>/persons')
