@@ -64,7 +64,7 @@ class Organizations(Resource):
                     update_data["logo_data"] = {
                         "content": base64.b64encode(logo_file.read()).decode('utf-8'),
                         "filename": logo_file.filename,
-                        "content_type": logo_file.content_type or 'image/jpeg'
+                        "content_type": logo_file.content_type or 'image/png'
                     }
                 except Exception as e:
                     return get_failure_response(
