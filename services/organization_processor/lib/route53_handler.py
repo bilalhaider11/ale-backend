@@ -114,6 +114,4 @@ def create_or_update_cname_record(organization, subdomain):
     
     except Exception as e:
         logger.error(f"Error creating/updating CNAME record: {str(e)}")
-        import traceback
-        logger.error(f"Error details: {traceback.format_exc()}")
         return False

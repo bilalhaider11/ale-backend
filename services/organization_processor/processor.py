@@ -11,8 +11,12 @@ class OrganizationProcessor(BaseServiceProcessor):
         super().__init__()
         self.logger = create_logger()
         set_rollbar_exception_catch()
-        self.queue_name = config.PREFIXED_ORGANIZATION_PROCESSOR_QUEUE_NAME
-        self.logger.info(f"Organization processor initialized with queue: {self.queue_name}")
+        
+        # Set up the queue infrastructure
+        from setup import setup_organization_processor_queue
+        setup_organization_processor_queue()
+        
+        self.logger.info("Organization processor initialized")
         
     def process(self, message):
         """Main processor method that handles incoming messages"""
@@ -28,52 +32,37 @@ class OrganizationProcessor(BaseServiceProcessor):
                 org_id = message.get('organization_id')
                 org_data = message.get('organization_data', {})
                 
-                # Skip messages with Field objects
-                has_field_objects = False
-                for key, value in org_data.items():
-                    if isinstance(value, str) and "Field(" in value:
-                        has_field_objects = True
-                        break
-                    elif hasattr(value, '__class__') and value.__class__.__name__ == 'Field':
-                        has_field_objects = True
-                        break
+                if not org_id:
+                    self.logger.error("No organization_id in message")
+                    return False
+                
+                # Get the organization
+                from common.services.organization import OrganizationService
+                from lib.s3_handler import process_logo
+                from lib.route53_handler import process_subdomain
+                
+                organization_service = OrganizationService(config)
+                organization = organization_service.get_organization_by_id(org_id)
+                
+                if not organization:
+                    self.logger.error(f"Organization not found: {org_id}")
+                    return False
+                
+                success = True
+                
+                # Process logo if present
+                if 'logo_data' in org_data and org_data['logo_data']:
+                    logo_success = process_logo(organization, org_data['logo_data'])
+                    success = success and logo_success
+                    self.logger.info(f"Logo processing result: {logo_success}")
+                
+                # Process subdomain if present
+                if 'subdomain' in org_data and org_data['subdomain']:
+                    subdomain_success = process_subdomain(organization, org_data['subdomain'])
+                    success = success and subdomain_success
+                    self.logger.info(f"Subdomain processing result: {subdomain_success}")
                     
-                if has_field_objects:
-                    self.logger.warning(f"Skipping message with Field objects: {message}")
-                    return True  # Mark as processed so it gets deleted from the queue
-                
-                # Import the handler here to avoid circular imports
-                from lib.handler import process_organization_message
-                
-                # Create a properly formatted message for the handler
-                handler_message = {
-                    "organization_id": org_id,
-                    "action": "update",
-                    "data": {}
-                }
-                
-                # Copy relevant fields to the handler message
-                if 'name' in org_data:
-                    handler_message['data']['name'] = org_data['name']
-                    
-                if 'subdomain' in org_data:
-                    handler_message['data']['subdomain'] = org_data['subdomain']
-                    
-                # Handle logo data - could be URL or base64 data
-                if 'logo_url' in org_data:
-                    handler_message['data']['logo_url'] = org_data['logo_url']
-                elif 'logo_data' in org_data:
-                    # Pass the entire logo_data dictionary to the handler
-                    handler_message['data']['logo_url'] = org_data['logo_data']
-                    self.logger.info(f"Found logo_data in message, passing to handler")
-                
-                # Process the message using the handler
-                return process_organization_message(handler_message)
-                
-            elif "invitation_id" in message:
-                self.logger.info(f"Processing invitation: {message['invitation_id']}")
-                # Process invitation (placeholder for future implementation)
-                return True
+                return success
                 
             else:
                 self.logger.warning(f"Unknown message format: {message}")

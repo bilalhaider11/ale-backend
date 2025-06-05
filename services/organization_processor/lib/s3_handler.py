@@ -1,6 +1,6 @@
 from common.app_logger import create_logger
 from common.app_config import config
-import base64
+from lib.image_conversion import convert_image_to_png
 from io import BytesIO
 import boto3
 import os
@@ -50,12 +50,10 @@ def process_logo(organization, logo_data):
                     
                 return True
                 
-            # Transfer logo from URL to S3
-            file_ext = "jpeg"  # Default extension
+            # Convert and transfer logo from URL to S3
             new_logo_url = transfer_logo_to_s3(
                 organization.entity_id,
                 logo_url,
-                file_ext=file_ext,
                 source_type="url"
             )
             
@@ -66,22 +64,15 @@ def process_logo(organization, logo_data):
         # Handle base64 encoded file data
         elif isinstance(logo_data, dict) and 'content' in logo_data:
             logger.info(f"Processing base64 encoded logo for organization {organization.entity_id}")
-            logger.info(f"Logo data keys: {logo_data.keys()}")
             
             # Extract file data
             content = logo_data.get('content')
-            content_type = logo_data.get('content_type', 'image/jpeg')
-            filename = logo_data.get('filename', 'logo.jpg')
             
-            # Get file extension from filename
-            file_ext = filename.split('.')[-1] if '.' in filename else 'jpg'
-            
-            # Transfer base64 content to S3
+            # Transfer base64 content to S3 (will be converted to PNG)
             new_logo_url = transfer_logo_to_s3(
                 organization.entity_id,
                 content,
-                file_ext=file_ext,
-                content_type=content_type,
+                content_type="image/png",
                 source_type="base64"
             )
             
@@ -108,37 +99,31 @@ def process_logo(organization, logo_data):
         logger.exception(f"Error processing logo: {e}")
         return False
 
-def transfer_logo_to_s3(organization_id, source_data, file_ext="jpeg", content_type="image/jpeg", source_type="url"):
+def transfer_logo_to_s3(organization_id, source_data, content_type="image/png", source_type="url"):
     """
-    Transfer logo to S3 from either URL or base64 content
+    Transfer logo to S3 from either URL or base64 content, converting to PNG
     
     Args:
         organization_id: ID of the organization
         source_data: Either URL string or base64 content
-        file_ext: File extension for the logo
-        content_type: MIME type of the image
+        content_type: MIME type of the image (should be "image/png")
         source_type: Either "url" or "base64"
         
     Returns:
         str: CloudFront URL of the uploaded logo, or None if failed
     """
     try:
-        # Generate a key for the logo with file extension
-        destination_key = f"organizations/{organization_id}/logo.{file_ext}"
+        # Convert image to PNG
+        png_bytes, conversion_success = convert_image_to_png(source_data, source_type)
         
-        # Prepare the full key with prefix
-        key_prefix = getattr(config, 'AWS_S3_KEY_PREFIX', '')
-        key_prefix = os.path.join(key_prefix, 'organization-logo/') if key_prefix else 'organization-logo/'
+        if not conversion_success or not png_bytes:
+            logger.error(f"Failed to convert image to PNG")
+            return None
         
-        # Replace backslashes with forward slashes for S3 paths
-        key_prefix = key_prefix.replace('\\', '/')
-        
-        # Ensure the key prefix ends with a slash
-        if not key_prefix.endswith('/'):
-            key_prefix += '/'
-            
-        full_key = f"{key_prefix}{destination_key}"
-        
+        # Generate a key for the logo with PNG extension
+        destination_key = f"organizations/{organization_id}/logo.png"
+        full_key = destination_key
+
         # Initialize S3 client
         s3 = boto3.client(
             's3',
@@ -149,56 +134,21 @@ def transfer_logo_to_s3(organization_id, source_data, file_ext="jpeg", content_t
         
         bucket_name = config.AWS_S3_LOGOS_BUCKET_NAME
         
-        # Handle URL source
-        if source_type == "url":
-            # Use the organization-specific S3 client
-            from lib.s3_client import OrganizationS3Client
-            s3_client = OrganizationS3Client()
-            
-            # Update the key prefix in the client
-            s3_client.key_prefix = key_prefix
-            
-            # Upload the logo from URL to S3
-            upload_result = s3_client.upload_from_url(
-                url=source_data,
-                s3_key=destination_key,
-                content_type=content_type,
-                metadata={"organization_id": str(organization_id)}
-            )
-            
-            if not upload_result:
-                logger.error(f"Failed to upload logo from URL to S3")
-                return None
-                
-        # Handle base64 source
-        elif source_type == "base64":
-            try:
-                # Decode base64 content
-                file_content = base64.b64decode(source_data)
-                
-                logger.info(f"Decoded base64 content, size: {len(file_content)} bytes")
-                
-                logger.info(f"Uploading to S3 bucket: {bucket_name}, key: {full_key}")
-                
-                # Upload the file
-                s3.upload_fileobj(
-                    BytesIO(file_content),
-                    bucket_name,
-                    full_key,
-                    ExtraArgs={
-                        'ContentType': content_type,
-                        'Metadata': {"organization_id": str(organization_id)},
-                    }
-                )
-                
-                logger.info(f"Successfully uploaded logo to S3")
-                
-            except Exception as e:
-                logger.exception(f"Error uploading logo to S3: {e}")
-                return None
-        else:
-            logger.error(f"Unsupported source type: {source_type}")
-            return None
+        logger.info(f"Uploading PNG to S3 bucket: {bucket_name}, key: {full_key}")
+        
+        # Upload the PNG file
+        s3.upload_fileobj(
+            BytesIO(png_bytes),
+            bucket_name,
+            full_key,
+            ExtraArgs={
+                'ContentType': content_type,
+                'Metadata': {"organization_id": str(organization_id)},
+                'CacheControl': 'no-cache, no-store, must-revalidate'
+            }
+        )
+        
+        logger.info(f"Successfully uploaded PNG logo to S3")
             
         # Generate CloudFront URL
         cloudfront_domain = f"https://{config.CLOUDFRONT_DISTRIBUTION_DOMAIN}"
