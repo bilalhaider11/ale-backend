@@ -1,36 +1,8 @@
+import os
 import boto3
 from common.app_config import config
 from common.app_logger import logger
 
-def purge_organization_processor_queue():
-    """
-    Purge all messages from the SQS queue for the organization processor
-    
-    Returns:
-        bool: True if successful, False otherwise
-    """
-    # Initialize AWS client
-    sqs = boto3.client(
-        'sqs',
-        aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=config.AWS_ACCESS_KEY_SECRET,
-        region_name=config.AWS_REGION
-    )
-    
-    queue_name = config.PREFIXED_ORGANIZATION_PROCESSOR_QUEUE_NAME
-    
-    try:
-        # Get the queue URL
-        queue_url = sqs.get_queue_url(QueueName=queue_name)['QueueUrl']
-        
-        # Purge the queue
-        logger.info(f"Purging queue: {queue_name}")
-        sqs.purge_queue(QueueUrl=queue_url)
-        logger.info(f"Queue purged successfully: {queue_name}")
-        return True
-    except Exception as e:
-        logger.error(f"Error purging queue: {str(e)}")
-        return False
 
 def setup_organization_processor_queue():
     """
