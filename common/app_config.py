@@ -51,7 +51,7 @@ class Config(BaseConfig):
     EMAIL_SERVICE_PROCESSOR_QUEUE_NAME: str = Field(env='EmailServiceProcessor_QUEUE_NAME', default='email-transmitter')
     FILE_PROCESSOR_QUEUE_NAME: str = Field(env='FileProcessor_QUEUE_NAME', default='file-processor')
     DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME: str = Field(env='DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME', default="document-analysis-response")
-    ORGANIZATION_PROCESSOR_QUEUE_NAME: str = Field(env='ORGANIZATION_PROCESSOR_QUEUE_NAME', default='organization-processor')
+    ORGANIZATION_PROCESSOR_QUEUE_NAME: str = Field(env='OrganizationProcessor_QUEUE_NAME', default='organization-processor')
     
     BASE_DOMAIN: str = Field(env='BASE_DOMAIN', default=None)
     ROUTE53_HOSTED_ZONE_ID: str = Field(env='ROUTE53_HOSTED_ZONE_ID', default=None)
