@@ -107,6 +107,23 @@ services:
       postgres:
           condition: service_healthy
 
+  organization_processor:
+    image: ale_organization_processor
+    container_name: ale_organization_processor
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/organization_processor/Dockerfile
+    networks:
+      - backnet
+    volumes:
+      - ./common:/src/common
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+          condition: service_healthy
 
 volumes:
   ale-backend-postgres-data:

@@ -30,3 +30,8 @@ bash run.py
 
 ### Email Transmitter  
 **Description:** To be added
+
+---
+
+### Organization Processor
+**Description:** Service that processes organization data changes, manages custom subdomains via Route53, and handles organization logo storage in S3.

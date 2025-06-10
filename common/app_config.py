@@ -51,6 +51,12 @@ class Config(BaseConfig):
     EMAIL_SERVICE_PROCESSOR_QUEUE_NAME: str = Field(env='EmailServiceProcessor_QUEUE_NAME', default='email-transmitter')
     FILE_PROCESSOR_QUEUE_NAME: str = Field(env='FileProcessor_QUEUE_NAME', default='file-processor')
     DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME: str = Field(env='DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME', default="document-analysis-response")
+    ORGANIZATION_PROCESSOR_QUEUE_NAME: str = Field(env='OrganizationProcessor_QUEUE_NAME', default='organization-processor')
+    
+    BASE_DOMAIN: str = Field(env='BASE_DOMAIN', default=None)
+    ROUTE53_HOSTED_ZONE_ID: str = Field(env='ROUTE53_HOSTED_ZONE_ID', default=None)
+    CLOUDFRONT_DISTRIBUTION_DOMAIN: str = Field(env='CLOUDFRONT_DISTRIBUTION_DOMAIN', default=None)
+    AWS_S3_LOGOS_BUCKET_NAME: str = Field(env="AWS_S3_LOGOS_BUCKET_NAME")
 
     AWS_ACCESS_KEY_ID: str = Field(env="AWS_ACCESS_KEY_ID")
     AWS_ACCESS_KEY_SECRET: str = Field(env="AWS_ACCESS_KEY_SECRET")
@@ -80,6 +86,12 @@ class Config(BaseConfig):
         if self.QUEUE_NAME_PREFIX:
             return f"{self.QUEUE_NAME_PREFIX}{self.FILE_PROCESSOR_QUEUE_NAME}"
         return self.FILE_PROCESSOR_QUEUE_NAME
+        
+    @property
+    def PREFIXED_ORGANIZATION_PROCESSOR_QUEUE_NAME(self):
+        if self.QUEUE_NAME_PREFIX:
+            return f"{self.QUEUE_NAME_PREFIX}{self.ORGANIZATION_PROCESSOR_QUEUE_NAME}"
+        return self.ORGANIZATION_PROCESSOR_QUEUE_NAME
 
 
 def get_config() -> Config:
