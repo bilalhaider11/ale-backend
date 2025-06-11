@@ -67,6 +67,9 @@ class Config(BaseConfig):
     FILESTACK_API_KEY: str = Field(env="FILESTACK_API_KEY")
     FILESTACK_APP_SECRET: str = Field(env="FILESTACK_APP_SECRET")
 
+    OIG_WEBPAGE_URL: str = Field(env="OIG_WEBPAGE_URL", default="")
+    OIG_CSV_DOWNLOAD_URL: str = Field(env="OIG_CSV_DOWNLOAD_URL", default="")
+
     @property
     def DEFAULT_USER_PASSWORD(self):
         import random, string
