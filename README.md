@@ -35,3 +35,8 @@ bash run.py
 
 ### Organization Processor
 **Description:** Service that processes organization data changes, manages custom subdomains via Route53, and handles organization logo storage in S3.
+
+---
+
+### OIG Update Check
+**Description:** Daily cron service that monitors the OIG (Office of Inspector General) exclusions database for updates and automatically imports new data when available. Maintains the `oig_employees_exclusion` table with current exclusion records and tracks check status in `oig_exclusions_check` table.
