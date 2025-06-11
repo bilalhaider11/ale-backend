@@ -122,7 +122,5 @@ class OrganizationService:
             
             return True
         except Exception as e:
-            import traceback
-            traceback.print_exc()
             logger.error(f"Error sending message to SQS: {str(e)}")
             return False
