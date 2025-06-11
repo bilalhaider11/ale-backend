@@ -8,18 +8,18 @@ services:
     volumes:
       - ale-backend-rabbitmq-data:/var/lib/rabbitmq/mnesia/
     networks:
-        - backnet
+      - backnet
     env_file:
-    - .env.secrets
-    - ${APP_ENV}.env
+      - .env.secrets
+      - ${APP_ENV}.env
     ports:
-    - "5672:5672"
+      - "5672:5672"
     expose:
-    - "5672"
+      - "5672"
     healthcheck:
-        test: rabbitmq-diagnostics -q ping
-        timeout: 20s
-        retries: 10
+      test: rabbitmq-diagnostics -q ping
+      timeout: 20s
+      retries: 10
 
   postgres:
     image: ale_backend_postgres
@@ -35,15 +35,15 @@ services:
       - .env.secrets
       - ${APP_ENV}.env
     volumes:
-        - ale-backend-postgres-data:/var/lib/postgresql/data
+      - ale-backend-postgres-data:/var/lib/postgresql/data
     ports:
-        - "5432:5432"
+      - "5432:5432"
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-        timeout: 20s
-        retries: 10
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      timeout: 20s
+      retries: 10
     expose:
-        - 5432
+      - 5432
     user: postgres
 
   api:
@@ -51,21 +51,21 @@ services:
     image: ale_backend_api
     container_name: ale_backend_api
     build:
-        context: .
-        dockerfile: ./flask/Dockerfile
+      context: .
+      dockerfile: ./flask/Dockerfile
     volumes:
       - ./flask:/api
       - ./common:/api/common
     ports:
-      - '5000:5000'
+      - "5000:5000"
     env_file:
       - .env.secrets
       - ${APP_ENV}.env
     depends_on:
       postgres:
-          condition: service_healthy
+        condition: service_healthy
       rabbitmq:
-          condition: service_healthy
+        condition: service_healthy
     networks:
       - backnet
 
@@ -105,7 +105,7 @@ services:
       - ./${APP_ENV}.env
     depends_on:
       postgres:
-          condition: service_healthy
+        condition: service_healthy
 
   organization_processor:
     image: ale_organization_processor
@@ -123,7 +123,25 @@ services:
       - ./${APP_ENV}.env
     depends_on:
       postgres:
-          condition: service_healthy
+        condition: service_healthy
+
+  oig-update-check:
+    image: ale_oig-update-check
+    container_name: ale_oig-update-check
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/oig-update-check/Dockerfile
+    networks:
+      - backnet
+    volumes:
+      - ./common:/src/common
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   ale-backend-postgres-data:
