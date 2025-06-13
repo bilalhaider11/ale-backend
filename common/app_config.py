@@ -63,6 +63,7 @@ class Config(BaseConfig):
     AWS_REGION: str = Field(env="AWS_REGION", default="us-west-2")
     AWS_S3_BUCKET_NAME: str = Field(env="AWS_S3_BUCKET_NAME")
     AWS_S3_KEY_PREFIX: str = Field(env="AWS_S3_KEY_PREFIX", default="")
+    AWS_S3_EMPLOYEE_BUCKET_NAME: str = Field(env="AWS_S3_EMPLOYEE_BUCKET_NAME", default="ale-ahmad-uploads")
 
     FILESTACK_API_KEY: str = Field(env="FILESTACK_API_KEY")
     FILESTACK_APP_SECRET: str = Field(env="FILESTACK_APP_SECRET")
