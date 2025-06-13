@@ -5,3 +5,5 @@ from .login_method import LoginMethodRepository
 from .person_organization_role import PersonOrganizationRoleRepository
 from .person_organization_invite import PersonOrganizationInvitationRepository
 from .file import FileRepository
+from .oig_employees_exclusion import OigEmployeesExclusionRepository
+from .oig_exclusions_check import OigExclusionsCheckRepository

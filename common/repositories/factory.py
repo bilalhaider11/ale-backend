@@ -62,6 +62,8 @@ class RepoType(Enum):
     PERSON_ORGANIZATION_ROLE = auto()
     PERSON_ORGANIZATION_INVITATION = auto()
     FILE = auto()
+    OIG_EMPLOYEES_EXCLUSION = auto()
+    OIG_EXCLUSIONS_CHECK = auto()
 
 
 class RepositoryFactory:
@@ -76,7 +78,9 @@ class RepositoryFactory:
         RepoType.LOGIN_METHOD: LoginMethodRepository,
         RepoType.PERSON_ORGANIZATION_ROLE: PersonOrganizationRoleRepository,
         RepoType.PERSON_ORGANIZATION_INVITATION: PersonOrganizationInvitationRepository,
-        RepoType.FILE: FileRepository
+        RepoType.FILE: FileRepository,
+        RepoType.OIG_EMPLOYEES_EXCLUSION: OigEmployeesExclusionRepository,
+        RepoType.OIG_EXCLUSIONS_CHECK: OigExclusionsCheckRepository
     }
 
     def get_db_connection(self):
