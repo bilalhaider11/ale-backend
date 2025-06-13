@@ -6,30 +6,30 @@ def upgrade(migration):
         "oig_employees_exclusion",
         """
             "id" SERIAL PRIMARY KEY,
-            "lastname" VARCHAR(255) DEFAULT NULL,
-            "firstname" VARCHAR(255) DEFAULT NULL,
-            "midname" VARCHAR(255) DEFAULT NULL,
-            "busname" VARCHAR(255) DEFAULT NULL,
+            "last_name" VARCHAR(255) DEFAULT NULL,
+            "first_name" VARCHAR(255) DEFAULT NULL,
+            "middle_name" VARCHAR(255) DEFAULT NULL,
+            "business_name" VARCHAR(255) DEFAULT NULL,
             "general" VARCHAR(255) DEFAULT NULL,
             "specialty" VARCHAR(255) DEFAULT NULL,
             "upin" VARCHAR(16) DEFAULT NULL,
             "npi" VARCHAR(10) DEFAULT NULL,
-            "dob" DATE DEFAULT NULL,
+            "date_of_birth" DATE DEFAULT NULL,
             "address" VARCHAR(255) DEFAULT NULL,
             "city" VARCHAR(100) DEFAULT NULL,
             "state" VARCHAR(2) DEFAULT NULL,
-            "zip" VARCHAR(10) DEFAULT NULL,
-            "excltype" VARCHAR(16) DEFAULT NULL,
-            "excldate" DATE DEFAULT NULL,
-            "reindate" DATE DEFAULT NULL,
-            "waiverdate" DATE DEFAULT NULL,
-            "wvrstate" VARCHAR(2) DEFAULT NULL
+            "zip_code" VARCHAR(10) DEFAULT NULL,
+            "exclusion_type" VARCHAR(16) DEFAULT NULL,
+            "exclusion_date" DATE DEFAULT NULL,
+            "reinstatement_date" DATE DEFAULT NULL,
+            "waiver_date" DATE DEFAULT NULL,
+            "waiver_state" VARCHAR(2) DEFAULT NULL
         """
     )
 
-    migration.add_index("oig_employees_exclusion", "oig_ee_lastname_idx", "lastname")
-    migration.add_index("oig_employees_exclusion", "oig_ee_firstname_idx", "firstname")
-    migration.add_index("oig_employees_exclusion", "oig_ee_dob_idx", "dob")
+    migration.add_index("oig_employees_exclusion", "oig_ee_last_name_idx", "last_name")
+    migration.add_index("oig_employees_exclusion", "oig_ee_first_name_idx", "first_name")
+    migration.add_index("oig_employees_exclusion", "oig_ee_dob_idx", "date_of_birth")
 
     # Create the table to log the status of the OIG check
     # This is a VersionedModel.

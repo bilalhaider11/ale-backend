@@ -9,24 +9,24 @@ class OigEmployeesExclusion:
     This table is designed to be truncated and re-populated on each import.
     """
     id: int = None
-    lastname: Optional[str] = None
-    firstname: Optional[str] = None
-    midname: Optional[str] = None
-    busname: Optional[str] = None
+    last_name: Optional[str] = None
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    business_name: Optional[str] = None
     general: Optional[str] = None
     specialty: Optional[str] = None
     upin: Optional[str] = None
     npi: Optional[str] = None
-    dob: Optional[date] = None
+    date_of_birth: Optional[date] = None
     address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
-    zip: Optional[str] = None
-    excltype: Optional[str] = None
-    excldate: Optional[date] = None
-    reindate: Optional[date] = None
-    waiverdate: Optional[date] = None
-    wvrstate: Optional[str] = None
+    zip_code: Optional[str] = None
+    exclusion_type: Optional[str] = None
+    exclusion_date: Optional[date] = None
+    reinstatement_date: Optional[date] = None
+    waiver_date: Optional[date] = None
+    waiver_state: Optional[str] = None
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'OigEmployeesExclusion':
@@ -44,7 +44,7 @@ class OigEmployeesExclusion:
         processed_data = dict(data)
         
         # Convert date strings to date objects if they exist and aren't None
-        for date_field in ['dob', 'excldate', 'reindate', 'waiverdate']:
+        for date_field in ['date_of_birth', 'exclusion_date', 'reinstatement_date', 'waiver_date']:
             if date_field in processed_data and processed_data[date_field] is not None:
                 if isinstance(processed_data[date_field], str):
                     processed_data[date_field] = datetime.strptime(

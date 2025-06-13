@@ -43,24 +43,24 @@ class OigEmployeesExclusionService:
                 with self.oig_exclusions_repo.adapter:
                     for _, row in batch_df.iterrows():
                         record = OigEmployeesExclusion(
-                            lastname=self._clean_string(row.get('LASTNAME')),
-                            firstname=self._clean_string(row.get('FIRSTNAME')),
-                            midname=self._clean_string(row.get('MIDNAME')),
-                            busname=self._clean_string(row.get('BUSNAME')),
+                            last_name=self._clean_string(row.get('LASTNAME')),
+                            first_name=self._clean_string(row.get('FIRSTNAME')),
+                            middle_name=self._clean_string(row.get('MIDNAME')),
+                            business_name=self._clean_string(row.get('BUSNAME')),
                             general=self._clean_string(row.get('GENERAL')),
                             specialty=self._clean_string(row.get('SPECIALTY')),
                             upin=self._clean_string(row.get('UPIN')),
                             npi=self._clean_string(row.get('NPI')),
-                            dob=self._parse_date(row.get('DOB')),
+                            date_of_birth=self._parse_date(row.get('DOB')),
                             address=self._clean_string(row.get('ADDRESS')),
                             city=self._clean_string(row.get('CITY')),
                             state=self._clean_string(row.get('STATE')),
-                            zip=self._clean_string(row.get('ZIP')),
-                            excltype=self._clean_string(row.get('EXCLTYPE')),
-                            excldate=self._parse_date(row.get('EXCLDATE')),
-                            reindate=self._parse_date(row.get('REINDATE')),
-                            waiverdate=self._parse_date(row.get('WAIVERDATE')),
-                            wvrstate=self._clean_string(row.get('WVRSTATE'))
+                            zip_code=self._clean_string(row.get('ZIP')),
+                            exclusion_type=self._clean_string(row.get('EXCLTYPE')),
+                            exclusion_date=self._parse_date(row.get('EXCLDATE')),
+                            reinstatement_date=self._parse_date(row.get('REINDATE')),
+                            waiver_date=self._parse_date(row.get('WAIVERDATE')),
+                            waiver_state=self._clean_string(row.get('WVRSTATE'))
                         )
                         
                         self.oig_exclusions_repo.insert_exclusion(record)
