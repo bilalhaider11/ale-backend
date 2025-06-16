@@ -52,6 +52,7 @@ class Config(BaseConfig):
     FILE_PROCESSOR_QUEUE_NAME: str = Field(env='FileProcessor_QUEUE_NAME', default='file-processor')
     DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME: str = Field(env='DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME', default="document-analysis-response")
     ORGANIZATION_PROCESSOR_QUEUE_NAME: str = Field(env='OrganizationProcessor_QUEUE_NAME', default='organization-processor')
+    EMPLOYEE_IMPORT_QUEUE_NAME: str = Field(env='EmployeeImportProcessor_QUEUE_NAME', default='employee-import')
     
     BASE_DOMAIN: str = Field(env='BASE_DOMAIN', default=None)
     ROUTE53_HOSTED_ZONE_ID: str = Field(env='ROUTE53_HOSTED_ZONE_ID', default=None)
@@ -96,6 +97,12 @@ class Config(BaseConfig):
         if self.QUEUE_NAME_PREFIX:
             return f"{self.QUEUE_NAME_PREFIX}{self.ORGANIZATION_PROCESSOR_QUEUE_NAME}"
         return self.ORGANIZATION_PROCESSOR_QUEUE_NAME
+        
+    @property
+    def PREFIXED_EMPLOYEE_IMPORT_QUEUE_NAME(self):
+        if self.QUEUE_NAME_PREFIX:
+            return f"{self.QUEUE_NAME_PREFIX}{self.EMPLOYEE_IMPORT_QUEUE_NAME}"
+        return self.EMPLOYEE_IMPORT_QUEUE_NAME
 
 
 def get_config() -> Config:

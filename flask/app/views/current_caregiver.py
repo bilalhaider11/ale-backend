@@ -4,20 +4,20 @@ from flask import request
 from flask_restx import Namespace, Resource
 
 from common.app_config import config
-from common.services.employee import EmployeeService
+from common.services.current_caregiver import CurrentCaregiverService
 from app.helpers.response import get_success_response, get_failure_response
 from app.helpers.decorators import login_required
 
-employee_api = Namespace('employee', description='Employee operations')
+current_caregiver_api = Namespace('current_caregiver', description='Current caregiver operations')
 
 
-@employee_api.route('/upload-csv')
-class EmployeeCSVUpload(Resource):
+@current_caregiver_api.route('/upload_csv')
+class CurrentCaregiverCSVUpload(Resource):
     
     @login_required()
     def post(self, person):
         """
-        Upload a CSV file with employee data.
+        Upload a CSV file with caregiver data.
         The file will be saved to S3 with current datetime and copied as latest.csv.
         """
         if 'file' not in request.files:
@@ -39,8 +39,8 @@ class EmployeeCSVUpload(Resource):
         
         try:
             # Upload file to S3
-            employee_service = EmployeeService()
-            upload_result = employee_service.upload_employee_csv(temp_file_path)
+            current_caregiver_service = CurrentCaregiverService(config)
+            upload_result = current_caregiver_service.upload_caregiver_csv(temp_file_path)
             
             # Clean up temporary file
             os.unlink(temp_file_path)

@@ -143,6 +143,24 @@ services:
       postgres:
         condition: service_healthy
 
+  employee_import:
+    image: ale_employee_import
+    container_name: ale_employee_import
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/employee_import/Dockerfile
+    networks:
+      - backnet
+    volumes:
+      - ./common:/src/common
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   ale-backend-postgres-data:
     name: ale-backend-postgres-data

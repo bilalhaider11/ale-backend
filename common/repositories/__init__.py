@@ -7,3 +7,5 @@ from .person_organization_invite import PersonOrganizationInvitationRepository
 from .file import FileRepository
 from .oig_employees_exclusion import OigEmployeesExclusionRepository
 from .oig_exclusions_check import OigExclusionsCheckRepository
+from .current_employee import CurrentEmployeeRepository
+from .current_caregiver import CurrentCaregiverRepository
