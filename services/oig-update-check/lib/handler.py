@@ -1,9 +1,9 @@
 import requests
-import pandas as pd
+import csv
 import io
 from datetime import datetime, date
 from bs4 import BeautifulSoup
-from typing import Optional
+from typing import Optional, List, Dict
 
 from common.app_logger import get_logger
 from common.app_config import config
@@ -71,7 +71,7 @@ class OigUpdateHandler:
             logger.error(f"Error fetching last update date from webpage: {str(e)}")
             return None
 
-    def download_csv_data(self) -> Optional[pd.DataFrame]:
+    def download_csv_data(self) -> Optional[List[Dict[str, str]]]:
         """
         Download the CSV data from OIG website
         """
@@ -80,12 +80,13 @@ class OigUpdateHandler:
             response = requests.get(self.config.OIG_CSV_DOWNLOAD_URL, timeout=300)  # 5 minute timeout
             response.raise_for_status()
             
-            # Read CSV data into pandas DataFrame
+            # Read CSV data using csv module
             csv_data = io.StringIO(response.text)
-            df = pd.read_csv(csv_data, low_memory=False)
+            reader = csv.DictReader(csv_data)
+            rows = list(reader)
             
-            logger.info(f"Successfully downloaded CSV with {len(df)} records")
-            return df
+            logger.info(f"Successfully downloaded CSV with {len(rows)} records")
+            return rows
             
         except Exception as e:
             logger.error(f"Error downloading CSV data: {str(e)}")
@@ -116,7 +117,7 @@ class OigUpdateHandler:
             logger.info("Update available - downloading new data...")
             csv_data = self.download_csv_data()
             
-            if csv_data is None:
+            if csv_data is None or not csv_data:
                 self.oig_checks_service.log_check_result('import_failed', webpage_last_update)
                 return
             

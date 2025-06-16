@@ -1,6 +1,5 @@
-from typing import List, Optional
-import pandas as pd
-from datetime import date, datetime
+from typing import List, Dict
+from datetime import datetime
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
@@ -31,10 +30,10 @@ class CurrentEmployeeService:
             logger.error(f"Error deleting current employees: {str(e)}")
             return False
     
-    def bulk_import_employees(self, df: pd.DataFrame) -> bool:
+    def bulk_import_employees(self, rows: List[Dict[str, str]]) -> bool:
         """Import CSV data into current_employee table using batch processing"""
         try:
-            record_count = len(df)
+            record_count = len(rows)
             logger.info(f"Inserting {record_count} current employee records...")
             
             # Process in batches for better performance
@@ -44,10 +43,10 @@ class CurrentEmployeeService:
             for batch_num in range(total_batches):
                 start_idx = batch_num * batch_size
                 end_idx = min(start_idx + batch_size, record_count)
-                batch_df = df.iloc[start_idx:end_idx]
+                batch_rows = rows[start_idx:end_idx]
                 
                 with self.current_employee_repo.adapter:
-                    for _, row in batch_df.iterrows():
+                    for row in batch_rows:
                         record = CurrentEmployee(
                             primary_branch=clean_string(row.get('Primary Branch')),
                             employee_id=clean_string(row.get('Employee ID')),

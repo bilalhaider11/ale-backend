@@ -1,6 +1,6 @@
 import tempfile
 import os
-import pandas as pd
+import csv
 from common.app_logger import create_logger
 from common.services.s3_client import S3ClientService
 from common.services.current_caregiver import CurrentCaregiverService
@@ -44,15 +44,17 @@ class CurrentCaregiverHandler:
             finally:
                 self.s3_client.bucket_name = original_bucket
             
-            # Read CSV file using pandas
+            # Read CSV file using csv module
             try:
-                df = pd.read_csv(temp_path, encoding='utf-8-sig')
+                with open(temp_path, 'r', encoding='utf-8-sig') as csvfile:
+                    reader = csv.DictReader(csvfile)
+                    rows = list(reader)
                 
-                if df.empty:
+                if not rows:
                     logger.warning(f"No caregiver records found in CSV file: {bucket}/{key}")
                     return True
                 
-                logger.info(f"Found {len(df)} caregiver records in CSV file")
+                logger.info(f"Found {len(rows)} caregiver records in CSV file")
                 
                 # Delete existing records
                 if not self.caregiver_service.delete_all_caregivers():
@@ -60,11 +62,11 @@ class CurrentCaregiverHandler:
                     return False
                 
                 # Import new records
-                if not self.caregiver_service.bulk_import_caregivers(df):
+                if not self.caregiver_service.bulk_import_caregivers(rows):
                     logger.error("Failed to import caregiver records")
                     return False
                 
-                logger.info(f"Successfully imported {len(df)} caregiver records")
+                logger.info(f"Successfully imported {len(rows)} caregiver records")
                 return True
                 
             finally:
