@@ -4,15 +4,15 @@ from flask import request
 from flask_restx import Namespace, Resource
 
 from common.app_config import config
-from common.services.employee import EmployeeService
+from common.services.current_employee import CurrentEmployeeService
 from app.helpers.response import get_success_response, get_failure_response
 from app.helpers.decorators import login_required
 
-employee_api = Namespace('employee', description='Employee operations')
+current_employee_api = Namespace('current_employee', description='Current employee operations')
 
 
-@employee_api.route('/upload-csv')
-class EmployeeCSVUpload(Resource):
+@current_employee_api.route('/upload_csv')
+class CurrentEmployeeCSVUpload(Resource):
     
     @login_required()
     def post(self, person):
@@ -39,8 +39,8 @@ class EmployeeCSVUpload(Resource):
         
         try:
             # Upload file to S3
-            employee_service = EmployeeService()
-            upload_result = employee_service.upload_employee_csv(temp_file_path)
+            current_employee_service = CurrentEmployeeService(config)
+            upload_result = current_employee_service.upload_employee_csv(temp_file_path)
             
             # Clean up temporary file
             os.unlink(temp_file_path)
