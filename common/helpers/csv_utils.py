@@ -1,11 +1,10 @@
 from typing import Optional
-import pandas as pd
 from datetime import date, datetime
 
 
 def clean_string(value) -> Optional[str]:
     """Clean string values from CSV data"""
-    if value is None or pd.isna(value):
+    if value is None or value == '':
         return None
     
     cleaned = str(value).strip()
@@ -14,7 +13,7 @@ def clean_string(value) -> Optional[str]:
 
 def parse_date(date_str) -> Optional[date]:
     """Parse date string to date object"""
-    if not date_str or pd.isna(date_str):
+    if not date_str or date_str == '':
         return None
     
     try:
@@ -31,7 +30,7 @@ def parse_date(date_str) -> Optional[date]:
 
 def parse_date_string(date_str) -> Optional[str]:
     """Parse date string and return as string for storage"""
-    if not date_str or pd.isna(date_str):
+    if not date_str or date_str == '':
         return None
     
     try:

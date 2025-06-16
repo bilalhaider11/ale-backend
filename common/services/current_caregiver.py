@@ -1,6 +1,5 @@
-from typing import List, Optional
-import pandas as pd
-from datetime import date, datetime
+from typing import List, Dict
+from datetime import datetime
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
@@ -31,10 +30,10 @@ class CurrentCaregiverService:
             logger.error(f"Error deleting current caregivers: {str(e)}")
             return False
     
-    def bulk_import_caregivers(self, df: pd.DataFrame) -> bool:
+    def bulk_import_caregivers(self, rows: List[Dict[str, str]]) -> bool:
         """Import CSV data into current_caregiver table using batch processing"""
         try:
-            record_count = len(df)
+            record_count = len(rows)
             logger.info(f"Inserting {record_count} current caregiver records...")
             
             # Process in batches for better performance
@@ -44,10 +43,10 @@ class CurrentCaregiverService:
             for batch_num in range(total_batches):
                 start_idx = batch_num * batch_size
                 end_idx = min(start_idx + batch_size, record_count)
-                batch_df = df.iloc[start_idx:end_idx]
+                batch_rows = rows[start_idx:end_idx]
                 
                 with self.caregiver_repo.adapter:
-                    for _, row in batch_df.iterrows():
+                    for row in batch_rows:
                         record = CurrentCaregiver(
                             caregiver_id=clean_string(row.get('Caregiver ID')),
                             first_name=clean_string(row.get('First Name')),
