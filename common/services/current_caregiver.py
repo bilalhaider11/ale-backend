@@ -18,60 +18,52 @@ class CurrentCaregiverService:
         self.repository_factory = RepositoryFactory(config)
         self.caregiver_repo = self.repository_factory.get_repository(RepoType.CURRENT_CAREGIVER, message_queue_name="")
         self.s3_client = S3ClientService()
-        self.bucket_name = config.AWS_S3_EMPLOYEE_BUCKET_NAME
+        self.bucket_name = config.AWS_S3_BUCKET_NAME
         self.caregivers_prefix = "caregivers-list/"
     
     def delete_all_caregivers(self) -> bool:
         """Delete all existing current caregiver records"""
-        try:
-            logger.info("Deleting all existing current caregiver records...")
-            return self.caregiver_repo.truncate_table()
-        except Exception as e:
-            logger.error(f"Error deleting current caregivers: {str(e)}")
-            return False
+        logger.info("Deleting all existing current caregiver records...")
+        return self.caregiver_repo.truncate_table()
     
     def bulk_import_caregivers(self, rows: List[Dict[str, str]]) -> bool:
         """Import CSV data into current_caregiver table using batch processing"""
-        try:
-            record_count = len(rows)
-            logger.info(f"Inserting {record_count} current caregiver records...")
+        record_count = len(rows)
+        logger.info(f"Inserting {record_count} current caregiver records...")
+        
+        # Process in batches for better performance
+        batch_size = 1000
+        total_batches = (record_count + batch_size - 1) // batch_size
+        
+        for batch_num in range(total_batches):
+            start_idx = batch_num * batch_size
+            end_idx = min(start_idx + batch_size, record_count)
+            batch_rows = rows[start_idx:end_idx]
             
-            # Process in batches for better performance
-            batch_size = 1000
-            total_batches = (record_count + batch_size - 1) // batch_size
+            with self.caregiver_repo.adapter:
+                for row in batch_rows:
+                    record = CurrentCaregiver(
+                        caregiver_id=clean_string(row.get('Caregiver ID')),
+                        first_name=clean_string(row.get('First Name')),
+                        last_name=clean_string(row.get('Last Name')),
+                        address=clean_string(row.get('Address')),
+                        city=clean_string(row.get('City')),
+                        state=clean_string(row.get('State')),
+                        postal_code=clean_string(row.get('Postal Code')),
+                        hire_date=parse_date_string(row.get('Hire Date')),
+                        caregiver_tags=clean_string(row.get('Caregiver Tags')),
+                        email=clean_string(row.get('Email')),
+                        date_of_birth=parse_date_string(row.get('Date Of Birth'))
+                    )
+                    
+                    self.caregiver_repo.insert_caregiver(record)
             
-            for batch_num in range(total_batches):
-                start_idx = batch_num * batch_size
-                end_idx = min(start_idx + batch_size, record_count)
-                batch_rows = rows[start_idx:end_idx]
-                
-                with self.caregiver_repo.adapter:
-                    for row in batch_rows:
-                        record = CurrentCaregiver(
-                            caregiver_id=clean_string(row.get('Caregiver ID')),
-                            first_name=clean_string(row.get('First Name')),
-                            last_name=clean_string(row.get('Last Name')),
-                            address=clean_string(row.get('Address')),
-                            city=clean_string(row.get('City')),
-                            state=clean_string(row.get('State')),
-                            postal_code=clean_string(row.get('Postal Code')),
-                            hire_date=parse_date_string(row.get('Hire Date')),
-                            caregiver_tags=clean_string(row.get('Caregiver Tags')),
-                            email=clean_string(row.get('Email')),
-                            date_of_birth=parse_date_string(row.get('Date Of Birth'))
-                        )
-                        
-                        self.caregiver_repo.insert_caregiver(record)
-                
-                logger.info(f"Completed batch {batch_num+1}/{total_batches}")
-            
-            logger.info("Successfully imported current caregiver data")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error importing CSV data: {str(e)}")
-            return False
-    
+            logger.info(f"Completed batch {batch_num+1}/{total_batches}")
+        
+        logger.info("Successfully imported current caregiver data")
+        return True
+
+
     def upload_caregiver_csv(self, file_path):
         """
         Upload a CSV file to S3 bucket under caregivers-list/ prefix.

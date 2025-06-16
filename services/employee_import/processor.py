@@ -31,13 +31,13 @@ class EmployeeImportProcessor(BaseServiceProcessor):
                     message = json.loads(message)
                 except Exception as e:
                     self.logger.error(f"Failed to parse message as JSON: {str(e)}")
-                    return False
-            
+                    return
+
             # Check if this is an S3 notification
             if 'Records' not in message:
                 self.logger.warning("Message is not an S3 notification")
-                return False
-            
+                return
+
             for record in message['Records']:
                 if record.get('eventSource') != 'aws:s3':
                     continue
@@ -57,13 +57,9 @@ class EmployeeImportProcessor(BaseServiceProcessor):
                 self.logger.info(f"Processing CSV from S3: {bucket_name}/{key}")
                 
                 # Process the CSV file
-                result = self.csv_handler.process_csv_file(bucket_name, key)
-                if not result:
-                    self.logger.error(f"Failed to process CSV file: {bucket_name}/{key}")
-                    return False
-            
-            return True
-                
+                self.csv_handler.process_csv_file(bucket_name, key)
+
         except Exception as e:
-            self.logger.exception(f"Error processing employee import message: {str(e)}")
+            self.logger.error(f"Error processing employee import message: {str(e)}")
+            self.logger.exception(e)
             return False

@@ -69,6 +69,7 @@ class OigUpdateHandler:
             
         except Exception as e:
             logger.error(f"Error fetching last update date from webpage: {str(e)}")
+            logger.exception(e)
             return None
 
     def download_csv_data(self) -> Optional[List[Dict[str, str]]]:
@@ -90,6 +91,7 @@ class OigUpdateHandler:
             
         except Exception as e:
             logger.error(f"Error downloading CSV data: {str(e)}")
+            logger.exception(e)
             return None
 
     def process_update_check(self):
@@ -138,6 +140,7 @@ class OigUpdateHandler:
                 
         except Exception as e:
             logger.error(f"Unexpected error during OIG update check: {str(e)}")
+            logger.exception(e)
             self.oig_checks_service.log_check_result('check_failed')
 
 
