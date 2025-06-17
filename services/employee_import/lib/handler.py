@@ -7,17 +7,17 @@ from common.app_config import config
 
 logger = create_logger()
 
-class CsvImportHandler:
-    """Main handler that routes CSV imports based on S3 key prefix"""
+class ListImportHandler:
+    """Main handler that routes CSV and XLSX imports based on S3 key prefix"""
     
     def __init__(self, config):
         self.config = config
         self.employee_handler = CurrentEmployeeHandler(config)
         self.caregiver_handler = CurrentCaregiverHandler(config)
         
-    def process_csv_file(self, bucket, key):
+    def process_list_file(self, bucket, key):
         """
-        Process a CSV file based on its prefix
+        Process a CSV or XLSX file based on its prefix
         
         Args:
             bucket (str): S3 bucket name
@@ -26,24 +26,25 @@ class CsvImportHandler:
         Returns:
             bool: True if successful, False otherwise
         """
-        if key.startswith('employees-list/') and not key.endswith('latest.csv'):
-            logger.info(f"Processing employee CSV: {bucket}/{key}")
-            self.employee_handler.process_employee_csv(bucket, key)
-            self.trigger_match_service()
+        if key.startswith('employees-list/') and key.endswith('latest'):
+            logger.info(f"Processing employee list file: {bucket}/{key}")
+            import_success = self.employee_handler.process_employee_list(key)
+            if import_success:
+                self.trigger_match_service(key)
 
-        elif key.startswith('caregivers-list/') and not key.endswith('latest.csv'):
-            logger.info(f"Processing caregiver CSV: {bucket}/{key}")
-            self.caregiver_handler.process_caregiver_csv(bucket, key)
-            self.trigger_match_service()
+        elif key.startswith('caregivers-list/') and key.endswith('latest'):
+            logger.info(f"Processing caregiver list file: {bucket}/{key}")
+            import_success = self.caregiver_handler.process_caregiver_list(key)
+            if import_success:
+                self.trigger_match_service(key)
 
         else:
-            if key.endswith('latest.csv'):
-                logger.info(f"Skipping latest CSV file: {key}")
+            if not key.startswith('caregivers-list/') and not key.startswith('employees-list/'):
+                logger.warning(f"Unknown prefix for list file: {key}")
             else:
-                logger.warning(f"Unknown prefix for CSV file: {key}")
-                return False
+                logger.info(f"Skipping non-latest file recorded for audit purposes: {key}")
 
-    def trigger_match_service(self):
+    def trigger_match_service(self, s3_key):
         """
         Trigger the matching process for employees and caregivers
         """
@@ -55,7 +56,8 @@ class CsvImportHandler:
             queue_name=self.config.PREFIXED_EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME,
             data={
                 'action': 'match_exclusions',
-                'source': 'csv_import_handler'
+                'source': 'csv_import_handler',
+                'key': s3_key
             }
         )
         logger.info("Matching process triggered in exclusion match service")

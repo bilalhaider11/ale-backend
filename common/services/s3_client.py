@@ -5,6 +5,7 @@ import os
 import json
 from typing import Dict, List, Union
 from io import BytesIO
+from urllib.parse import urlencode
 
 from common.app_config import config
 from common.app_logger import logger
@@ -30,21 +31,53 @@ class S3ClientService:
         metadata = self.get_object_metadata(s3_key)
         return metadata['ContentType']
 
-    def copy_object(self, source_key, dest_key) -> None:
+    def copy_object(self, source_key, dest_key, content_type=None, metadata=None, tagging=None) -> None:
         """
         Copy an object from source_key to dest_key within the same bucket.
+        
+        Args:
+            source_key (str): Source S3 key.
+            dest_key (str): Destination S3 key.
+            metadata (dict, optional): Custom metadata to set on the copied object.
+                                     If not provided, uses metadata from source object.
+            tagging (dict, optional): Tags to apply to the copied object.
         """
         copy_source = {
             'Bucket': self.bucket_name,
             'Key': source_key
         }
-        self.s3.copy_object(
-            Bucket=self.bucket_name,
-            CopySource=copy_source,
-            Key=dest_key
-        )
+        
+        copy_args = {
+            'Bucket': self.bucket_name,
+            'CopySource': copy_source,
+            'Key': dest_key
+        }
 
-    def upload_file(self, file_path, s3_key, content_type=None, metadata=None) -> None:
+        if content_type is not None:
+            # Use provided content type
+            copy_args['ContentType'] = content_type
+        else:
+            # Guess content type from source object
+            content_type = self.get_file_content_type(source_key)
+            copy_args['ContentType'] = content_type
+        
+        if metadata is not None:
+            # Use provided metadata and replace existing metadata
+            copy_args['Metadata'] = metadata
+            copy_args['MetadataDirective'] = 'REPLACE'
+        else:
+            # Copy metadata from source object
+            copy_args['MetadataDirective'] = 'COPY'
+        
+        if tagging is not None:
+            copy_args['Tagging'] = urlencode(tagging)
+            copy_args['TaggingDirective'] = 'REPLACE'
+        else:
+            copy_args['TaggingDirective'] = 'COPY'
+        
+        self.s3.copy_object(**copy_args)
+
+    def upload_file(self, file_path, s3_key, content_type=None, metadata=None, tagging=None) -> None:
         """
         Upload the file at file_path to the specified s3_key in the S3 bucket.
 
@@ -53,6 +86,7 @@ class S3ClientService:
             s3_key (str): Destination key in S3.
             content_type (str, optional): MIME type of the file. Guessed if not provided.
             metadata (dict, optional): Additional metadata to store with the object.
+            tagging (dict, optional): Tags to apply to the object.
         """
         if content_type is None:
             content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
@@ -60,6 +94,8 @@ class S3ClientService:
         extra_args = {"ContentType": content_type}
         if metadata:
             extra_args["Metadata"] = metadata
+        if tagging:
+            extra_args["Tagging"] = urlencode(tagging)
 
         self.s3.upload_file(
             Filename=file_path,
@@ -113,22 +149,97 @@ class S3ClientService:
         metadata.update(user_metadata)
         return metadata
 
+    def get_object_tags(self, s3_key: str) -> dict:
+        """
+        Retrieve tags of an object in S3.
+        
+        Args:
+            s3_key (str): S3 key of the object.
+            
+        Returns:
+            dict: Dictionary of tags (key-value pairs).
+        """
+        try:
+            response = self.s3.get_object_tagging(Bucket=self.bucket_name, Key=s3_key)
+            return {tag['Key']: tag['Value'] for tag in response.get('TagSet', [])}
+        except self.s3.exceptions.NoSuchKey:
+            # Object doesn't exist or has no tags
+            return {}
 
-    def generate_presigned_url(self, s3_key, expiration=3600):
+    def update_metadata(self, s3_key: str, metadata: dict, replace: bool = False) -> None:
+        """
+        Update metadata for an existing S3 object.
+        
+        Args:
+            s3_key (str): S3 key of the object to update.
+            metadata (dict): Metadata to set or merge.
+            replace (bool): If True, replace all existing metadata. 
+                          If False, merge with existing metadata (upsert).
+        """
+        if replace:
+            # Replace all metadata
+            final_metadata = metadata
+        else:
+            # Merge with existing metadata (upsert)
+            response = self.s3.head_object(Bucket=self.bucket_name, Key=s3_key)
+            current_user_metadata = response.get("Metadata", {})
+            final_metadata = {**current_user_metadata, **metadata}
+        
+        # Copy object to itself with updated metadata
+        self.copy_object(s3_key, s3_key, metadata=final_metadata)
+
+    def update_tags(self, s3_key: str, tags: dict, replace: bool = False) -> None:
+        """
+        Update tags for an existing S3 object.
+        
+        Args:
+            s3_key (str): S3 key of the object to update.
+            tags (dict): Tags to set or merge.
+            replace (bool): If True, replace all existing tags. 
+                          If False, merge with existing tags (upsert).
+        """
+        if replace:
+            # Replace all tags
+            final_tags = tags
+        else:
+            # Merge with existing tags (upsert)
+            try:
+                response = self.s3.get_object_tagging(Bucket=self.bucket_name, Key=s3_key)
+                current_tags = {tag['Key']: tag['Value'] for tag in response.get('TagSet', [])}
+                final_tags = {**current_tags, **tags}
+            except self.s3.exceptions.NoSuchKey:
+                # Object doesn't exist or has no tags
+                final_tags = tags
+        
+        # Convert dict to TagSet format
+        tag_set = [{'Key': k, 'Value': v} for k, v in final_tags.items()]
+        
+        self.s3.put_object_tagging(
+            Bucket=self.bucket_name,
+            Key=s3_key,
+            Tagging={'TagSet': tag_set}
+        )
+
+    def generate_presigned_url(self, s3_key, expiration=3600, filename=None):
         """
         Generate a pre-signed URL for getting an object from S3.
 
         :param s3_key: str (S3 key)
         :param expiration: int (URL expiration in seconds)
+        :param filename: str (optional filename for download)
         :return: str (Pre-signed URL)
         """
+        params = {
+            'Bucket': self.bucket_name,
+            'Key': s3_key
+        }
+        
+        if filename:
+            params['ResponseContentDisposition'] = f'attachment; filename="{filename}"'
 
         return self.s3.generate_presigned_url(
             ClientMethod='get_object',
-            Params={
-                'Bucket': self.bucket_name,
-                'Key': s3_key
-            },
+            Params=params,
             ExpiresIn=expiration
         )
 

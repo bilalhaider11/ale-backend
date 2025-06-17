@@ -11,45 +11,47 @@ from app.helpers.decorators import login_required
 current_employee_api = Namespace('current_employee', description='Current employee operations')
 
 
-@current_employee_api.route('/upload_csv')
-class CurrentEmployeeCSVUpload(Resource):
+@current_employee_api.route('/upload')
+class CurrentEmployeeListUpload(Resource):
     
     @login_required()
     def post(self, person):
         """
-        Upload a CSV file with employee data.
+        Upload a CSV or XLSX file with employee data.
         The file will be saved to S3 with current datetime and copied as latest.csv.
         """
         if 'file' not in request.files:
-            return get_failure_response("No csv file provided", status_code=400)
+            return get_failure_response("No file provided", status_code=400)
         
         file = request.files['file']
         
         if not file.filename:
             return get_failure_response("No file selected", status_code=400)
         
-        # Check if file is a CSV
-        if not file.filename.lower().endswith('.csv'):
-            return get_failure_response("File must be a CSV", status_code=400)
+        # Check if file is a CSV or XLSX
+        allowed_extensions = ['.csv', '.xlsx']
+        if not any(file.filename.lower().endswith(ext) for ext in allowed_extensions):
+            return get_failure_response("File must be a CSV or XLSX", status_code=400)
         
-        # Save file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as temp_file:
+        # Save file temporarily with appropriate extension
+        file_extension = '.csv' if file.filename.lower().endswith('.csv') else '.xlsx'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             file.save(temp_file.name)
             temp_file_path = temp_file.name
-        
+
         try:
             # Upload file to S3
             current_employee_service = CurrentEmployeeService(config)
-            upload_result = current_employee_service.upload_employee_csv(temp_file_path)
+            upload_result = current_employee_service.upload_employee_list(temp_file_path, file.filename)
             
             # Clean up temporary file
             os.unlink(temp_file_path)
             
             return get_success_response(
-                message="CSV file uploaded successfully",
+                message="File uploaded successfully",
                 upload_info=upload_result
             )
-            
+
         except Exception as e:
             # Clean up temporary file in case of error
             if os.path.exists(temp_file_path):
