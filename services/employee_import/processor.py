@@ -2,7 +2,7 @@ import json
 from rococo.messaging import BaseServiceProcessor
 from common.app_config import config
 from common.app_logger import create_logger, set_rollbar_exception_catch
-from lib.handler import CsvImportHandler
+from lib.handler import ListImportHandler
 
 class EmployeeImportProcessor(BaseServiceProcessor):
     """
@@ -17,7 +17,7 @@ class EmployeeImportProcessor(BaseServiceProcessor):
         from setup import setup_employee_import_queue
         setup_employee_import_queue()
         
-        self.csv_handler = CsvImportHandler(config)
+        self.import_handler = ListImportHandler(config)
         
         self.logger.info("Employee import processor initialized")
         
@@ -56,8 +56,8 @@ class EmployeeImportProcessor(BaseServiceProcessor):
                 
                 self.logger.info(f"Processing CSV from S3: {bucket_name}/{key}")
                 
-                # Process the CSV file
-                self.csv_handler.process_csv_file(bucket_name, key)
+                # Process the CSV or XLSX file
+                self.import_handler.process_list_file(bucket_name, key)
 
         except Exception as e:
             self.logger.error(f"Error processing employee import message: {str(e)}")

@@ -71,6 +71,7 @@ def setup_employee_import_queue():
         'CaregiverS3Setup': caregiver_setup_result
     }
 
+
 def setup_s3_to_sqs_notification(bucket_name, queue_name, s3_prefix_filter):
     """
     Set up S3 notification to SQS
@@ -169,12 +170,13 @@ def setup_s3_to_sqs_notification(bucket_name, queue_name, s3_prefix_filter):
 
     # Add new configuration
     new_config = {
+        'Id': f"{queue_name}-{s3_prefix_filter[:-1]}",
         'QueueArn': queue_arn,
         'Events': ['s3:ObjectCreated:*'],
         'Filter': {
             'Key': {
                 'FilterRules': [
-                    {'Name': 'prefix', 'Value': s3_prefix_filter}
+                    {'Name': 'Prefix', 'Value': s3_prefix_filter}
                 ]
             }
         }
