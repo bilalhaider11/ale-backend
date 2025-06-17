@@ -68,6 +68,11 @@ services:
         condition: service_healthy
     networks:
       - backnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/version"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
 
   email_transmitter:
     image: ecorrouge/email-transmitter:latest
