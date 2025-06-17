@@ -9,6 +9,7 @@ from common.app_logger import get_logger
 from common.app_config import config
 from common.services.oig_employees_exclusion import OigEmployeesExclusionService
 from common.services.oig_exclusions_check import OigExclusionsCheckService
+from common.tasks.send_message import send_message
 
 logger = get_logger(__name__)
 
@@ -69,6 +70,7 @@ class OigUpdateHandler:
             
         except Exception as e:
             logger.error(f"Error fetching last update date from webpage: {str(e)}")
+            logger.exception(e)
             return None
 
     def download_csv_data(self) -> Optional[List[Dict[str, str]]]:
@@ -90,6 +92,7 @@ class OigUpdateHandler:
             
         except Exception as e:
             logger.error(f"Error downloading CSV data: {str(e)}")
+            logger.exception(e)
             return None
 
     def process_update_check(self):
@@ -138,7 +141,25 @@ class OigUpdateHandler:
                 
         except Exception as e:
             logger.error(f"Unexpected error during OIG update check: {str(e)}")
+            logger.exception(e)
             self.oig_checks_service.log_check_result('check_failed')
+
+    def trigger_match_service(self):
+        """
+        Trigger the matching process for employees and caregivers
+        """
+        logger.info("Triggering matching process for employees and caregivers")
+        logger.info("Sending message to queue: %s",
+            self.config.PREFIXED_EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME
+        )
+        send_message(
+            queue_name=self.config.PREFIXED_EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME,
+            data={
+                'action': 'match_exclusions',
+                'source': 'oig_update_handler'
+            }
+        )
+        logger.info("Matching process triggered in exclusion match service")
 
 
 def task_handler():

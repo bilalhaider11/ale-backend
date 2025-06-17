@@ -3,11 +3,10 @@ from typing import Type
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from werkzeug.utils import import_string
 
 
-class BaseConfig(BaseSettings):
-    APP_ENV: str = Field(env='APP_ENV')
+class BaseConfig(BaseSettings):    
+    APP_ENV: str
 
     # Sets the flask ENV
     @property
@@ -16,61 +15,61 @@ class BaseConfig(BaseSettings):
 
 
 class Config(BaseConfig):
-    DEBUG: bool = Field(env='DEBUG', default=False)
-    TESTING: bool = Field(env='TESTING', default=False)
-    LOGLEVEL: str = Field(env='LOGLEVEL', default='INFO')
+    DEBUG: bool = Field(default=False)
+    TESTING: bool = Field(default=False)
+    LOGLEVEL: str = Field(default='INFO')
 
-    ACCESS_TOKEN_EXPIRE: int = Field(env='ACCESS_TOKEN_EXPIRE', default=3600)
-    RESET_TOKEN_EXPIRE: int = Field(env='ACCESS_TOKEN_EXPIRE', default=60*60*24*3)  # 3 days
-    INVITATION_TOKEN_EXPIRE: int = Field(env='INVITATION_TOKEN_EXPIRE', default=60*60*24*3)
+    ACCESS_TOKEN_EXPIRE: int = Field(default=3600)
+    RESET_TOKEN_EXPIRE: int = Field(default=60*60*24*3)  # 3 days
+    INVITATION_TOKEN_EXPIRE: int = Field(default=60*60*24*3)
 
     MIME_TYPE: str = 'application/json'
 
-    SECRET_KEY: str = Field(env='SECRET_KEY', default=None)
-    SECURITY_PASSWORD_SALT: str = Field(env='SECURITY_PASSWORD_SALT', default=None)
+    SECRET_KEY: str = Field(default=None)
+    SECURITY_PASSWORD_SALT: str = Field(default=None)
 
-    VUE_APP_URI: str = Field(env='VUE_APP_URI', default=None)
+    VUE_APP_URI: str = Field(default=None)
 
-    POSTGRES_HOST: str = Field(env='POSTGRES_HOST')
-    POSTGRES_PORT: int = Field(env='POSTGRES_PORT')
-    POSTGRES_USER: str = Field(env='POSTGRES_USER')
-    POSTGRES_PASSWORD: str = Field(env='POSTGRES_PASSWORD')
-    POSTGRES_DB: str = Field(env='POSTGRES_DB')
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
 
-    RABBITMQ_HOST: str = Field(env='RABBITMQ_HOST')
-    RABBITMQ_PORT: int = Field(env='RABBITMQ_PORT')
-    RABBITMQ_VIRTUAL_HOST: str = Field(env='RABBITMQ_VIRTUAL_HOST', default='/')
-    RABBITMQ_USER: str = Field(env='RABBITMQ_USER')
-    RABBITMQ_PASSWORD: str = Field(env='RABBITMQ_PASSWORD')
+    RABBITMQ_HOST: str
+    RABBITMQ_PORT: int
+    RABBITMQ_VIRTUAL_HOST: str = Field(default='/')
+    RABBITMQ_USER: str
+    RABBITMQ_PASSWORD: str
 
-    AUTH_JWT_SECRET: str = Field(env='AUTH_JWT_SECRET')
+    AUTH_JWT_SECRET: str
 
-    ROLLBAR_ACCESS_TOKEN: str = Field(env='ROLLBAR_ACCESS_TOKEN', default=None)
+    ROLLBAR_ACCESS_TOKEN: str = Field(default=None)
 
-    QUEUE_NAME_PREFIX: str = Field(env='QUEUE_NAME_PREFIX', default='')
-    EMAIL_SERVICE_PROCESSOR_QUEUE_NAME: str = Field(env='EmailServiceProcessor_QUEUE_NAME', default='email-transmitter')
-    FILE_PROCESSOR_QUEUE_NAME: str = Field(env='FileProcessor_QUEUE_NAME', default='file-processor')
-    DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME: str = Field(env='DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME', default="document-analysis-response")
-    ORGANIZATION_PROCESSOR_QUEUE_NAME: str = Field(env='OrganizationProcessor_QUEUE_NAME', default='organization-processor')
-    EMPLOYEE_IMPORT_QUEUE_NAME: str = Field(env='EmployeeImportProcessor_QUEUE_NAME', default='employee-import')
-    
-    BASE_DOMAIN: str = Field(env='BASE_DOMAIN', default=None)
-    ROUTE53_HOSTED_ZONE_ID: str = Field(env='ROUTE53_HOSTED_ZONE_ID', default=None)
-    CLOUDFRONT_DISTRIBUTION_DOMAIN: str = Field(env='CLOUDFRONT_DISTRIBUTION_DOMAIN', default=None)
-    AWS_S3_LOGOS_BUCKET_NAME: str = Field(env="AWS_S3_LOGOS_BUCKET_NAME")
+    QUEUE_NAME_PREFIX: str = Field(default='')
+    EMAIL_SERVICE_PROCESSOR_QUEUE_NAME: str = Field(alias='EmailServiceProcessor_QUEUE_NAME', default='email-transmitter')
+    FILE_PROCESSOR_QUEUE_NAME: str = Field(alias='FileProcessor_QUEUE_NAME', default='file-processor')
+    DOCUMENT_ANALYSIS_RESPONSE_TOPIC_NAME: str = Field(default="document-analysis-response")
+    ORGANIZATION_PROCESSOR_QUEUE_NAME: str = Field(alias='OrganizationProcessor_QUEUE_NAME', default='organization-processor')
+    EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME: str = Field(alias='EmployeeImportProcessor_QUEUE_NAME', default='employee-import')
+    EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME: str = Field(alias='EmployeeExclusionMatchProcessor_QUEUE_NAME', default='employee-exclusion-match-processor')
 
-    AWS_ACCESS_KEY_ID: str = Field(env="AWS_ACCESS_KEY_ID")
-    AWS_ACCESS_KEY_SECRET: str = Field(env="AWS_ACCESS_KEY_SECRET")
-    AWS_REGION: str = Field(env="AWS_REGION", default="us-west-2")
-    AWS_S3_BUCKET_NAME: str = Field(env="AWS_S3_BUCKET_NAME")
-    AWS_S3_KEY_PREFIX: str = Field(env="AWS_S3_KEY_PREFIX", default="")
-    AWS_S3_EMPLOYEE_BUCKET_NAME: str = Field(env="AWS_S3_EMPLOYEE_BUCKET_NAME", default="ale-ahmad-uploads")
+    BASE_DOMAIN: str = Field(default=None)
+    ROUTE53_HOSTED_ZONE_ID: str = Field(default=None)
+    CLOUDFRONT_DISTRIBUTION_DOMAIN: str = Field(default=None)
+    AWS_S3_LOGOS_BUCKET_NAME: str
 
-    FILESTACK_API_KEY: str = Field(env="FILESTACK_API_KEY")
-    FILESTACK_APP_SECRET: str = Field(env="FILESTACK_APP_SECRET")
+    AWS_ACCESS_KEY_ID: str
+    AWS_ACCESS_KEY_SECRET: str
+    AWS_REGION: str = Field(default="us-west-2")
+    AWS_S3_BUCKET_NAME: str
+    AWS_S3_KEY_PREFIX: str = Field(default="")
 
-    OIG_WEBPAGE_URL: str = Field(env="OIG_WEBPAGE_URL", default="")
-    OIG_CSV_DOWNLOAD_URL: str = Field(env="OIG_CSV_DOWNLOAD_URL", default="")
+    FILESTACK_API_KEY: str
+    FILESTACK_APP_SECRET: str
+
+    OIG_WEBPAGE_URL: str = Field(default="")
+    OIG_CSV_DOWNLOAD_URL: str = Field(default="")
 
     @property
     def DEFAULT_USER_PASSWORD(self):
@@ -99,11 +98,16 @@ class Config(BaseConfig):
         return self.ORGANIZATION_PROCESSOR_QUEUE_NAME
         
     @property
-    def PREFIXED_EMPLOYEE_IMPORT_QUEUE_NAME(self):
+    def PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME(self):
         if self.QUEUE_NAME_PREFIX:
-            return f"{self.QUEUE_NAME_PREFIX}{self.EMPLOYEE_IMPORT_QUEUE_NAME}"
-        return self.EMPLOYEE_IMPORT_QUEUE_NAME
+            return f"{self.QUEUE_NAME_PREFIX}{self.EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME}"
+        return self.EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME
 
+    @property
+    def PREFIXED_EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME(self):
+        if self.QUEUE_NAME_PREFIX:
+            return f"{self.QUEUE_NAME_PREFIX}{self.EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME}"
+        return self.EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME
 
 def get_config() -> Config:
     conf = Config()

@@ -68,6 +68,11 @@ services:
         condition: service_healthy
     networks:
       - backnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/version"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
 
   email_transmitter:
     image: ecorrouge/email-transmitter:latest
@@ -159,6 +164,27 @@ services:
       - ./${APP_ENV}.env
     depends_on:
       postgres:
+        condition: service_healthy
+
+
+  employee_exclusion_match_service:
+    image: ale_employee_exclusion_match_service
+    container_name: ale_employee_exclusion_match_service
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/employee_exclusion_match_service/Dockerfile
+    networks:
+      - backnet
+    volumes:
+      - ./common:/src/common
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
 volumes:

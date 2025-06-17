@@ -16,16 +16,13 @@ def parse_date(date_str) -> Optional[date]:
     if not date_str or date_str == '':
         return None
     
-    try:
-        # Try common date formats
-        for fmt in ['%Y%m%d', '%m/%d/%Y', '%Y-%m-%d']:
-            try:
-                return datetime.strptime(str(date_str), fmt).date()
-            except ValueError:
-                continue
-        return None
-    except Exception:
-        return None
+    # Try common date formats
+    for fmt in ['%Y%m%d', '%m/%d/%Y', '%Y-%m-%d']:
+        try:
+            return datetime.strptime(str(date_str), fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def parse_date_string(date_str) -> Optional[str]:

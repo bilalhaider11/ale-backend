@@ -19,8 +19,8 @@ def setup_employee_import_queue():
         region_name=config.AWS_REGION
     )
     
-    queue_name = config.PREFIXED_EMPLOYEE_IMPORT_QUEUE_NAME
-    bucket_name = config.AWS_S3_EMPLOYEE_BUCKET_NAME
+    queue_name = config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME
+    bucket_name = config.AWS_S3_BUCKET_NAME
     employee_prefix = "employees-list/"
     caregiver_prefix = "caregivers-list/"
     
