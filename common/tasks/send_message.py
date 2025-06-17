@@ -7,6 +7,23 @@ from common.app_config import config
 from common.app_logger import logger
 
 
+from rococo.messaging.rabbitmq import RabbitMqConnection
+
+
+def send_message(queue_name: str, data: dict) -> None:
+    with RabbitMqConnection(
+        host=config.RABBITMQ_HOST,
+        port=config.RABBITMQ_PORT,
+        username=config.RABBITMQ_USER,
+        password=config.RABBITMQ_PASSWORD,
+        virtual_host=config.RABBITMQ_VIRTUAL_HOST
+    ) as connection:
+        connection.send_message(
+            queue_name=queue_name,
+            message=data,
+        )
+
+
 def get_connection_parameters() -> pika.ConnectionParameters:
     return pika.ConnectionParameters(
         host=config.RABBITMQ_HOST,

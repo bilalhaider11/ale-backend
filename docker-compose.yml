@@ -161,6 +161,27 @@ services:
       postgres:
         condition: service_healthy
 
+
+  employee_exclusion_match_service:
+    image: ale_employee_exclusion_match_service
+    container_name: ale_employee_exclusion_match_service
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/employee_exclusion_match_service/Dockerfile
+    networks:
+      - backnet
+    volumes:
+      - ./common:/src/common
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
 volumes:
   ale-backend-postgres-data:
     name: ale-backend-postgres-data
