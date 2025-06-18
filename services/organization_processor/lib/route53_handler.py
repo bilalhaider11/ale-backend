@@ -2,12 +2,12 @@ import boto3
 from common.app_config import config
 from common.app_logger import logger
 
-def process_subdomain(organization, subdomain):
+def process_subdomain(organization_id, subdomain):
     """
     Process organization subdomain
     
     Args:
-        organization: Organization object
+        organization: Organization id
         subdomain: Subdomain string
         
     Returns:
@@ -19,11 +19,11 @@ def process_subdomain(organization, subdomain):
         logger.error("Empty subdomain provided")
         return False
     
-    logger.info(f"Processing subdomain for organization {organization.entity_id}")
+    logger.info(f"Processing subdomain for organization {organization_id}")
     
     try:
         # Attempt to create or update the CNAME record in Route53
-        route53_result = create_or_update_cname_record(organization, subdomain)
+        route53_result = create_or_update_cname_record(subdomain)
         
         # Only proceed with database update if Route53 succeeds
         if route53_result:
@@ -39,14 +39,11 @@ def process_subdomain(organization, subdomain):
             # Construct the full domain
             full_domain = f"{subdomain}.{base_domain}"
             
-            # Update the organization with the full domain
-            update_result = organization_service.update_organization(
-                organization.entity_id,
-                {"full_domain": full_domain}
-            )
+            # Update the organization with the full domain using the new method
+            updated_org = organization_service.update_full_domain(organization_id, full_domain)
             
             # Return True only if the database update succeeds
-            return update_result is not None
+            return updated_org is not None
         
         # Return False if Route53 update fails
         return False
@@ -55,7 +52,7 @@ def process_subdomain(organization, subdomain):
         logger.exception(f"Error processing subdomain: {e}")
         return False
 
-def create_or_update_cname_record(organization, subdomain):
+def create_or_update_cname_record(subdomain):
     """
     Create or update a CNAME record for an organization's subdomain
     
