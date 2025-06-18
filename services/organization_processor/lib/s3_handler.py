@@ -3,127 +3,80 @@ from common.app_config import config
 from lib.image_conversion import convert_image_to_png
 from io import BytesIO
 import boto3
-import os
 
 logger = create_logger()
 
-def process_logo(organization, logo_data):
+def process_s3_event(message):
     """
-    Process organization logo
+    Process S3 event messages for logo uploads
     
     Args:
-        organization: Organization object
-        logo_data: URL of the logo or dict with base64 content
+        message: S3 event message
         
     Returns:
         bool: True if successful, False otherwise
     """
-    logger.info(f"Processing logo for organization {organization.entity_id}")
-    
-    if not logo_data:
-        logger.error("No valid logo data provided")
-        return False
-    
     try:
-        # Check if logo_data is a URL string
-        if isinstance(logo_data, str):
-            # Handle as URL
-            logo_url = logo_data
+        # Extract S3 event details
+        for record in message.get("Records", []):
+            event_name = record.get("eventName", "")
             
-            # If the logo is already in CloudFront, just update the organization
-            cloudfront_domain = f"https://{config.CLOUDFRONT_DISTRIBUTION_DOMAIN}"
-            if logo_url.startswith(cloudfront_domain):
-                logger.info(f"Logo already in CloudFront: {logo_url}")
+            # Only process object creation events
+            if not event_name.startswith("ObjectCreated:"):
+                continue
+            
+            s3_info = record.get("s3", {})
+            bucket_name = s3_info.get("bucket", {}).get("name")
+            object_key = s3_info.get("object", {}).get("key")
+            
+            if not bucket_name or not object_key:
+                logger.error("Missing bucket name or object key in S3 event")
+                continue
+            
+            logger.info(f"Processing S3 event: {event_name} for {bucket_name}/{object_key}")
+            
+            # Log the received S3 event details
+            logger.info(f"S3 Event - Bucket: {bucket_name}, Key: {object_key}")
+            
+            key_parts = object_key.split("/")
+            if len(key_parts) >= 4 and key_parts[0] == "organizations" and key_parts[2] == "logo-raw":
+                organization_id = key_parts[1]
                 
-                # Update the organization with the logo URL directly
+                # Get organization
                 from common.services.organization import OrganizationService
-                organization_service = OrganizationService(config)
+                org_service = OrganizationService(config)
+                organization = org_service.get_organization_by_id(organization_id)
                 
-                # Check if the logo_url is already set on the organization
-                if getattr(organization, 'logo_url', None) != logo_url:
-                    update_result = organization_service.update_organization(
-                        organization.entity_id, 
-                        {"logo_url": logo_url}
-                    )
-                    
-                    logger.info(f"Organization logo URL updated")
-                    
-                return True
+                if not organization:
+                    logger.error(f"Organization not found: {organization_id}")
+                    continue
                 
-            # Convert and transfer logo from URL to S3
-            new_logo_url = transfer_logo_to_s3(
-                organization.entity_id,
-                logo_url,
-                source_type="url"
-            )
-            
-            if not new_logo_url:
-                logger.error(f"Failed to upload logo to S3")
-                return False
-            
-        # Handle base64 encoded file data
-        elif isinstance(logo_data, dict) and 'content' in logo_data:
-            logger.info(f"Processing base64 encoded logo for organization {organization.entity_id}")
-            
-            # Extract file data
-            content = logo_data.get('content')
-            
-            # Transfer base64 content to S3 (will be converted to PNG)
-            new_logo_url = transfer_logo_to_s3(
-                organization.entity_id,
-                content,
-                content_type="image/png",
-                source_type="base64"
-            )
-            
-            if not new_logo_url:
-                logger.error(f"Failed to upload base64 logo to S3")
-                return False
-            
-        else:
-            logger.error(f"Unsupported logo data format: {type(logo_data)}")
-            return False
-        
-        # Update the organization with the new logo URL
-        from common.services.organization import OrganizationService
-        organization_service = OrganizationService(config)
-        update_result = organization_service.update_organization(
-            organization.entity_id, 
-            {"logo_url": new_logo_url}
-        )
-        
-        logger.info(f"Organization logo URL updated to: {new_logo_url}")
+                # Process the logo
+                success = process_logo_from_s3(organization, bucket_name, object_key)
+                
+                if not success:
+                    logger.error(f"Failed to process logo from S3: {object_key}")
+                    return False
+                    
         return True
-            
+        
     except Exception as e:
-        logger.exception(f"Error processing logo: {e}")
+        logger.exception(f"Error processing S3 event: {e}")
         return False
 
-def transfer_logo_to_s3(organization_id, source_data, content_type="image/png", source_type="url"):
+def process_logo_from_s3(organization, bucket_name, object_key):
     """
-    Transfer logo to S3 from either URL or base64 content, converting to PNG
+    Download logo from S3, convert to PNG, and re-upload
     
     Args:
-        organization_id: ID of the organization
-        source_data: Either URL string or base64 content
-        content_type: MIME type of the image (should be "image/png")
-        source_type: Either "url" or "base64"
+        organization: Organization object
+        bucket_name: S3 bucket name
+        object_key: S3 object key
         
     Returns:
-        str: CloudFront URL of the uploaded logo, or None if failed
+        bool: True if successful, False otherwise
     """
     try:
-        # Convert image to PNG
-        png_bytes, conversion_success = convert_image_to_png(source_data, source_type)
-        
-        if not conversion_success or not png_bytes:
-            logger.error(f"Failed to convert image to PNG")
-            return None
-        
-        # Generate a key for the logo with PNG extension
-        destination_key = f"organizations/{organization_id}/logo.png"
-        full_key = destination_key
-
         # Initialize S3 client
         s3 = boto3.client(
             's3',
@@ -132,31 +85,51 @@ def transfer_logo_to_s3(organization_id, source_data, content_type="image/png", 
             region_name=config.AWS_REGION
         )
         
-        bucket_name = config.AWS_S3_LOGOS_BUCKET_NAME
+        # Download the raw logo
+        logger.info(f"Downloading logo from S3: {bucket_name}/{object_key}")
+        response = s3.get_object(Bucket=bucket_name, Key=object_key)
+        raw_logo_data = response['Body'].read()
         
-        logger.info(f"Uploading PNG to S3 bucket: {bucket_name}, key: {full_key}")
+        # Convert to PNG
+        png_bytes, conversion_success = convert_image_to_png(raw_logo_data, source_type="bytes")
         
-        # Upload the PNG file
+        if not conversion_success or not png_bytes:
+            logger.error("Failed to convert logo to PNG")
+            return False
+        
+        # Upload the PNG version
+        png_key = f"organizations/{organization.entity_id}/logo.png"
+        
+        logger.info(f"Uploading PNG logo to S3: {png_key}")
         s3.upload_fileobj(
             BytesIO(png_bytes),
             bucket_name,
-            full_key,
+            png_key,
             ExtraArgs={
-                'ContentType': content_type,
-                'Metadata': {"organization_id": str(organization_id)},
+                'ContentType': 'image/png',
+                'Metadata': {
+                    'organization_id': organization.entity_id,
+                    'source_key': object_key
+                },
                 'CacheControl': 'no-cache, no-store, must-revalidate'
             }
         )
         
-        logger.info(f"Successfully uploaded PNG logo to S3")
-            
         # Generate CloudFront URL
         cloudfront_domain = f"https://{config.CLOUDFRONT_DISTRIBUTION_DOMAIN}"
-        cloudfront_url = f"{cloudfront_domain}/{full_key}"
+        cloudfront_url = f"{cloudfront_domain}/{png_key}"
         
         logger.info(f"Generated CloudFront URL: {cloudfront_url}")
-        return cloudfront_url
+        
+        # Update organization with the new logo URL
+        from common.services.organization import OrganizationService
+        org_service = OrganizationService(config)
+        org_service.update_logo_url(organization.entity_id, cloudfront_url)
+        
+        logger.info(f"Successfully processed logo for organization {organization.entity_id}")
+        return True
         
     except Exception as e:
-        logger.exception(f"Error transferring logo to S3: {e}")
-        return None
+        logger.exception(f"Error processing logo from S3: {e}")
+        return False
+

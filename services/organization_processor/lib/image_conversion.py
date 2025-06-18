@@ -11,8 +11,8 @@ def convert_image_to_png(source_data, source_type="url"):
     Convert image to PNG format
     
     Args:
-        source_data: Either URL string or base64 content
-        source_type: Either "url" or "base64"
+        source_data: Either URL string, base64 content, or raw bytes
+        source_type: Either "url", "base64", or "bytes"
         
     Returns:
         tuple: (png_bytes, success) where png_bytes is the PNG image data as bytes
@@ -31,6 +31,10 @@ def convert_image_to_png(source_data, source_type="url"):
         elif source_type == "base64":
             # Decode base64 content
             image_data = base64.b64decode(source_data)
+            
+        elif source_type == "bytes":
+            # Use raw bytes directly
+            image_data = source_data
             
         else:
             logger.error(f"Unsupported source type: {source_type}")
