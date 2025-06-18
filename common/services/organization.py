@@ -1,6 +1,10 @@
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models import Organization
 from common.app_logger import logger
+from common.services.s3_client import S3ClientService
+import uuid
+from werkzeug.datastructures import FileStorage
+from io import BytesIO
 
 class OrganizationService:
 
@@ -8,6 +12,7 @@ class OrganizationService:
         self.config = config
         self.repository_factory = RepositoryFactory(config)
         self.organization_repo = self.repository_factory.get_repository(RepoType.ORGANIZATION)
+        self.s3_client = S3ClientService()
 
     def save_organization(self, organization: Organization):
         organization = self.organization_repo.save(organization)
@@ -25,42 +30,95 @@ class OrganizationService:
         organization_repo = self.repository_factory.get_repository(RepoType.PERSON_ORGANIZATION_ROLE)
         return organization_repo.get_persons_with_roles_in_organization(organization_id)
         
-    def update_organization(self, organization_id: str, data: dict):
-        """Update an organization with the provided data"""
-        organization = self.get_organization_by_id(organization_id)
-
-        logger.info(f"Updating organization {organization_id}")
+    def update_organization_name(self, organization: Organization, data: dict):
         
-        if not organization:
-            return None
-        
-        # Track if we need to send a message
-        needs_processing = False
-        
-        # Update fields
         if 'name' in data:
             organization.name = data['name']
             organization = self.save_organization(organization)
-
-        # Check for logo_url changes
-        if 'logo_url' in data and data['logo_url'] and data['logo_url'] != getattr(organization, 'logo_url', None):
-            organization.logo_url = data['logo_url']
-            organization = self.save_organization(organization)
-            logger.info(f"Logo URL updated for organization {organization_id}: {data['logo_url']}")
-
-        if 'full_domain' in data and data['full_domain'] and data['full_domain'] != getattr(organization, 'subdomain', None):
-            organization.subdomain = data['full_domain']
-            organization = self.save_organization(organization)
-            logger.info(f"Subdomain updated for organization {organization_id}: {data['full_domain']}")
-
-        if ('logo_data' in data and data['logo_data']) or ('subdomain' in data and data['subdomain']):
-            needs_processing = True
-            logger.info(f"Processing logo or subdomain for organization {organization_id}")
         
-        # Send message to organization processor if needed
-        if needs_processing:
-            self._send_organization_update_message(organization, data)
-            logger.info(f"Sent organization update message for organization {organization_id}")
+        return organization
+
+    def upload_organization_logo(self, organization: Organization, logo_file: FileStorage):
+        
+        try:
+            # Generate a unique key for the raw logo
+            file_extension = logo_file.filename.split('.')[-1] if '.' in logo_file.filename else 'jpeg'
+            raw_logo_key = f"organizations/{organization.entity_id}/logo-raw/{uuid.uuid4()}.{file_extension}"
+            
+            # Save original bucket and set logos bucket
+            original_bucket = self.s3_client.bucket_name
+            self.s3_client.bucket_name = self.config.AWS_S3_LOGOS_BUCKET_NAME
+            
+            try:
+                # Upload the raw logo to S3 using S3ClientService
+                logger.info(f"Uploading raw logo to S3: {raw_logo_key}")
+                
+                # Read file content into BytesIO
+                file_content = BytesIO(logo_file.read())
+                
+                # Sanitize filename for S3 metadata - remove non-ASCII characters
+                sanitized_filename = logo_file.filename.encode('ascii', 'ignore').decode('ascii').strip()
+                if not sanitized_filename:
+                    sanitized_filename = f"logo.{file_extension}"
+                
+                self.s3_client.s3.upload_fileobj(
+                    Fileobj=file_content,
+                    Bucket=self.s3_client.bucket_name,
+                    Key=raw_logo_key,
+                    ExtraArgs={
+                        'ContentType': logo_file.content_type or 'image/jpeg',
+                        'Metadata': {
+                            'organization_id': organization.entity_id,
+                            'original_filename': sanitized_filename
+                        }
+                    }
+                )
+                
+                logger.info(f"Successfully uploaded raw logo to S3: {raw_logo_key}")
+                
+            finally:
+                # Restore original bucket
+                self.s3_client.bucket_name = original_bucket
+            
+            return True
+            
+        except Exception as e:
+            logger.exception(f"Error uploading logo to S3: {e}")
+            return False
+    
+    def process_subdomain(self, organization: Organization, subdomain: str):
+
+        organization = self.get_organization_by_id(organization.entity_id)
+        if not organization:
+            return False
+        
+        message_data = {
+            "subdomain": subdomain
+        }
+        
+        return self._send_organization_update_message(organization, message_data)
+    
+    def update_logo_url(self, organization_id: str, logo_url: str):
+
+        organization = self.get_organization_by_id(organization_id)
+        if not organization:
+            return None
+        
+        organization.logo_url = logo_url
+        organization = self.save_organization(organization)
+        logger.info(f"Logo URL updated for organization {organization_id}: {logo_url}")
+        
+        return organization
+    
+    def update_full_domain(self, organization_id: str, full_domain: str):
+
+        organization = self.get_organization_by_id(organization_id)
+        if not organization:
+            return None
+        
+        organization.subdomain = full_domain
+        organization = self.save_organization(organization)
+        logger.info(f"Full domain updated for organization {organization_id}: {full_domain}")
         
         return organization
 
@@ -75,18 +133,10 @@ class OrganizationService:
             "organization_id": organization.entity_id,
             "organization_data": {
                 "name": organization.name,
+                "subdomain": data['subdomain']
             },
         }
         
-        # Include logo data if available
-        if data and isinstance(data, dict):
-            if 'logo_data' in data:
-                message_data["organization_data"]["logo_data"] = data['logo_data']
-
-            if 'subdomain' in data:
-                message_data["organization_data"]["subdomain"] = data['subdomain']
-
-
         try:
             # Initialize SQS client
             sqs = boto3.client(
@@ -102,18 +152,8 @@ class OrganizationService:
             queue_url_response = sqs.get_queue_url(QueueName=queue_name)
             queue_url = queue_url_response['QueueUrl']
             
-            # Convert message to JSON, handling any serialization issues
-            try:
-                message_json = json.dumps(message_data)
-            except TypeError as e:
-                logger.error(f"JSON serialization error: {str(e)}")
-                # Remove any problematic fields and try again
-                if 'logo_url' in message_data["organization_data"]:
-                    del message_data["organization_data"]["logo_url"]
-                if 'logo_data' in message_data["organization_data"]:
-                    del message_data["organization_data"]["logo_data"]
-                message_json = json.dumps(message_data)
-            
+            message_json = json.dumps(message_data)
+
             # Send message to SQS
             sqs.send_message(
                 QueueUrl=queue_url,

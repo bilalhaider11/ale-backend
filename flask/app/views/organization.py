@@ -38,63 +38,62 @@ class Organizations(Resource):
     @login_required()
     @organization_required(with_roles=["admin"])
     def put(self, organization):
-        try:
-            # Extract form data
-            name = request.form.get("name")
-            subdomain = request.form.get("subdomain")
-            logo_file = request.files.get("logo")
+        organization_service = OrganizationService(config)
+        
+        # Get organization by ID to ensure it exists
+        organization = organization_service.get_organization_by_id(organization.entity_id)
+        
+        # Extract and validate form data
+        name = request.form.get("name")
+        subdomain = request.form.get("subdomain")
+        logo_file = request.files.get("logo")
+        
+        validate_required_fields({'name': name})
 
-            validate_required_fields({'name': name})
+        updated_org = organization_service.update_organization_name(
+            organization,
+            {"name": name}
+        )
 
-            # Initialize update data
-            update_data = {"name": name}
-
-            # Validate and add subdomain if provided
-            if subdomain:
-                if not re.match(r'^[a-z0-9-]+$', subdomain):
-                    return get_failure_response(
-                        message="Subdomain must contain only lowercase letters, numbers, and hyphens.",
-                        status_code=400
-                    )
-                update_data["subdomain"] = subdomain
-
-            # Process logo file if provided
-            if logo_file and isinstance(logo_file, FileStorage):
-                try:
-                    update_data["logo_data"] = {
-                        "content": base64.b64encode(logo_file.read()).decode('utf-8'),
-                        "filename": logo_file.filename,
-                        "content_type": logo_file.content_type or 'image/png'
-                    }
-                except Exception as e:
-                    return get_failure_response(
-                        message=f"Error processing logo file: {str(e)}",
-                        status_code=500
-                    )
-
-            # Update organization
-            organization_service = OrganizationService(config)
-            updated_org = organization_service.update_organization(
-                organization.entity_id,
-                update_data
+        if not updated_org:
+            return get_failure_response(
+                message="Failed to update organization.",
+                status_code=500
             )
 
-            if not updated_org:
+        # Process subdomain if provided
+        if subdomain is not None and subdomain.strip():
+            if not re.match(r'^[a-z0-9-]+$', subdomain):
                 return get_failure_response(
-                    message="Failed to update organization.",
+                    message="Subdomain must contain only lowercase letters, numbers, and hyphens.",
+                    status_code=400
+                )
+            
+            subdomain_result = organization_service.process_subdomain(organization, subdomain)
+
+            if not subdomain_result:
+                return get_failure_response(
+                    message="Failed to process subdomain update.",
                     status_code=500
                 )
 
-            return get_success_response(
-                message="Organization updated successfully.",
-                organization=updated_org
+        # Process logo file if provided
+        if logo_file and isinstance(logo_file, FileStorage):
+            logo_result = organization_service.upload_organization_logo(
+                organization,
+                logo_file
             )
+            
+            if not logo_result:
+                return get_failure_response(
+                    message="Failed to process organization logo",
+                    status_code=500
+                )
 
-        except Exception as e:
-            return get_failure_response(
-                message=f"Unexpected error: {str(e)}",
-                status_code=500
-            )
+        return get_success_response(
+            message="Organization updated successfully.",
+            organization=updated_org
+        )
 
 @has_role("admin")
 @organization_api.route('/<string:organization_id>/persons')
