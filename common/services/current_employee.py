@@ -139,17 +139,24 @@ class CurrentEmployeeService:
 
         upload_date = metadata.get('upload_date', None)
         original_filename = metadata.get('original_filename', None)
+        file_size = metadata.get('ContentLength', 0)
 
         tags = self.s3_client.get_object_tags(s3_key)
         status = tags.get('status', 'unknown')
         error = tags.get('error', None)
         file_url = self.s3_client.generate_presigned_url(s3_key, filename=original_filename)
 
+        current_employee_count = None
+        if status == 'done':
+            current_employee_count = self.get_employees_count()
+
         return {
             "upload_date": upload_date,
             "filename": original_filename,
+            "filesize": file_size,
             "status": status,
             "error": error,
+            "count": current_employee_count,
             "file_url": file_url
         }
 
@@ -164,3 +171,12 @@ class CurrentEmployeeService:
             CurrentEmployee: The employee record if found, otherwise None.
         """
         return self.current_employee_repo.get_by_employee_id(employee_id)
+
+    def get_employees_count(self) -> int:
+        """
+        Get the count of current employees in the database.
+        
+        Returns:
+            int: The number of current employees.
+        """
+        return self.current_employee_repo.get_employees_count()

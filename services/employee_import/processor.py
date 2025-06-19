@@ -35,7 +35,7 @@ class EmployeeImportProcessor(BaseServiceProcessor):
 
             # Check if this is an S3 notification
             if 'Records' not in message:
-                self.logger.warning("Message is not an S3 notification")
+                self.logger.info("Message is not an S3 notification")
                 return
 
             for record in message['Records']:
