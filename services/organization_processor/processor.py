@@ -48,7 +48,7 @@ class OrganizationProcessor(BaseServiceProcessor):
                 return True
                 
             else:
-                self.logger.warning(f"Unknown message format: {message}")
+                self.logger.info(f"Unknown message format: {message}")
                 return False
                 
         except Exception as e:

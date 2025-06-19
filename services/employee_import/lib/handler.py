@@ -40,7 +40,7 @@ class ListImportHandler:
 
         else:
             if not key.startswith('caregivers-list/') and not key.startswith('employees-list/'):
-                logger.warning(f"Unknown prefix for list file: {key}")
+                logger.info(f"Unknown prefix for list file: {key}")
             else:
                 logger.info(f"Skipping non-latest file recorded for audit purposes: {key}")
 

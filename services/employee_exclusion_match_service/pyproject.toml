@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "employee_exclusion_match_service"
-version = "0.0.3"
+version = "0.0.4"
 description = "Service for processing employee exclusion matches"
 authors = ["ALE Healthtech Team"]
 

@@ -33,7 +33,7 @@ class EmployeeExclusionMatchRepository(BaseRepository):
             SELECT 
                 ec.first_name,
                 ec.last_name,
-                ec.date_of_birth,
+                oig.date_of_birth,
                 oig.exclusion_type,
                 oig.exclusion_date,
                 ec.employee_id,

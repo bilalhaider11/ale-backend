@@ -62,3 +62,20 @@ class CurrentEmployeeRepository(BaseRepository):
             return CurrentEmployee(**result[0])
         
         return None
+
+
+    def get_employees_count(self) -> int:
+        """
+        Get the count of current employees in the database.
+        Returns:
+            int: The number of current employees
+        """
+        query = "SELECT COUNT(*) FROM current_employee;"
+        
+        with self.adapter:
+            result = self.adapter.execute_query(query)
+        
+        if result:
+            return result[0]['count']
+        
+        return None
