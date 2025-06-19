@@ -11,3 +11,10 @@ class EmployeeExclusionMatch(VersionedModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     date_of_birth: Optional[date] = None
+    exclusion_type: Optional[str] = None
+    exclusion_date: Optional[date] = None
+    match_type: Optional[str] = None
+    status: str = 'pending'
+    employee_id: Optional[str] = None
+    oig_exclusion_id: Optional[str] = None
+    reviewer_notes: Optional[str] = None
