@@ -17,7 +17,8 @@ class BaseConfig(BaseSettings):
 class Config(BaseConfig):
     DEBUG: bool = Field(default=False)
     TESTING: bool = Field(default=False)
-    LOGLEVEL: str = Field(default='WARN')
+    LOG_LEVEL: str = Field(default='INFO')
+    ROLLBAR_LEVEL: str = Field(default='WARN')
 
     ACCESS_TOKEN_EXPIRE: int = Field(default=3600)
     RESET_TOKEN_EXPIRE: int = Field(default=60*60*24*3)  # 3 days

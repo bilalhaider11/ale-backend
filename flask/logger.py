@@ -25,7 +25,7 @@ if config.ROLLBAR_ACCESS_TOKEN:
 def _get_log_level():
     if config.APP_ENV != "production":
         return logging.DEBUG
-    return getattr(logging, config.LOGLEVEL, 'INFO')
+    return getattr(logging, config.LOG_LEVEL, 'INFO')
 
 
 def _get_formatter():
@@ -50,7 +50,7 @@ def get_console_handler():
 
 
 def get_rollbar_handler():
-    loglevel = getattr(logging, config.LOGLEVEL, 'WARN')
+    loglevel = getattr(logging, config.ROLLBAR_LEVEL, 'WARN')
     rollbar_handler = RollbarHandler(access_token=config.ROLLBAR_ACCESS_TOKEN, environment=config.APP_ENV)
     rollbar_handler.setLevel(loglevel)
     return rollbar_handler
