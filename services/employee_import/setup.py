@@ -54,12 +54,13 @@ def setup_employee_import_queue():
         queue_name=queue_name,
         s3_prefix_filter=employee_prefix
     )
-    
-    caregiver_setup_result = setup_s3_to_sqs_notification(
-        bucket_name=bucket_name,
-        queue_name=queue_name,
-        s3_prefix_filter=caregiver_prefix
-    )
+
+    caregiver_setup_result = None    
+    # caregiver_setup_result = setup_s3_to_sqs_notification(
+    #     bucket_name=bucket_name,
+    #     queue_name=queue_name,
+    #     s3_prefix_filter=caregiver_prefix
+    # )
     
     logger.info(f"Employee and caregiver import queue setup complete")
     

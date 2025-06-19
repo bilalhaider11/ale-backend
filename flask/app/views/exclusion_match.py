@@ -68,6 +68,7 @@ class EmployeeExclusionMatch(Resource):
         match = employee_exclusion_match_service.update_exclusion_match(
             entity_id=entity_id,
             reviewer_notes=reviewer_notes,
+            reviewer=person,
             status=status
         )
         
@@ -81,6 +82,8 @@ class EmployeeExclusionMatch(Resource):
         """
         Get an exclusion match object by entity_id along with employee and exclusion details.
         """
+        import time
+        time.sleep(3)
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         current_employee_service = CurrentEmployeeService(config)
         oig_exclusion_service = OigEmployeesExclusionService(config)
@@ -91,10 +94,8 @@ class EmployeeExclusionMatch(Resource):
 
         return get_success_response(
             data={
-                "match": {
-                    **match.as_dict(),
-                    "employee": employee.as_dict() if employee else None,
-                    "oig_exclusion": oig_exclusion.as_dict() if oig_exclusion else None
-                }
+                **match.as_dict(),
+                "employee": employee.as_dict() if employee else None,
+                "oig_exclusion": oig_exclusion.as_dict() if oig_exclusion else None
             }
         )
