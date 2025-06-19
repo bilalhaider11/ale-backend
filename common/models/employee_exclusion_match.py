@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Optional, ClassVar
 from rococo.models import VersionedModel
 
@@ -18,3 +18,6 @@ class EmployeeExclusionMatch(VersionedModel):
     employee_id: Optional[str] = None
     oig_exclusion_id: Optional[str] = None
     reviewer_notes: Optional[str] = None
+    reviewer_id: Optional[str] = None
+    reviewer_name: Optional[str] = None
+    review_date: Optional[date] = None

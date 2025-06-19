@@ -1,9 +1,10 @@
 from typing import Optional, List
-from datetime import date
+from datetime import datetime
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.employee_exclusion_match import EmployeeExclusionMatch
+from common.models.person import Person
 from common.helpers.exceptions import APIException
 
 logger = get_logger(__name__)
@@ -22,7 +23,7 @@ class EmployeeExclusionMatchService:
             match.as_dict() for match in self.employee_exclusion_match_repo.get_all()
         ]
 
-    def update_exclusion_match(self, entity_id: str, reviewer_notes: str=None, status: str=None):
+    def update_exclusion_match(self, entity_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
         match = self.employee_exclusion_match_repo.get_one({"entity_id": entity_id})
         if not match:
             raise APIException("Match object not found")
@@ -36,6 +37,10 @@ class EmployeeExclusionMatchService:
             should_save = True
         
         if should_save:
+            if match.reviewer_id != reviewer.entity_id:
+                match.reviewer_id = reviewer.entity_id
+                match.reviewer_name = (reviewer.first_name if reviewer.first_name else '') + ' ' + (reviewer.last_name if reviewer.last_name else '').strip()
+                match.review_date = datetime.now()
             match.status = status if status else match.status
             match.reviewer_notes = reviewer_notes if reviewer_notes else match.reviewer_notes
             return self.employee_exclusion_match_repo.save(match)
