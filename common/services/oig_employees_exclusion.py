@@ -63,3 +63,7 @@ class OigEmployeesExclusionService:
         
         logger.info("Successfully imported OIG LEIE data")
         return True
+
+    def get_exclusion_by_id(self, exclusion_id: int) -> OigEmployeesExclusion:
+        """Get an OIG exclusion record by ID"""
+        return self.oig_exclusions_repo.get_by_id(exclusion_id)

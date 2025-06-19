@@ -37,3 +37,16 @@ class OigEmployeesExclusionRepository(BaseRepository):
         """
         
         self.adapter.execute_query(query, values)
+
+    def get_by_id(self, id) -> OigEmployeesExclusion:
+        """
+        Get an OIG employee exclusion record by its ID.
+        """
+        query = "SELECT * FROM oig_employees_exclusion WHERE id = %s"
+        with self.adapter:
+            result = self.adapter.execute_query(query, (id,))
+
+        if result:
+            return OigEmployeesExclusion(**result[0])
+        
+        return None

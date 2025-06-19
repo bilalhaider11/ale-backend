@@ -152,3 +152,15 @@ class CurrentEmployeeService:
             "error": error,
             "file_url": file_url
         }
+
+    def get_employee_by_id(self, employee_id: str) -> CurrentEmployee:
+        """
+        Retrieve a current employee record by employee ID.
+        
+        Args:
+            employee_id (str): The unique identifier for the employee.
+        
+        Returns:
+            CurrentEmployee: The employee record if found, otherwise None.
+        """
+        return self.current_employee_repo.get_by_employee_id(employee_id)
