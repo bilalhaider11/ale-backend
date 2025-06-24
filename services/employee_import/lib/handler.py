@@ -13,7 +13,7 @@ class ListImportHandler:
     def __init__(self, config):
         self.config = config
         self.employee_handler = CurrentEmployeeHandler(config)
-        self.caregiver_handler = CurrentCaregiverHandler(config)
+        self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
         
     def process_list_file(self, bucket, key):
         """
@@ -26,20 +26,14 @@ class ListImportHandler:
         Returns:
             bool: True if successful, False otherwise
         """
-        if key.startswith('employees-list/') and key.endswith('latest'):
+        if key.startswith(self.employees_prefix) and key.endswith('latest'):
             logger.info(f"Processing employee list file: {bucket}/{key}")
             import_success = self.employee_handler.process_employee_list(key)
             if import_success:
                 self.trigger_match_service(key)
 
-        elif key.startswith('caregivers-list/') and key.endswith('latest'):
-            logger.info(f"Processing caregiver list file: {bucket}/{key}")
-            import_success = self.caregiver_handler.process_caregiver_list(key)
-            if import_success:
-                self.trigger_match_service(key)
-
         else:
-            if not key.startswith('caregivers-list/') and not key.startswith('employees-list/'):
+            if not key.startswith(self.employees_prefix):
                 logger.info(f"Unknown prefix for list file: {key}")
             else:
                 logger.info(f"Skipping non-latest file recorded for audit purposes: {key}")

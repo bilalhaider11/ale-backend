@@ -20,6 +20,8 @@ class EmployeeImportProcessor(BaseServiceProcessor):
         self.import_handler = ListImportHandler(config)
         
         self.logger.info("Employee import processor initialized")
+
+        self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
         
     def process(self, message):
         """Main processor method that handles incoming messages"""
@@ -49,9 +51,9 @@ class EmployeeImportProcessor(BaseServiceProcessor):
                     self.logger.warning("Missing bucket name or key in S3 notification")
                     continue
 
-                # Only process files under employees-list/ or caregivers-list/ prefix
-                if not (key.startswith('employees-list/') or key.startswith('caregivers-list/')):
-                    self.logger.info(f"Skipping file not under employees-list/ or caregivers-list/ prefix: {key}")
+                # Only process files under employees-list/ prefix
+                if not key.startswith(self.employees_prefix):
+                    self.logger.info(f"Skipping file not under {self.employees_prefix} prefix: {key}")
                     continue
                 
                 self.logger.info(f"Processing CSV from S3: {bucket_name}/{key}")

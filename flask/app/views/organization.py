@@ -17,6 +17,7 @@ from common.services import (
     PersonService,
     EmailService
 )
+from common.models import PersonOrganizationRoleEnum
 from app.helpers.decorators import (login_required,
                                     organization_required,
                                     has_role
@@ -36,7 +37,7 @@ class Organizations(Resource):
         return get_success_response(organizations=organizations)
 
     @login_required()
-    @organization_required(with_roles=["admin"])
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def put(self, organization):
         organization_service = OrganizationService(config)
         

@@ -1,5 +1,5 @@
 from common.repositories.factory import RepositoryFactory, RepoType
-from common.models import PersonOrganizationInvitation, PersonOrganizationRole
+from common.models import PersonOrganizationInvitation, PersonOrganizationRole, PersonOrganizationRoleEnum
 import jwt
 import time
 from datetime import datetime, timezone
@@ -8,16 +8,7 @@ from common.helpers.exceptions import APIException
 
 class PersonOrganizationInvitationService:
 
-    VALID_ROLES = {
-        "admin",
-        "intake",
-        "scheduler",
-        "billing",
-        "payroll",
-        "rn",
-        "auditor",
-        "caregiver"
-    }
+    VALID_ROLES = PersonOrganizationRoleEnum.valid_values()
 
     REQUIRED_FIELDS = ["email", "roles"]
 

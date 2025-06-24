@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oig-update-check"
-version = "0.0.2"
+version = "0.0.3"
 description = "OIG LEIE database update check service"
 authors = ["ALE Healthtech Team"]
 readme = "README.md"
