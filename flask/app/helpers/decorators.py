@@ -13,6 +13,8 @@ from common.services.auth import AuthService
 from common.services.auth import AuthService
 from common.services import OrganizationService, PersonOrganizationRoleService
 
+from common.models import PersonOrganizationRoleEnum
+
 
 
 def login_required():
@@ -65,6 +67,9 @@ def login_required():
 
 
 def organization_required(with_roles=None):
+    """
+    Usage: @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN, PersonOrganizationRoleEnum.MANAGER])
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -129,7 +134,7 @@ def has_role(*allowed_roles):
         def wrapper(*args, **kwargs):
             agency_organization_id = kwargs.get("agency_organization_id")
 
-            person_organization_service = PorService(config)
+            person_organization_service = PersonOrganizationRoleService(config)
             # Retrieve all roles for the user
             user_roles = person_organization_service.get_all_by_person_id(person_id=g.person_id)
             roles_list = [role.role for role in user_roles]

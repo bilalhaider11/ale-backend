@@ -21,8 +21,7 @@ def setup_employee_import_queue():
     
     queue_name = config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME
     bucket_name = config.AWS_S3_BUCKET_NAME
-    employee_prefix = "employees-list/"
-    caregiver_prefix = "caregivers-list/"
+    employee_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
     
     # Step 1: Create or get the SQS queue
     try:
@@ -54,13 +53,6 @@ def setup_employee_import_queue():
         queue_name=queue_name,
         s3_prefix_filter=employee_prefix
     )
-
-    caregiver_setup_result = None    
-    # caregiver_setup_result = setup_s3_to_sqs_notification(
-    #     bucket_name=bucket_name,
-    #     queue_name=queue_name,
-    #     s3_prefix_filter=caregiver_prefix
-    # )
     
     logger.info(f"Employee and caregiver import queue setup complete")
     
@@ -68,8 +60,7 @@ def setup_employee_import_queue():
         'QueueUrl': queue_url,
         'QueueArn': queue_arn,
         'QueueName': queue_name,
-        'EmployeeS3Setup': employee_setup_result,
-        'CaregiverS3Setup': caregiver_setup_result
+        'EmployeeS3Setup': employee_setup_result
     }
 
 
@@ -171,7 +162,7 @@ def setup_s3_to_sqs_notification(bucket_name, queue_name, s3_prefix_filter):
 
     # Add new configuration
     new_config = {
-        'Id': f"{queue_name}-{s3_prefix_filter[:-1]}",
+        'Id': f"{queue_name}-{s3_prefix_filter.replace('/', '-')[:-1]}",
         'QueueArn': queue_arn,
         'Events': ['s3:ObjectCreated:*'],
         'Filter': {
@@ -183,6 +174,7 @@ def setup_s3_to_sqs_notification(bucket_name, queue_name, s3_prefix_filter):
         }
     }
     updated_queue_configs = existing_queue_configs + [new_config]
+    logger.info(f"Updated queue configurations: {updated_queue_configs}")
 
     # Step 4: Put new configuration back
     s3.put_bucket_notification_configuration(

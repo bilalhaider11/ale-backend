@@ -2,7 +2,7 @@ from common.services import (
     PersonService, EmailService, LoginMethodService, OrganizationService,
     PersonOrganizationRoleService
 )
-from common.models import Person, Email, LoginMethod, Organization, PersonOrganizationRole
+from common.models import Person, Email, LoginMethod, Organization, PersonOrganizationRole, PersonOrganizationRoleEnum
 from common.models.login_method import LoginMethodType
 from common.tasks.send_message import MessageSender
 from common.app_logger import logger
@@ -55,7 +55,7 @@ class AuthService:
         person_organization_role = PersonOrganizationRole(
             person_id=person.entity_id,
             organization_id=organization.entity_id,
-            role="admin"
+            role=PersonOrganizationRoleEnum.ADMIN.value
         )
 
         email = self.email_service.save_email(email)

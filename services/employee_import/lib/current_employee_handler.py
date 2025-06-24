@@ -149,6 +149,8 @@ class CurrentEmployeeHandler:
             logger.error(f"Unsupported file type: {content_type}")
             return False
 
+        organization_id = object_metadata.get('organization_id')
+
         self.s3_client.update_tags(s3_key=key, tags={'status': 'processing'})
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
@@ -175,11 +177,8 @@ class CurrentEmployeeHandler:
             
             logger.info(f"Found {len(rows)} employee records in file")
             
-            # Delete existing records
-            self.employee_service.delete_all_employees()
-            
             # Import new data
-            self.employee_service.bulk_import_employees(rows)
+            self.employee_service.bulk_import_employees(rows, organization_id=organization_id)
 
             self.s3_client.update_tags(s3_key=key, tags={
                 'status': 'imported'

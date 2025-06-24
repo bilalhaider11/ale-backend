@@ -1,23 +1,14 @@
 from collections import OrderedDict
 
 from common.repositories.base import BaseRepository
-from common.models.person_organization_role import PersonOrganizationRole
+from common.models.person_organization_role import PersonOrganizationRole, PersonOrganizationRoleEnum
 
 
 class PersonOrganizationRoleRepository(BaseRepository):
     MODEL = PersonOrganizationRole
 
     # Set of valid roles for validation
-    VALID_ROLES = {
-        "admin",
-        "intake",
-        "scheduler",
-        "billing",
-        "payroll",
-        "rn",
-        "auditor",
-        "caregiver"
-    }
+    VALID_ROLES = PersonOrganizationRoleEnum.valid_values()
 
     def __init__(self, adapter, message_adapter, message_queue_name, person_id):
         super().__init__(adapter, message_adapter, message_queue_name, person_id)

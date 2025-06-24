@@ -6,7 +6,8 @@ from flask_restx import Namespace, Resource
 from common.app_config import config
 from common.services.current_employee import CurrentEmployeeService
 from app.helpers.response import get_success_response, get_failure_response
-from app.helpers.decorators import login_required
+from app.helpers.decorators import login_required, organization_required
+from common.models.person_organization_role import PersonOrganizationRoleEnum
 
 current_employee_api = Namespace('current_employee', description='Current employee operations')
 
@@ -15,9 +16,10 @@ current_employee_api = Namespace('current_employee', description='Current employ
 class CurrentEmployeeListUpload(Resource):
     
     @login_required()
-    def post(self, person):
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person, organization):
         """
-        Upload a CSV or XLSX file with employee data.
+        Upload a CSV or XLSX file with employee or caregiver data.
         The file will be saved to S3 with current datetime and copied as latest.csv.
         """
         if 'file' not in request.files:
@@ -42,7 +44,7 @@ class CurrentEmployeeListUpload(Resource):
         try:
             # Upload file to S3
             current_employee_service = CurrentEmployeeService(config)
-            upload_result = current_employee_service.upload_employee_list(temp_file_path, file.filename)
+            upload_result = current_employee_service.upload_employee_list(organization.entity_id, temp_file_path, file.filename)
             
             # Clean up temporary file
             os.unlink(temp_file_path)

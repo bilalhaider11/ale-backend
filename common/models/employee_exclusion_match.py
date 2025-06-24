@@ -21,3 +21,4 @@ class EmployeeExclusionMatch(VersionedModel):
     reviewer_id: Optional[str] = None
     reviewer_name: Optional[str] = None
     review_date: Optional[date] = None
+    organization_id: Optional[str] = None

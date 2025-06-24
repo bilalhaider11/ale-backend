@@ -7,8 +7,9 @@ from common.app_config import config
 from common.services.current_employee import CurrentEmployeeService
 from common.services.employee_exclusion_match import EmployeeExclusionMatchService
 from common.services.oig_employees_exclusion import OigEmployeesExclusionService
+from common.models.person_organization_role import PersonOrganizationRoleEnum
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body
-from app.helpers.decorators import login_required
+from app.helpers.decorators import login_required, organization_required
 
 exclusion_match_api = Namespace('exclusion_match', description='Exclusion match operations')
 
@@ -17,14 +18,15 @@ exclusion_match_api = Namespace('exclusion_match', description='Exclusion match 
 class EmployeeExclusionMatchStatus(Resource):
     
     @login_required()
-    def get(self, person):
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization):
         """
         Upload a CSV or XLSX file with employee data.
         The file will be saved to S3 with current datetime and copied as latest.csv.
         """
         
         current_employee_service = CurrentEmployeeService(config)
-        status = current_employee_service.get_last_uploaded_file_status()
+        status = current_employee_service.get_last_uploaded_file_status(organization.entity_id)
         if status is None:
             return get_success_response(
                 status=None,
@@ -32,11 +34,8 @@ class EmployeeExclusionMatchStatus(Resource):
                 message="No data"
             )
         
-        if status.get("status") != "done":
-            matches = None
-        else:
-            employee_exclusion_match_service = EmployeeExclusionMatchService(config)
-            matches = employee_exclusion_match_service.get_all_matches()
+        employee_exclusion_match_service = EmployeeExclusionMatchService(config)
+        matches = employee_exclusion_match_service.get_all_matches()
 
         return get_success_response(
             status=status,
@@ -82,8 +81,7 @@ class EmployeeExclusionMatch(Resource):
         """
         Get an exclusion match object by entity_id along with employee and exclusion details.
         """
-        import time
-        time.sleep(3)
+
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         current_employee_service = CurrentEmployeeService(config)
         oig_exclusion_service = OigEmployeesExclusionService(config)
