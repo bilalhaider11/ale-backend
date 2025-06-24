@@ -24,7 +24,26 @@ class OrganizationService:
 
     def get_organizations_with_roles_by_person(self, person_id: str):
         results = self.organization_repo.get_organizations_by_person_id(person_id)
-        return results
+        
+        # Convert each result to dict format with CloudFront URL
+        formatted_results = []
+        for result in results:
+            if isinstance(result, dict):
+                # Create Organization instance to use as_dict() for CloudFront URL
+                role = result.pop('role', None)
+                org = Organization(**result)
+                org_dict = org.as_dict()
+                if role:
+                    org_dict['role'] = role
+                formatted_results.append(org_dict)
+            else:
+                # Result is an Organization object
+                org_dict = result.as_dict()
+                if hasattr(result, 'role'):
+                    org_dict['role'] = result.role
+                formatted_results.append(org_dict)
+        
+        return formatted_results
 
     def get_persons_with_roles_in_organization(self, organization_id: str):
         organization_repo = self.repository_factory.get_repository(RepoType.PERSON_ORGANIZATION_ROLE)
@@ -98,27 +117,23 @@ class OrganizationService:
         
         return self._send_organization_update_message(organization, message_data)
     
-    def update_logo_url(self, organization_id: str, logo_url: str):
-
+    def update_logo_url(self, organization_id: str, logo_key: str):
         organization = self.get_organization_by_id(organization_id)
         if not organization:
             return None
         
-        organization.logo_url = logo_url
+        organization.logo_url = logo_key
         organization = self.save_organization(organization)
-        logger.info(f"Logo URL updated for organization {organization_id}: {logo_url}")
         
         return organization
     
     def update_full_domain(self, organization_id: str, full_domain: str):
-
         organization = self.get_organization_by_id(organization_id)
         if not organization:
             return None
         
         organization.subdomain = full_domain
         organization = self.save_organization(organization)
-        logger.info(f"Full domain updated for organization {organization_id}: {full_domain}")
         
         return organization
 
