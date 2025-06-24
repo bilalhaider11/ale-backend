@@ -35,7 +35,7 @@ class EmployeeExclusionMatchStatus(Resource):
             )
         
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
-        matches = employee_exclusion_match_service.get_all_matches()
+        matches = employee_exclusion_match_service.get_all_matches(organization.entity_id)
 
         return get_success_response(
             status=status,

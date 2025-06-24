@@ -17,10 +17,10 @@ class EmployeeExclusionMatchService:
         self.repository_factory = RepositoryFactory(config)
         self.employee_exclusion_match_repo = self.repository_factory.get_repository(RepoType.EMPLOYEE_EXCLUSION_MATCH)
 
-    def get_all_matches(self) -> List[EmployeeExclusionMatch]:
+    def get_all_matches(self, organization_id) -> List[EmployeeExclusionMatch]:
         """Get all employee exclusion matches"""
         return [
-            match.as_dict() for match in self.employee_exclusion_match_repo.get_all()
+            match.as_dict() for match in self.employee_exclusion_match_repo.get_all(organization_id=organization_id)
         ]
 
     def update_exclusion_match(self, entity_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
