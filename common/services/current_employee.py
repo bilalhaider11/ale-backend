@@ -153,7 +153,7 @@ class CurrentEmployeeService:
         error = tags.get('error', None)
         file_url = self.s3_client.generate_presigned_url(s3_key, filename=original_filename)
 
-        current_employee_count = self.get_employees_count()
+        current_employee_count = self.get_employees_count(organization_id=organization_id)
 
         return {
             "upload_date": upload_date,
@@ -177,11 +177,11 @@ class CurrentEmployeeService:
         """
         return self.current_employee_repo.get_by_employee_id(employee_id)
 
-    def get_employees_count(self) -> int:
+    def get_employees_count(self, organization_id=None) -> int:
         """
         Get the count of current employees in the database.
         
         Returns:
             int: The number of current employees.
         """
-        return self.current_employee_repo.get_employees_count()
+        return self.current_employee_repo.get_employees_count(organization_id=organization_id)
