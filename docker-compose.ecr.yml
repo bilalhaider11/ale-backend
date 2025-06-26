@@ -52,6 +52,8 @@ services:
     env_file:
       - .env.secrets
       - ${APP_ENV}.env
+    ports:
+      - "5000:5000"
     depends_on:
       postgres:
           condition: service_healthy
