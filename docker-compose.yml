@@ -130,13 +130,13 @@ services:
       postgres:
         condition: service_healthy
 
-  oig-update-check:
-    image: ale_oig-update-check
-    container_name: ale_oig-update-check
+  oig_update_check:
+    image: ale_oig_update_check
+    container_name: ale_oig_update_check
     restart: unless-stopped
     build:
       context: .
-      dockerfile: ./services/oig-update-check/Dockerfile
+      dockerfile: ./services/oig_update_check/Dockerfile
     networks:
       - backnet
     volumes:
