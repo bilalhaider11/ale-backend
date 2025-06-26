@@ -78,14 +78,6 @@ commands:
   environment_config:
     steps:
       - run:
-          name: Clone Reveles SMB repository
-          command: |
-            git clone --no-checkout --depth 1 --filter=blob:none --sparse git@github.com:EcorRouge/reveles-smb-data-science.git ./external/reveles-smb-data-science
-            (cd ./external/reveles-smb-data-science && \
-            git sparse-checkout add reveles_data_science/tools/web_crawler && \
-            git sparse-checkout add reveles_data_science/tools/veylan_agency_background && \
-            git checkout)
-      - run:
           name: Create mock secret file
           command: touch .env.secrets
 
@@ -94,7 +86,7 @@ jobs:
     <<: *defaults
     environment:
       DOCKER_COMPOSE_FILE: docker-compose.ecr.yml
-      APP: veylan
+      APP: ale
       APP_ENV: development
     steps:
       - checkout
@@ -119,7 +111,7 @@ jobs:
     <<: *defaults
     environment:
       DOCKER_COMPOSE_FILE: docker-compose.ecr.yml
-      APP: veylan
+      APP: ale
       APP_ENV: development
     steps:
       - checkout
