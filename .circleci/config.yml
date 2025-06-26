@@ -105,7 +105,7 @@ jobs:
             echo 'export ECR_START_URL="$ECR_BASE_URL/$APP/$APP_ENV"' >> $BASH_ENV
       - environment_config
       - build_and_push
-      - *notify_failure
+      # - *notify_failure
 
   deploy-in-dev:
     <<: *defaults
@@ -134,8 +134,8 @@ jobs:
             aws secretsmanager get-secret-value --secret-id "${DEV_BACKEND_SECRET}" | jq -r .SecretString > .env.secrets
             echo "Extraction Complete"
       - *remote_deploy
-      - *notify_success
-      - *notify_failure
+      # - *notify_success
+      # - *notify_failure
 
 workflows:
   deploy-in-dev-env:

@@ -7,7 +7,7 @@ services:
       context: ./services/rabbitmq
       dockerfile: Dockerfile
     volumes:
-      - veylan-rabbitmq-data:/var/lib/rabbitmq/mnesia/
+      - ale-backend-rabbitmq-data:/var/lib/rabbitmq/mnesia/
     networks:
         - backnet
     env_file:
