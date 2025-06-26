@@ -27,7 +27,6 @@ services:
     build:
       context: ./services/postgres
       dockerfile: Dockerfile
-    user: "1000:50"
     restart: always
     networks:
       - backnet
