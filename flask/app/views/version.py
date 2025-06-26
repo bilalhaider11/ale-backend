@@ -1,5 +1,7 @@
 from flask_restx import Namespace, Resource
 from app.helpers.response import get_success_response
+from common.repositories.factory import RepositoryFactory
+from common.app_config import config
 import toml
 
 
@@ -18,4 +20,12 @@ class Version(Resource):
         except Exception as e:
             VERSION = f"Error reading version: {str(e)}"
 
-        return get_success_response(version=VERSION)
+        repo_factory = RepositoryFactory(config)
+        connection = repo_factory.get_db_connection()
+
+        with connection:
+            query = "SELECT * FROM db_version"
+            results = connection.execute_query(query)
+            db_version = results[0].get('version')
+
+        return get_success_response(version=VERSION, db_version=db_version)
