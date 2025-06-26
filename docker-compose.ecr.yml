@@ -42,7 +42,6 @@ services:
         retries: 10
     expose:
         - 5432
-    user: postgres
 
   api:
     restart: always
