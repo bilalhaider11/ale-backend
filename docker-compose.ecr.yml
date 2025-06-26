@@ -54,7 +54,7 @@ services:
       - .env.secrets
       - ${APP_ENV}.env
     depends_on:
-      mysql:
+      postgres:
           condition: service_healthy
       rabbitmq:
           condition: service_healthy
