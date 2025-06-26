@@ -8,7 +8,7 @@ class Organization(BaseOrganization):
     logo_url: Optional[str] = None
     subdomain: Optional[str] = None
     
-    def as_dict(self):
+    def as_dict(self, *args, **kwargs):
         """
         Convert the Organization instance to a dictionary.
         Includes CloudFront URL for logo if present.
