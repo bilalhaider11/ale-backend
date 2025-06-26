@@ -28,7 +28,7 @@ remote_deploy: &remote_deploy
       ssh -tt -o StrictHostKeyChecking=no \
           -o UserKnownHostsFile=/dev/null \
           $VM_USER@$VM_IP \
-          "sudo hostname && mkdir -p /opt/ci/$CIRCLE_PROJECT_REPONAME"
+          "sudo hostname && sudo mkdir -p /opt/ci/$CIRCLE_PROJECT_REPONAME"
 
       scp -o StrictHostKeyChecking=no \
           -o UserKnownHostsFile=/dev/null \
