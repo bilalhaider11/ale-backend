@@ -44,7 +44,7 @@ def create_app():
 
     PooledConnectionPlugin(app, database_type="postgres")
 
-    @app.route('')
+    @app.route('/')
     def hello_world():
         return 'Welcome to ALE API.'
 
