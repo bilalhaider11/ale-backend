@@ -1,0 +1,168 @@
+version: 2.1
+
+orbs:
+  slack: circleci/slack@4.12.1
+  aws-cli: circleci/aws-cli@4.0.0
+  jq: circleci/jq@2.2.0
+  aws-ecr: circleci/aws-ecr@9.0.1
+
+defaults: &defaults
+    docker:
+      - image: cimg/base:2024.10
+    resource_class: small
+    executor: aws-cli/default
+
+aws_logging_config: &aws_logging_config
+  run:
+    name: Add AWS Logging Configs
+    shell: "/bin/bash -eo pipefail"
+    command: |
+      sed -i '/^  flask:/r awslogs.conf' $DOCKER_COMPOSE_FILE
+
+remote_deploy: &remote_deploy
+  run:
+    name: Remote Deploy
+    shell: "/bin/bash -eo pipefail"
+    command: |
+      echo "IP of VM is: $VM_IP"
+      ssh -tt -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          $VM_USER@$VM_IP \
+          "sudo hostname && mkdir -p /opt/ci/$CIRCLE_PROJECT_REPONAME"
+
+      scp -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+           $DOCKER_COMPOSE_FILE .env.secrets $APP_ENV.env $VM_USER@$VM_IP:/opt/ci/$CIRCLE_PROJECT_REPONAME/
+
+      ssh -tt -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          $VM_USER@$VM_IP \
+          "aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_BASE_URL"
+
+      ssh -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          $VM_USER@$VM_IP \
+          "cd /opt/ci/$CIRCLE_PROJECT_REPONAME && ECR_START_URL=$ECR_START_URL TAG=$TAG APP_ENV=$APP_ENV docker compose --file $DOCKER_COMPOSE_FILE up --detach --remove-orphans"
+
+notify_failure: &notify_failure
+  slack/notify:
+    event: fail
+    template: basic_fail_1
+
+notify_success: &notify_success
+  slack/notify:
+    event: pass
+    template: basic_success_1
+
+
+# Reuseable commands
+commands:
+  build_and_push:
+    steps:
+      - run:
+          name: Generate tag and set env variables
+          command: |
+            mkdir -p ./tmp/workspace
+            echo 'export "TAG=$(date +%Y%m%d)-${CIRCLE_SHA1:0:5}"' >> $BASH_ENV
+            cp $BASH_ENV ./tmp/workspace/bash.env
+      - run:
+          name: Build images
+          command: docker compose --file $DOCKER_COMPOSE_FILE build
+      - run:
+          name: Push images
+          command: docker compose --file $DOCKER_COMPOSE_FILE push
+      - persist_to_workspace:
+          root: "./tmp/workspace"
+          paths:
+            - "bash.env"
+  environment_config:
+    steps:
+      - run:
+          name: Clone Reveles SMB repository
+          command: |
+            git clone --no-checkout --depth 1 --filter=blob:none --sparse git@github.com:EcorRouge/reveles-smb-data-science.git ./external/reveles-smb-data-science
+            (cd ./external/reveles-smb-data-science && \
+            git sparse-checkout add reveles_data_science/tools/web_crawler && \
+            git sparse-checkout add reveles_data_science/tools/veylan_agency_background && \
+            git checkout)
+      - run:
+          name: Create mock secret file
+          command: touch .env.secrets
+
+jobs:
+  build-in-dev:
+    <<: *defaults
+    environment:
+      DOCKER_COMPOSE_FILE: docker-compose.ecr.yml
+      APP: veylan
+      APP_ENV: development
+    steps:
+      - checkout
+      - aws-cli/setup:
+          profile_name: default
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-ecr/ecr_login:
+          profile_name: default
+          account_id: $AWS_ACCOUNT_ID
+      - run:
+          name: Export ECR URLs
+          shell: "/bin/bash -eo pipefail"
+          command: |
+            echo 'export ECR_BASE_URL=$DEV_ECR_BASE_URL' >> $BASH_ENV
+            echo 'export ECR_START_URL="$ECR_BASE_URL/$APP/$APP_ENV"' >> $BASH_ENV
+      - environment_config
+      - build_and_push
+      - *notify_failure
+
+  deploy-in-dev:
+    <<: *defaults
+    environment:
+      DOCKER_COMPOSE_FILE: docker-compose.ecr.yml
+      APP: veylan
+      APP_ENV: development
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "./tmp/workspace"
+      - run:
+          name: Load env from build stage
+          command: |
+            cat ./tmp/workspace/bash.env >> $BASH_ENV
+      - aws-cli/setup:
+          profile_name: default
+      - jq/install
+      - run:
+          name: Extract IP and Secrets
+          shell: "/bin/bash -eo pipefail"
+          command: |
+            ip_address=$(aws ec2 describe-instances --instance-ids "${DEV_VM_ID}" | jq -r ".Reservations[].Instances[].PublicIpAddress")
+            echo export VM_IP="$ip_address" >> "$BASH_ENV"
+            echo 'export VM_USER="$DEV_VM_USER"' >> "$BASH_ENV"
+            aws secretsmanager get-secret-value --secret-id "${DEV_BACKEND_SECRET}" | jq -r .SecretString > .env.secrets
+            echo "Extraction Complete"
+      - *remote_deploy
+      - *notify_success
+      - *notify_failure
+
+workflows:
+  deploy-in-dev-env:
+    jobs:
+      - build-in-dev:
+          context:
+            - slack-secrets
+            - demo
+          filters:
+            branches:
+              only:
+                - main
+      - deploy-in-dev:
+          context:
+            - slack-secrets
+            - demo
+          requires:
+            - build-in-dev
+          filters:
+            branches:
+              only:
+                - main
