@@ -18,7 +18,7 @@ from logger import set_request_exception_signal, logger
 api = Api(
     version=get_service_version(),
     title=get_project_name(),
-    description="Welcome to the API documentation of Rococo Sample API",
+    description="Welcome to the API documentation of ALE API",
     authorizations={'Bearer': {'type': 'apiKey', 'in': 'header', 'name': 'Authorization'}},
     security='Bearer',
     doc='/api-doc'
@@ -44,9 +44,9 @@ def create_app():
 
     PooledConnectionPlugin(app, database_type="postgres")
 
-    @app.route('/')
+    @app.route('')
     def hello_world():
-        return 'Welcome to Rococo Sample API.'
+        return 'Welcome to ALE API.'
 
     @app.errorhandler(ModelValidationError)
     def handle_model_validation_error(exception):

@@ -6,7 +6,7 @@ import toml
 # Create the version namespace
 version_api = Namespace('version', description="Version-related APIs")
 
-@version_api.route('/')
+@version_api.route('')
 class Version(Resource):
     def get(self):
 

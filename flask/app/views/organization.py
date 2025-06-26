@@ -27,7 +27,7 @@ from common.helpers.exceptions import APIException
 # Create the organization blueprint
 organization_api = Namespace('organization', description="Organization-related APIs")
 
-@organization_api.route('/')
+@organization_api.route('')
 class Organizations(Resource):
     
     @login_required()
