@@ -20,14 +20,14 @@ class PersonOrganizationInvitationService:
         self.EMAIL_TRANSMITTER_QUEUE_NAME = config.QUEUE_NAME_PREFIX + config.EMAIL_SERVICE_PROCESSOR_QUEUE_NAME
         self.person_organization_role_service = person_organization_role_service
 
-    def create_invitation(self, organization_id, invitee_id, email, roles, person_id, first_name=None, last_name=None):
+    def create_invitation(self, organization_id, invitee_id, email, roles, first_name=None, last_name=None):
         """Create a new pending invitation."""
         # Validate roles
         invalid_roles = [role for role in roles if role not in self.VALID_ROLES]
         if invalid_roles:
             raise APIException(f"Invalid roles: {', '.join(invalid_roles)}", 400)
 
-        token = self.generate_invitation_token(organization_id, email, person_id)
+        token = self.generate_invitation_token(organization_id, email, invitee_id)
 
         # Create invitation
         person_organization_invitation = PersonOrganizationInvitation(
@@ -43,13 +43,13 @@ class PersonOrganizationInvitationService:
 
         return self.person_organization_invite_repo.save(person_organization_invitation)
 
-    def generate_invitation_token(self, organization_id, email, person_id):
+    def generate_invitation_token(self, organization_id, email, invitee_id):
         """Generate a JWT token for the invitation."""
         token = jwt.encode(
             {
                 'organization_id': organization_id,
                 'email': email,
-                'person_id': person_id,
+                'invitee_id': invitee_id,
                 'exp': time.time() + int(self.config.INVITATION_TOKEN_EXPIRE),
             },
             self.config.AUTH_JWT_SECRET,
@@ -87,18 +87,15 @@ class PersonOrganizationInvitationService:
         """Retrieve an invitation by its token."""
         return self.person_organization_invite_repo.get_one({"token": token})
 
-    def accept_invitation(self, invitation, person_id):
+    def accept_invitation(self, invitation, invitee_id):
         """Accept an invitation and associate the person with the organization."""
-        if not self.person_organization_role_service:
-            raise APIException("PersonOrganizationRoleService is required for accepting invitations.", 500)
-
         if invitation.status != 'pending':
             raise APIException("Invalid or expired invitation.", 400)
 
         roles = invitation.roles.split(",")
         for role in roles:
             por = PersonOrganizationRole(
-                person_id=person_id,
+                person_id=invitee_id,
                 organization_id=invitation.organization_id,
                 role=role
             )
@@ -106,6 +103,7 @@ class PersonOrganizationInvitationService:
 
         invitation.status = 'accepted'
         invitation.accepted_on = datetime.now(timezone.utc)
+        invitation.invitee_id = invitee_id
         self.person_organization_invite_repo.save(invitation)
         return invitation
 

@@ -131,30 +131,28 @@ class OrganizationInvite(Resource):
         first_name = parsed_body.get('first_name')
         last_name = parsed_body.get('last_name')
 
-        # Find or create person
-        person_by_email = person_service.get_person_by_email_address(email)
-        if not person_by_email:
-            return get_failure_response(message="Person not found.", status_code=404)
-
-        invited_person_id = person_by_email.entity_id
         organization = organization_service.get_organization_by_id(organization_id)
         if not organization:
             return get_failure_response(message="Organization not found.", status_code=404)
 
-        # Check if the person already has any of the invited roles
-        existing_roles = person_organization_role_service.get_roles_of_person_in_organization(invited_person_id, organization_id)
-        already_assigned_roles = [role for role in roles if role in existing_roles]
-        if already_assigned_roles:
-            roles_str = ", ".join(already_assigned_roles)
-            return get_failure_response(message=f"Person already has the role(s): {roles_str} in this organization.", status_code=400)
-
-        # Create and send invitation
+        person_by_email = person_service.get_person_by_email_address(email)
+        invited_person_id = None
+        
+        if person_by_email:
+            invited_person_id = person_by_email.entity_id
+            # Check if the existing person already has any of the invited roles
+            existing_roles = person_organization_role_service.get_roles_of_person_in_organization(invited_person_id, organization_id)
+            already_assigned_roles = [role for role in roles if role in existing_roles]
+            if already_assigned_roles:
+                roles_str = ", ".join(already_assigned_roles)
+                return get_failure_response(message=f"Person already has the role(s): {roles_str} in this organization.", status_code=400)
+        
+        # Create and send invitation, works whether person exists or not
         invitation = invitation_service.create_invitation(
             organization_id=organization_id,
-            invitee_id=person.entity_id,
+            invitee_id=invited_person_id,  # This can be None if the user is new
             email=email,
             roles=roles,
-            person_id=invited_person_id,
             first_name=first_name,
             last_name=last_name,
         )
@@ -165,14 +163,14 @@ class OrganizationInvite(Resource):
 
 @organization_api.route('/accept-invitation/<string:token>')
 class AcceptInvitation(Resource):
+    @login_required()
     def get(self, token):
         person_organization_role_service = PersonOrganizationRoleService(config)
         invitation_service = PersonOrganizationInvitationService(config, person_organization_role_service)
         email_service = EmailService(config)
+        person_service = PersonService(config)
 
         try:
-            # Decode token and get invitation
-            payload = invitation_service.decode_invitation_token(token)
             invitation = invitation_service.get_invitation_by_token(token)
 
             if not invitation:
@@ -182,9 +180,11 @@ class AcceptInvitation(Resource):
             user_email = email_service.get_email_by_email_address(invitation.email)
             if not user_email or user_email.email != invitation.email:
                 return get_failure_response(message="You are not authorized to accept this invitation.", status_code=403)
+            
+            person_by_email = person_service.get_person_by_email_address(user_email.email)
 
             # Accept invitation
-            invitation_service.accept_invitation(invitation, payload['person_id'])
+            invitation_service.accept_invitation(invitation, person_by_email.entity_id)
             return get_success_response(message="Invitation accepted successfully.")
         except APIException as e:
             return get_failure_response(message=str(e), status_code=400)
