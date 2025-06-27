@@ -115,16 +115,9 @@ def process_logo_from_s3(organization, bucket_name, object_key):
             }
         )
         
-        # Generate CloudFront URL
-        cloudfront_domain = f"https://{config.CLOUDFRONT_DISTRIBUTION_DOMAIN}"
-        cloudfront_url = f"{cloudfront_domain}/{png_key}"
-        
-        logger.info(f"Generated CloudFront URL: {cloudfront_url}")
-        
-        # Update organization with the new logo URL
         from common.services.organization import OrganizationService
         org_service = OrganizationService(config)
-        org_service.update_logo_url(organization.entity_id, cloudfront_url)
+        org_service.update_logo_url(organization.entity_id, png_key)
         
         logger.info(f"Successfully processed logo for organization {organization.entity_id}")
         return True
