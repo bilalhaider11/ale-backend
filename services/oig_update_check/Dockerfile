@@ -1,8 +1,8 @@
 # Use the base image as a parent image
 FROM ecorrouge/rococo-service-host:python-3.11
 
-# Path to oig-update-check
-ARG SERVICEPATH=./services/oig-update-check
+# Path to oig_update_check
+ARG SERVICEPATH=./services/oig_update_check
 
 ENV PYTHONPATH /app
 

@@ -65,16 +65,22 @@ class CurrentEmployeeRepository(BaseRepository):
         return None
 
 
-    def get_employees_count(self) -> int:
+    def get_employees_count(self, organization_id=None) -> int:
         """
         Get the count of current employees in the database.
         Returns:
             int: The number of current employees
         """
         query = "SELECT COUNT(*) FROM current_employee;"
+
+        if organization_id:
+            query = "SELECT COUNT(*) FROM current_employee WHERE organization_id = %s;"
+            params = (organization_id,)
+        else:
+            params = None
         
         with self.adapter:
-            result = self.adapter.execute_query(query)
+            result = self.adapter.execute_query(query, params if params else None)
         
         if result:
             return result[0]['count']
