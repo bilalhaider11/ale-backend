@@ -153,15 +153,12 @@ class CurrentEmployeeService:
         error = tags.get('error', None)
         file_url = self.s3_client.generate_presigned_url(s3_key, filename=original_filename)
 
-        current_employee_count = self.get_employees_count(organization_id=organization_id)
-
         return {
             "upload_date": upload_date,
             "filename": original_filename,
             "filesize": file_size,
             "status": status,
             "error": error,
-            "count": current_employee_count,
             "file_url": file_url
         }
 
@@ -185,3 +182,14 @@ class CurrentEmployeeService:
             int: The number of current employees.
         """
         return self.current_employee_repo.get_employees_count(organization_id=organization_id)
+
+    def reset_last_uploaded_file_status(self, organization_id: str):
+        """
+        Reset the status of the latest uploaded file to empty.
+        
+        Args:
+            organization_id (str): The ID of the organization.
+        """
+        s3_key = f"{self.employees_prefix}{organization_id}/latest"
+        self.s3_client.delete_object(s3_key)
+        return True
