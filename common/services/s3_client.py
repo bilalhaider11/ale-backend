@@ -267,3 +267,17 @@ class S3ClientService:
             Key=s3_key,
             ExtraArgs=extra_args
         )
+
+    def delete_object(self, s3_key: str) -> None:
+        """
+        Deletes an object from S3.
+
+        Args:
+            s3_key (str): The S3 key of the object to delete.
+        """
+        try:
+            self.s3.delete_object(Bucket=self.bucket_name, Key=s3_key)
+            logger.info(f"Deleted object {s3_key} from bucket {self.bucket_name}")
+        except Exception as e:
+            logger.error(f"Failed to delete object {s3_key}: {e}")
+            raise

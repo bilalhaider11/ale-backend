@@ -27,20 +27,30 @@ class EmployeeExclusionMatchStatus(Resource):
         
         current_employee_service = CurrentEmployeeService(config)
         status = current_employee_service.get_last_uploaded_file_status(organization.entity_id)
-        if status is None:
-            return get_success_response(
-                status=None,
-                matches=None,
-                message="No data"
-            )
-        
+        current_employee_count = current_employee_service.get_employees_count(organization_id=organization.entity_id)
+
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         matches = employee_exclusion_match_service.get_all_matches(organization.entity_id)
 
         return get_success_response(
             status=status,
+            current_employee_count=current_employee_count,
             matches=matches,
             message="Exclusion match data retrieved successfully"
+        )
+    
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def delete(self, person, organization):
+        """
+        Delete (reset) exclusion match file status.
+        """
+
+        current_employee_service = CurrentEmployeeService(config)
+        current_employee_service.reset_last_uploaded_file_status(organization.entity_id)
+
+        return get_success_response(
+            message="Exclusion match file status reset successfully"
         )
 
 
