@@ -44,20 +44,20 @@ class CurrentEmployeeRepository(BaseRepository):
         
         self.adapter.execute_query(query, values)
 
-    def get_by_employee_id(self, employee_id: str) -> CurrentEmployee:
+    def get_by_employee_id(self, employee_id: str, organization_id: str) -> CurrentEmployee:
         """
         Get a current employee record by employee_id.
         
         Args:
             employee_id: The employee ID to search for
-        
+            organization_id: The organization ID to filter by
         Returns:
             CurrentEmployee instance if found, otherwise None
         """
-        query = "SELECT * FROM current_employee WHERE employee_id = %s"
+        query = "SELECT * FROM current_employee WHERE employee_id = %s AND organization_id = %s"
         
         with self.adapter:
-            result = self.adapter.execute_query(query, (employee_id,))
+            result = self.adapter.execute_query(query, (employee_id, organization_id))
         
         if result:
             return CurrentEmployee(**result[0])
