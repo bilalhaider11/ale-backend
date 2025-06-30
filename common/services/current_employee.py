@@ -67,7 +67,7 @@ class CurrentEmployeeService:
                 hire_date=get_first_matching_column_value(row, ['hire date']),
                 date_of_birth=get_first_matching_column_value(row, ['date of birth']),
                 caregiver_tags=get_first_matching_column_value(row, ['caregiver tags', 'tags']),
-                social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn']),
+                social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
             )
 
