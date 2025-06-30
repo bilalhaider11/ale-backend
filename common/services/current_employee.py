@@ -6,7 +6,7 @@ from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.current_employee import CurrentEmployee
 from common.services.s3_client import S3ClientService
-from common.helpers.csv_utils import clean_string
+from common.helpers.csv_utils import get_first_matching_column_value
 
 logger = get_logger(__name__)
 
@@ -35,12 +35,12 @@ class CurrentEmployeeService:
         for row in rows:
             employee_type = None
 
-            if row.get('caregiver id'):
+            if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
                 employee_type = "caregiver"
-            if row.get('employee id'):
+            if get_first_matching_column_value(row, ['employee id', 'employee_id']):
                 employee_type = "employee"
 
-            if row.get('employee id') and row.get('caregiver id'):
+            if get_first_matching_column_value(row, ['employee id', 'employee_id']) and get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
                 logger.warning(f"Row has both employee and caregiver ID, using employee ID.")
 
             if employee_type is None:
@@ -48,25 +48,26 @@ class CurrentEmployeeService:
                 continue
 
             record = CurrentEmployee(
-                primary_branch=clean_string(row.get('primary branch')),
-                employee_id=clean_string(row.get('employee id')) or clean_string(row.get('caregiver id')),
-                first_name=clean_string(row.get('first name')),
-                last_name=clean_string(row.get('last name')),
-                suffix=clean_string(row.get('suffix')),
-                employee_type=clean_string(row.get('employee type')) or employee_type,
-                user_type=clean_string(row.get('user type')),
-                address_1=clean_string(row.get('address 1')) or clean_string(row.get('address')),
-                address_2=clean_string(row.get('address 2')),
-                city=clean_string(row.get('city')),
-                state=clean_string(row.get('state')),
-                zip_code=clean_string(row.get('zip code')) or clean_string(row.get('postal code')),
-                email_address=clean_string(row.get('email address')) or clean_string(row.get('email')),
-                phone_1=clean_string(row.get('phone 1')),
-                phone_2=clean_string(row.get('phone 2')),
-                payroll_start_date=clean_string(row.get('payroll start date')),
-                hire_date=clean_string(row.get('hire date')),
-                date_of_birth=clean_string(row.get('date of birth')),
-                caregiver_tags=clean_string(row.get('caregiver tags')),
+                primary_branch=get_first_matching_column_value(row, ['primary branch', 'primary_branch']),
+                employee_id=get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id']),
+                first_name=get_first_matching_column_value(row, ['first name', 'first_name']),
+                last_name=get_first_matching_column_value(row, ['last name', 'last_name']),
+                suffix=get_first_matching_column_value(row, ['suffix']),
+                employee_type=get_first_matching_column_value(row, ['employee type', 'employee_type']) or employee_type,
+                user_type=get_first_matching_column_value(row, ['user type', 'user_type']),
+                address_1=get_first_matching_column_value(row, ['address 1', 'address_1', 'address']),
+                address_2=get_first_matching_column_value(row, ['address 2', 'address_2']),
+                city=get_first_matching_column_value(row, ['city']),
+                state=get_first_matching_column_value(row, ['state']),
+                zip_code=get_first_matching_column_value(row, ['zip code', 'postal code']),
+                email_address=get_first_matching_column_value(row, ['email address', 'email']),
+                phone_1=get_first_matching_column_value(row, ['phone 1', 'phone']),
+                phone_2=get_first_matching_column_value(row, ['phone 2']),
+                payroll_start_date=get_first_matching_column_value(row, ['payroll start date']),
+                hire_date=get_first_matching_column_value(row, ['hire date']),
+                date_of_birth=get_first_matching_column_value(row, ['date of birth']),
+                caregiver_tags=get_first_matching_column_value(row, ['caregiver tags', 'tags']),
+                social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn']),
                 organization_id=organization_id
             )
 
@@ -162,17 +163,18 @@ class CurrentEmployeeService:
             "file_url": file_url
         }
 
-    def get_employee_by_id(self, employee_id: str) -> CurrentEmployee:
+    def get_employee_by_id(self, employee_id: str, organization_id: str) -> CurrentEmployee:
         """
         Retrieve a current employee record by employee ID.
         
         Args:
             employee_id (str): The unique identifier for the employee.
+            organization_id (str): The ID of the organization to filter by.
         
         Returns:
             CurrentEmployee: The employee record if found, otherwise None.
         """
-        return self.current_employee_repo.get_by_employee_id(employee_id)
+        return self.current_employee_repo.get_by_employee_id(employee_id, organization_id)
 
     def get_employees_count(self, organization_id=None) -> int:
         """

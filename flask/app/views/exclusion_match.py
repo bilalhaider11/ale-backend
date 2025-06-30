@@ -87,7 +87,8 @@ class EmployeeExclusionMatch(Resource):
 
 
     @login_required()
-    def get(self, person, entity_id):
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization, entity_id):
         """
         Get an exclusion match object by entity_id along with employee and exclusion details.
         """
@@ -97,7 +98,7 @@ class EmployeeExclusionMatch(Resource):
         oig_exclusion_service = OigEmployeesExclusionService(config)
 
         match = employee_exclusion_match_service.get_match_by_entity_id(entity_id)
-        employee = current_employee_service.get_employee_by_id(match.employee_id) if match.employee_id else None
+        employee = current_employee_service.get_employee_by_id(match.employee_id, organization.entity_id) if match.employee_id else None
         oig_exclusion = oig_exclusion_service.get_exclusion_by_id(match.oig_exclusion_id) if match.oig_exclusion_id else None
 
         return get_success_response(

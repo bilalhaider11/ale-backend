@@ -11,6 +11,17 @@ def clean_string(value) -> Optional[str]:
     return cleaned if cleaned else None
 
 
+def get_first_matching_column_value(row, column_headers) -> Optional[str]:
+    """Get the first non-empty value from the row based on column headers matched case-insensitively"""
+    for header in column_headers:
+        # Check if the header exists in the row (case-insensitive)
+        for key in row.keys():
+            if key.lower().strip() == header.lower().strip():
+                value = row.get(key)
+                if value and str(value).strip():
+                    return clean_string(value)
+    return None
+
 def parse_date(date_str) -> Optional[date]:
     """Parse date string to date object"""
     if not date_str or date_str == '':

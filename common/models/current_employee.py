@@ -28,6 +28,7 @@ class CurrentEmployee():
     date_of_birth: Optional[str] = None
     organization_id: Optional[str] = None
     caregiver_tags: Optional[str] = None
+    social_security_number: Optional[str] = None
 
     def as_dict(self):
         """
