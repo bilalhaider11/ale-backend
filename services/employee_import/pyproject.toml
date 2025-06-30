@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "employee-import"
-version = "0.0.5"
+version = "0.0.6"
 description = "Service for importing employee data from CSV files"
 authors = ["ALE Healthtech Team"]
 readme = "README.md"

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, List
 from datetime import date, datetime
 
 
@@ -11,16 +11,34 @@ def clean_string(value) -> Optional[str]:
     return cleaned if cleaned else None
 
 
-def get_first_matching_column_value(row, column_headers) -> Optional[str]:
-    """Get the first non-empty value from the row based on column headers matched case-insensitively"""
-    for header in column_headers:
-        # Check if the header exists in the row (case-insensitive)
-        for key in row.keys():
-            if key.lower().strip() == header.lower().strip():
+def get_first_matching_column_value(
+    row: Dict[str, str],
+    column_headers: List[str],
+    match_mode: str = 'exact'
+) -> Optional[str]:
+    """Get the first non-empty value from the row based on column headers.
+
+    Args:
+        row: Dictionary of row data.
+        column_headers: List of possible column header names.
+        match_mode: 'exact' for exact header match, 'contains' for partial match.
+
+    Returns:
+        First matching non-empty value, cleaned, or None.
+    """
+    for key in row.keys():
+        key_clean = key.lower().strip()
+        for header in column_headers:
+            header_clean = header.lower().strip()
+            if (
+                (match_mode == 'exact' and key_clean == header_clean) or
+                (match_mode == 'contains' and header_clean in key_clean)
+            ):
                 value = row.get(key)
                 if value and str(value).strip():
                     return clean_string(value)
     return None
+
 
 def parse_date(date_str) -> Optional[date]:
     """Parse date string to date object"""
