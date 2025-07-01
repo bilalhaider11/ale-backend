@@ -24,21 +24,31 @@ class OrganizationService:
 
     def get_organizations_with_roles_by_person(self, person_id: str):
         results = self.organization_repo.get_organizations_by_person_id(person_id)
-        
-        # Convert each result to dict format with CloudFront URL
+
         formatted_results = []
         for result in results:
             if isinstance(result, dict):
-                # Create Organization instance to use as_dict() for CloudFront URL
+                # Create Organization instance
                 role = result.pop('role', None)
                 org = Organization(**result)
                 org_dict = org.as_dict()
+                
+                # Add CloudFront domain to logo_url if it exists
+                if org.logo_url:
+                    cloudfront_domain = self.config.CLOUDFRONT_DISTRIBUTION_DOMAIN
+                    org_dict['logo_url'] = f"{cloudfront_domain}/{org.logo_url}"
+                    
                 if role:
                     org_dict['role'] = role
                 formatted_results.append(org_dict)
             else:
-                # Result is an Organization object
                 org_dict = result.as_dict()
+                
+                # Add CloudFront domain to logo_url if it exists
+                if result.logo_url:
+                    cloudfront_domain = self.config.CLOUDFRONT_DISTRIBUTION_DOMAIN
+                    org_dict['logo_url'] = f"{cloudfront_domain}/{result.logo_url}"
+                    
                 if hasattr(result, 'role'):
                     org_dict['role'] = result.role
                 formatted_results.append(org_dict)
@@ -122,6 +132,7 @@ class OrganizationService:
         if not organization:
             return None
         
+        # Store only the raw S3 path without CloudFront domain
         organization.logo_url = logo_key
         organization = self.save_organization(organization)
         
