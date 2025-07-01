@@ -104,3 +104,18 @@ class ResetPassword(Resource):
             expiry=expiry,
             person=person_obj.as_dict()
         )
+
+@auth_api.route('/resend_welcome_email', doc=dict(description="Resend welcome email to user"))
+class ResendWelcomeEmail(Resource):
+    @auth_api.expect(
+        {'type': 'object', 'properties': {
+            'email': {'type': 'string'}
+        }}
+    )
+    def post(self):
+        parsed_body = parse_request_body(request, ['email'])
+        validate_required_fields(parsed_body)
+        auth_service = AuthService(config)
+        auth_service.resend_welcome_email(parsed_body.get('email'))
+
+        return get_success_response(message="Welcome email resent successfully.")

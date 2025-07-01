@@ -164,6 +164,21 @@ class AuthService:
             raise APIException("Login method does not exist.")
 
         self.send_password_reset_email(email=email_obj.email, login_method=login_method)
+    
+    def resend_welcome_email(self, email: str):
+        email_obj = self.email_service.get_email_by_email_address(email)
+        if not email_obj:
+            raise APIException("Email is not registered.")
+
+        person = self.person_service.get_person_by_id(email_obj.person_id)
+        if not person:
+            raise APIException("Person does not exist.")
+
+        login_method = self.login_method_service.get_login_method_by_email_id(email_obj.entity_id)
+        if not login_method:
+            raise APIException("Login method does not exist.")
+
+        self.send_welcome_email(login_method, person, email_obj.email)
 
     def send_password_reset_email(self, email: str, login_method: LoginMethod):
         if password_reset_url := self.prepare_password_reset_url(login_method, email):
