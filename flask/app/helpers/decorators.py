@@ -100,7 +100,7 @@ def organization_required(with_roles=None):
             if with_roles is not None:
                 if person_organization_role.role not in with_roles:
                     return get_failure_response(
-                        message="User is not authroized to perform this operation on this organization.", 
+                        message="Unauthorized to perform this action on the organization.", 
                         status_code=403
                     )
 
