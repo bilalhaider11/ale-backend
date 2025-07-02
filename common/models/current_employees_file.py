@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional, ClassVar
 from rococo.models import VersionedModel
 from enum import Enum
-from common.services.s3_client import S3ClientService
 
 
 class CurrentEmployeesFileStatusEnum(str, Enum):
