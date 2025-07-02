@@ -1,16 +1,13 @@
 # Use the base image as a parent image
-FROM ecorrouge/rococo-service-host:latest
+FROM ecorrouge/rococo-service-host:python-3.11
 
 # Path to employee_exclusion_match_service
 ARG SERVICEPATH=./services/employee_exclusion_match_service
 
 ENV PYTHONPATH /app
 
-# ENV EXECUTION_TYPE can be either `MESSAGING` or `CRON`
 ENV EXECUTION_TYPE=MESSAGING
-# ENV MESSAGING_TYPE is required, which should be either `SqsConnection` or `RabbitMqConnection`.
 ENV MESSAGING_TYPE=RabbitMqConnection
-
 ENV PROCESSOR_TYPE=EmployeeExclusionMatchProcessor
 ENV PROCESSOR_MODULE=processor
 
