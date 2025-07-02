@@ -4,6 +4,7 @@ from flask import request
 from flask_restx import Namespace, Resource
 
 from common.app_config import config
+from common.app_logger import logger
 from common.services.current_employee import CurrentEmployeeService
 from app.helpers.response import get_success_response, get_failure_response
 from app.helpers.decorators import login_required, organization_required
@@ -26,6 +27,7 @@ class CurrentEmployeeListUpload(Resource):
             return get_failure_response("No file provided", status_code=400)
         
         file = request.files['file']
+        file_id = request.form.get('file_id', None)
         
         if not file.filename:
             return get_failure_response("No file selected", status_code=400)
@@ -44,7 +46,7 @@ class CurrentEmployeeListUpload(Resource):
         try:
             # Upload file to S3
             current_employee_service = CurrentEmployeeService(config)
-            upload_result = current_employee_service.upload_employee_list(organization.entity_id, temp_file_path, file.filename)
+            upload_result = current_employee_service.upload_employee_list(organization.entity_id, person.entity_id, temp_file_path, original_filename=file.filename, file_id=file_id)
             
             # Clean up temporary file
             os.unlink(temp_file_path)
@@ -58,7 +60,7 @@ class CurrentEmployeeListUpload(Resource):
             # Clean up temporary file in case of error
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
-            
+            logger.exception(e)
             return get_failure_response(
                 f"Error uploading file: {str(e)}",
                 status_code=500

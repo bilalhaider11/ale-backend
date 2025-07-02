@@ -28,6 +28,29 @@ class EmployeeExclusionMatchRepository(BaseRepository):
             conditions['organization_id'] = organization_id
         return super().get_many(conditions)
     
+    def get_all_count(self, organization_id=None) -> int:
+        """
+        Get the count of employee exclusion matches in the database.
+        Returns:
+            int: The number of employee exclusion matches
+        """
+        query = "SELECT COUNT(*) FROM employee_exclusion_match;"
+
+        if organization_id:
+            query = "SELECT COUNT(*) FROM employee_exclusion_match WHERE organization_id = %s;"
+            params = (organization_id,)
+        else:
+            params = None
+        
+        with self.adapter:
+            result = self.adapter.execute_query(query, params if params else None)
+        
+        if result:
+            return result[0]['count']
+        
+        return None
+
+
     def find_exclusion_matches(self, organization_id: str = None) -> List[EmployeeExclusionMatch]:
         """
         Finds matches between current employees/caregivers and OIG exclusion list.

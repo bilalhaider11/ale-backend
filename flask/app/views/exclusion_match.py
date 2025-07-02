@@ -5,9 +5,11 @@ from flask_restx import Namespace, Resource
 
 from common.app_config import config
 from common.services.current_employee import CurrentEmployeeService
+from common.services.current_employees_file import CurrentEmployeesFileService
 from common.services.employee_exclusion_match import EmployeeExclusionMatchService
 from common.services.oig_employees_exclusion import OigEmployeesExclusionService
 from common.models.person_organization_role import PersonOrganizationRoleEnum
+from common.models.current_employees_file import CurrentEmployeesFileStatusEnum
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body
 from app.helpers.decorators import login_required, organization_required
 
@@ -26,39 +28,48 @@ class EmployeeExclusionMatchStatus(Resource):
         """
         
         current_employee_service = CurrentEmployeeService(config)
-        status = current_employee_service.get_last_uploaded_file_status(organization.entity_id)
         current_employee_count = current_employee_service.get_employees_count(organization_id=organization.entity_id)
 
+        employee_exclusion_match_service = EmployeeExclusionMatchService(config)
+        matches_count = employee_exclusion_match_service.get_all_matches_count(organization.entity_id)
+
+        current_employees_file_service = CurrentEmployeesFileService(config)
+        files_count = current_employees_file_service.get_files_count(
+            organization.entity_id, status=CurrentEmployeesFileStatusEnum.DONE
+        )
+
+        return get_success_response(
+            current_employee_count=current_employee_count,
+            matches_count=matches_count,
+            files_count=files_count,
+            message="Exclusion match data retrieved successfully"
+        )
+
+
+@exclusion_match_api.route('')
+class EmployeeExclusionMatch(Resource):
+    
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization):
+        """
+        Get all exclusion match objects for the organization.
+        """
+        
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         matches = employee_exclusion_match_service.get_all_matches(organization.entity_id)
 
         return get_success_response(
-            status=status,
-            current_employee_count=current_employee_count,
-            matches=matches,
+            data=matches,
             message="Exclusion match data retrieved successfully"
         )
+
+@exclusion_match_api.route('/<string:entity_id>')
+class EmployeeExclusionMatchRecord(Resource):
     
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def delete(self, person, organization):
-        """
-        Delete (reset) exclusion match file status.
-        """
-
-        current_employee_service = CurrentEmployeeService(config)
-        current_employee_service.reset_last_uploaded_file_status(organization.entity_id)
-
-        return get_success_response(
-            message="Exclusion match file status reset successfully"
-        )
-
-
-@exclusion_match_api.route('/<string:entity_id>')
-class EmployeeExclusionMatch(Resource):
-    
-    @login_required()
-    def put(self, person, entity_id):
+    def put(self, person, organization, entity_id):
         """
         Update an exclusion match object with reviewer_notes or status.
         """
@@ -76,6 +87,7 @@ class EmployeeExclusionMatch(Resource):
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         match = employee_exclusion_match_service.update_exclusion_match(
             entity_id=entity_id,
+            organization_id=organization.entity_id,
             reviewer_notes=reviewer_notes,
             reviewer=person,
             status=status

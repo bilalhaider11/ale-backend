@@ -1,11 +1,15 @@
 from typing import List, Dict
 from datetime import datetime
+import os
+import uuid
 import botocore.exceptions
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.current_employee import CurrentEmployee
+from common.models.current_employees_file import CurrentEmployeesFile, CurrentEmployeesFileStatusEnum
 from common.services.s3_client import S3ClientService
+from common.services.current_employees_file import CurrentEmployeesFileService
 from common.helpers.csv_utils import get_first_matching_column_value
 
 logger = get_logger(__name__)
@@ -17,6 +21,7 @@ class CurrentEmployeeService:
         self.config = config
         self.repository_factory = RepositoryFactory(config)
         self.current_employee_repo = self.repository_factory.get_repository(RepoType.CURRENT_EMPLOYEE, message_queue_name="")
+        self.current_employees_file_service = CurrentEmployeesFileService(config)
         self.s3_client = S3ClientService()
         self.bucket_name = config.AWS_S3_BUCKET_NAME
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
@@ -73,11 +78,13 @@ class CurrentEmployeeService:
 
             records.append(record)
 
+        count = len(records)
         self.current_employee_repo.upsert_employees(records, organization_id)
-        logger.info("Successfully imported current employee data")
+        logger.info(f"Successfully imported {count} current employee data")
+        return count
 
 
-    def upload_employee_list(self, organization_id, file_path, original_filename=None):
+    def upload_employee_list(self, organization_id, person_id, file_path, file_id=None, original_filename=None):
         """
         Upload a CSV or XLSX file to S3 bucket under employees-list/ prefix.
         Creates a timestamped file: employees-list/<organization_id>/<timestamp>.<extension>
@@ -89,17 +96,21 @@ class CurrentEmployeeService:
         Returns:
             dict: Information about the uploaded file including key and URL
         """
+        logger.info(f"Uploading employee list file: {file_path} for organization: {organization_id}")
+
+        if file_id is None:
+            file_id = uuid.uuid4().hex
+
         # Generate timestamp for file naming
         timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
         
-        # Determine file extension
+        # Determine file extension and file type
         file_extension = '.xlsx' if file_path.lower().endswith('.xlsx') else '.csv'
+        file_type = 'xlsx' if file_path.lower().endswith('.xlsx') else 'csv'
+        content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_type == 'xlsx' else 'text/csv'
         
         # Define S3 key for timestamped file
-        timestamped_key = f"{self.employees_prefix}{organization_id}/{timestamp}{file_extension}"
-
-        # Define S3 key for latest file
-        latest_key = f"{self.employees_prefix}{organization_id}/latest"
+        file_id_key = f"{self.employees_prefix}{organization_id}/{file_id}"
 
         # Prepare metadata
         metadata = {
@@ -110,58 +121,42 @@ class CurrentEmployeeService:
         if original_filename:
             metadata["original_filename"] = original_filename
         
+        # Get file size
+        file_size = os.path.getsize(file_path)
+
+        # Create CurrentEmployeesFile instance
+        current_employees_file = CurrentEmployeesFile(
+            entity_id=file_id,
+            organization_id=organization_id,
+            file_name=original_filename or f"{timestamp}{file_extension}",
+            file_size=file_size,
+            file_type=file_type,
+            s3_key=file_id_key,
+            uploaded_at=datetime.now(),
+            uploaded_by=person_id,
+            status=CurrentEmployeesFileStatusEnum.PENDING
+        )
+
+        # Save file metadata to database
+        saved_file = self.current_employees_file_service.save_employees_file(current_employees_file)
+
         # Upload the file with timestamp name
         self.s3_client.upload_file(
             file_path=file_path,
-            s3_key=timestamped_key,
-            metadata=metadata
+            s3_key=file_id_key,
+            metadata=metadata,
+            content_type=content_type
         )
 
-        self.s3_client.copy_object(
-            source_key=timestamped_key,
-            dest_key=latest_key,
-            metadata=metadata,
-            tagging={"status": "pending"}
-        )
-        
         result = {
-            "timestamped_file": {
-                "url": self.s3_client.generate_presigned_url(timestamped_key)
+            "file": {
+                "url": self.s3_client.generate_presigned_url(file_id_key, filename=original_filename or f"{timestamp}{file_extension}"),
             },
-            "latest_file": {
-                "url": self.s3_client.generate_presigned_url(latest_key)
-            }
+            "file_metadata": saved_file
         }
 
         return result
 
-
-    def get_last_uploaded_file_status(self, organization_id):
-        s3_key = f"{self.employees_prefix}{organization_id}/latest"
-        try:
-            metadata = self.s3_client.get_object_metadata(s3_key)
-        except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                return None
-            raise e
-
-        upload_date = metadata.get('upload_date', None)
-        original_filename = metadata.get('original_filename', None)
-        file_size = metadata.get('ContentLength', 0)
-
-        tags = self.s3_client.get_object_tags(s3_key)
-        status = tags.get('status', 'unknown')
-        error = tags.get('error', None)
-        file_url = self.s3_client.generate_presigned_url(s3_key, filename=original_filename)
-
-        return {
-            "upload_date": upload_date,
-            "filename": original_filename,
-            "filesize": file_size,
-            "status": status,
-            "error": error,
-            "file_url": file_url
-        }
 
     def get_employee_by_id(self, employee_id: str, organization_id: str) -> CurrentEmployee:
         """

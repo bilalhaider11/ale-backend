@@ -121,26 +121,3 @@ class CurrentCaregiverService:
 
         return result
 
-
-    def get_last_uploaded_file_status(self):
-        s3_key = f"{self.caregivers_prefix}latest"
-        try:
-            metadata = self.s3_client.get_object_metadata(s3_key)
-        except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == '404':
-                return None
-            raise e
-
-        upload_date = metadata.get('upload_date', None)
-        original_filename = metadata.get('original_filename', None)
-
-        tags = self.s3_client.get_object_tags(s3_key)
-        status = tags.get('status', 'unknown')
-        file_url = self.s3_client.generate_presigned_url(s3_key, filename=original_filename)
-
-        return {
-            "upload_date": upload_date,
-            "filename": original_filename,
-            "status": status,
-            "file_url": file_url
-        }
