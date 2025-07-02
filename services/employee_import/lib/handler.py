@@ -26,17 +26,15 @@ class ListImportHandler:
         Returns:
             bool: True if successful, False otherwise
         """
-        if key.startswith(self.employees_prefix) and key.endswith('latest'):
+        if key.startswith(self.employees_prefix):
             logger.info(f"Processing employee list file: {bucket}/{key}")
             import_success = self.employee_handler.process_employee_list(key)
             if import_success:
                 self.trigger_match_service(key)
 
-        else:
-            if not key.startswith(self.employees_prefix):
-                logger.info(f"Unknown prefix for list file: {key}")
-            else:
-                logger.info(f"Skipping non-latest file recorded for audit purposes: {key}")
+        elif not key.startswith(self.employees_prefix):
+            logger.info(f"Unknown prefix for list file: {key}")
+
 
     def trigger_match_service(self, s3_key):
         """

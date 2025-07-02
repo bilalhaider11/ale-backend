@@ -4,7 +4,9 @@ import csv
 from openpyxl import load_workbook
 from common.app_logger import create_logger
 from common.services.current_employee import CurrentEmployeeService
+from common.services.current_employees_file import CurrentEmployeesFileService
 from common.services.s3_client import S3ClientService
+from common.models.current_employees_file import CurrentEmployeesFileStatusEnum
 
 logger = create_logger()
 
@@ -15,7 +17,8 @@ class CurrentEmployeeHandler:
         self.config = config
         self.s3_client = S3ClientService()
         self.employee_service = CurrentEmployeeService(config)
-    
+        self.employees_file_service = CurrentEmployeesFileService(config)
+
     def _read_excel_to_dict_list(self, file_path):
         """
         Read Excel file and convert to list of dictionaries
@@ -139,23 +142,19 @@ class CurrentEmployeeHandler:
             bool: True if successful, False otherwise
         """
         # Determine file content type from metadata and create appropriate temporary file
+        _, organization_id, file_id = key.rsplit('/', 2)
+
+        employees_file = self.employees_file_service.get_by_id(file_id, organization_id)
+        file_extension = f".{employees_file.file_type.lower()}"
+
         object_metadata = self.s3_client.get_object_metadata(key)
-        content_type = object_metadata.get('ContentType')
-        if content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-            file_extension = '.xlsx'
-        elif content_type == 'text/csv':
-            file_extension = '.csv'
-        else:
-            logger.error(f"Unsupported file type: {content_type}")
-            return False
 
         organization_id = object_metadata.get('organization_id')
 
-        self.s3_client.update_tags(s3_key=key, tags={'status': 'processing'})
+        self.employees_file_service.update_status(employees_file, CurrentEmployeesFileStatusEnum.PROCESSING)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             temp_path = temp_file.name
-
 
         self.s3_client.download_file(key, temp_path)
         
@@ -169,20 +168,17 @@ class CurrentEmployeeHandler:
                     # Read CSV file using csv module
                     rows = self._read_csv_to_dict_list(temp_path)
             except ValueError as e:
-                self.s3_client.update_tags(s3_key=key, tags={
-                    'status': 'error',
-                    'error': str(e)
-                })
+                self.employees_file_service.set_error(
+                    employees_file, str(e)
+                )
                 return False
             
             logger.info(f"Found {len(rows)} employee records in file")
             
             # Import new data
-            self.employee_service.bulk_import_employees(rows, organization_id=organization_id)
-
-            self.s3_client.update_tags(s3_key=key, tags={
-                'status': 'imported'
-            })
+            import_count = self.employee_service.bulk_import_employees(rows, organization_id=organization_id)
+            employees_file.record_count = import_count
+            self.employees_file_service.update_status(employees_file, CurrentEmployeesFileStatusEnum.IMPORTED)
 
             return True
 

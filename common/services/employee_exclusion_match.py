@@ -22,8 +22,12 @@ class EmployeeExclusionMatchService:
         return [
             match.as_dict() for match in self.employee_exclusion_match_repo.get_all(organization_id=organization_id)
         ]
+    
+    def get_all_matches_count(self, organization_id) -> int:
+        """Get all employee exclusion matches"""
+        return self.employee_exclusion_match_repo.get_all_count(organization_id=organization_id)
 
-    def update_exclusion_match(self, entity_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
+    def update_exclusion_match(self, entity_id: str, organization_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
         match = self.employee_exclusion_match_repo.get_one({"entity_id": entity_id})
         if not match:
             raise APIException("Match object not found")
