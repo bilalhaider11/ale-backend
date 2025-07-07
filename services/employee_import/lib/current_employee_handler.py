@@ -29,7 +29,11 @@ class CurrentEmployeeHandler:
         Returns:
             list: List of dictionaries representing rows
         """
-        required_headers = ['first name', 'last name', 'date of birth']
+        required_headers = [
+            'first name', 
+            'last name', 
+            ('employee id', 'caregiver id', 'employee_id', 'caregiver_id')
+        ]
         
         workbook = load_workbook(file_path, data_only=True)
         worksheet = workbook.active
@@ -46,18 +50,32 @@ class CurrentEmployeeHandler:
             row_headers_lower = [str(cell).lower().strip() if cell is not None else '' for cell in row]
             
             # Check if all required headers are present
-            has_all_required = all(
-                any(required_header in row_header for row_header in row_headers_lower)
-                for required_header in required_headers
-            )
+            has_all_required = True
             
+            for required_header in required_headers:
+                header_opts = required_header
+                if isinstance(header_opts, str):
+                    header_opts = (required_header, )
+
+                match_found = False
+                for opt in header_opts:
+                    for row_header in row_headers_lower:
+                        if opt in row_header:
+                            match_found = True
+                            break
+                    if match_found:
+                        break
+                if not match_found:
+                    has_all_required = False
+                    break
+
             if has_all_required:
                 header_row_index = row_num
                 header_row = [str(cell).lower().strip() if cell is not None else '' for cell in row]
                 break
         
         if header_row_index is None:
-            raise ValueError("ENOHEADERS")
+            raise ValueError("first name, last name, and employee/caregiver ID headers are required")
         
         # Convert rows to dictionaries starting from the header row onwards
         rows = []
@@ -72,7 +90,7 @@ class CurrentEmployeeHandler:
             rows.append(row_dict)
 
         if not rows:
-            raise ValueError("ENODATA")
+            raise ValueError("No data found in the file.")
 
         return rows
     
