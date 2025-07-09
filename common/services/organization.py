@@ -36,6 +36,8 @@ class OrganizationService:
                 # Add CloudFront domain to logo_url if it exists
                 if org.logo_url:
                     cloudfront_domain = self.config.CLOUDFRONT_DISTRIBUTION_DOMAIN
+                    if not cloudfront_domain.startswith(('http://', 'https://')):
+                        cloudfront_domain = f"https://{cloudfront_domain}"
                     org_dict['logo_url'] = f"{cloudfront_domain}/{org.logo_url}"
                     
                 if role:
@@ -47,6 +49,8 @@ class OrganizationService:
                 # Add CloudFront domain to logo_url if it exists
                 if result.logo_url:
                     cloudfront_domain = self.config.CLOUDFRONT_DISTRIBUTION_DOMAIN
+                    if not cloudfront_domain.startswith(('http://', 'https://')):
+                        cloudfront_domain = f"https://{cloudfront_domain}"
                     org_dict['logo_url'] = f"{cloudfront_domain}/{result.logo_url}"
                     
                 if hasattr(result, 'role'):
