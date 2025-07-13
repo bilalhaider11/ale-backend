@@ -65,3 +65,21 @@ class EmployeeListUpload(Resource):
                 f"Error uploading file: {str(e)}",
                 status_code=500
             )
+
+
+@employee_api.route('/matches')
+class EmployeeListMatches(Resource):
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization):
+        """
+        Get a list of employees who have matches in the employee_exclusion_match table.
+        """
+        employee_service = EmployeeService(config)
+        matched_employees = employee_service.get_employees_with_matches(organization.entity_id)
+
+        return get_success_response(
+            message="Matched employees retrieved successfully",
+            data=matched_employees
+        )

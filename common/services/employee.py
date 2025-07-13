@@ -188,3 +188,16 @@ class EmployeeService:
         s3_key = f"{self.employees_prefix}{organization_id}/latest"
         self.s3_client.delete_object(s3_key)
         return True
+
+
+    def get_employees_with_matches(self, organization_id: str) -> List[Employee]:
+        """
+        Get employees who have at least one match in the employee_exclusion_match table.
+        
+        Args:
+            organization_id (str): The ID of the organization to filter by.
+        
+        Returns:
+            List[Employee]: List of Employee objects with matches.
+        """
+        return self.employee_repo.get_employees_with_matches(organization_id)

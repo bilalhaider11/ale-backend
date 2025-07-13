@@ -3,7 +3,7 @@ import uuid
 from common.repositories.base import BaseRepository
 from common.models.employee import Employee
 from common.app_logger import logger
-from common.app_config import config
+
 
 class EmployeeRepository(BaseRepository):
     MODEL = Employee
@@ -182,10 +182,50 @@ class EmployeeRepository(BaseRepository):
         return len(records)
 
 
-    def get_employees_with_matches(self, organization_id):
-        query = """
-            SELECT e.*, em.exclusion_type, em.exclusion_date, em.status, em.reviewer_notes
-            FROM employee e
-            LEFT JOIN employee_exclusion_match em ON e.entity_id = em.employee_id
-            WHERE e.organization_id = %s;
+    def get_employees_with_matches(self, organization_id: str):
         """
+        Get all employees with their exclusion match counts.
+
+        Args:
+            organization_id: The organization ID to filter by
+
+        Returns:
+            List[Employee]: List of Employee instances with match details
+        """
+        query = """
+            SELECT e.*,
+                   CASE 
+                       WHEN COUNT(CASE WHEN eem.match_type = 'name_and_dob' THEN 1 END) > 0 
+                       THEN 'name_and_dob'
+                       ELSE 'name_only'
+                   END as match_type,
+                   COUNT(eem.entity_id) as match_count
+            FROM employee e
+            INNER JOIN employee_exclusion_match eem ON e.entity_id = eem.employee_id
+            WHERE e.organization_id = %s
+            GROUP BY e.entity_id
+        """
+
+        with self.adapter:
+            result = self.adapter.execute_query(query, (organization_id,))
+
+        if result:
+            employees = []
+            for row in result:
+                # Extract match_type and match_count from the row
+                match_type = row.pop('match_type')
+                match_count = row.pop('match_count')
+
+                # Create Employee instance
+                employee = Employee(**row)
+
+                # Add match_type and match_count as attributes
+                employee = employee.as_dict()
+                employee['match_type'] = match_type
+                employee['match_count'] = match_count
+
+                employees.append(employee)
+
+            return employees
+
+        return []

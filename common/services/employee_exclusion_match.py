@@ -27,29 +27,30 @@ class EmployeeExclusionMatchService:
         """Get all employee exclusion matches"""
         return self.employee_exclusion_match_repo.get_all_count(organization_id=organization_id)
 
-    def update_exclusion_match(self, entity_id: str, organization_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
-        match = self.employee_exclusion_match_repo.get_one({"entity_id": entity_id})
-        if not match:
+    def update_exclusion_match(self, employee_id: str, organization_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
+        matches = self.employee_exclusion_match_repo.get_many({"employee_id": employee_id, "organization_id": organization_id})
+        if not matches:
             raise APIException("Match object not found")
-        
-        should_save = False
 
-        if status and status != match.status:
-            should_save = True
-        
-        if reviewer_notes and reviewer_notes != match.reviewer_notes:
-            should_save = True
-        
-        if should_save:
-            if match.reviewer_id != reviewer.entity_id:
-                match.reviewer_id = reviewer.entity_id
-                match.reviewer_name = (reviewer.first_name if reviewer.first_name else '') + ' ' + (reviewer.last_name if reviewer.last_name else '').strip()
-                match.review_date = datetime.now()
-            match.status = status if status else match.status
-            match.reviewer_notes = reviewer_notes if reviewer_notes else match.reviewer_notes
-            return self.employee_exclusion_match_repo.save(match)
-        else:
-            return match
+        for match in matches:
+            should_save = False
+
+            if status and status != match.status:
+                should_save = True
+            
+            if reviewer_notes and reviewer_notes != match.reviewer_notes:
+                should_save = True
+            
+            if should_save:
+                if match.reviewer_id != reviewer.entity_id:
+                    match.reviewer_id = reviewer.entity_id
+                    match.reviewer_name = (reviewer.first_name if reviewer.first_name else '') + ' ' + (reviewer.last_name if reviewer.last_name else '').strip()
+                    match.review_date = datetime.now()
+                match.status = status if status else match.status
+                match.reviewer_notes = reviewer_notes if reviewer_notes else match.reviewer_notes
+                self.employee_exclusion_match_repo.save(match)
+
+        return matches
 
     def get_match_by_entity_id(self, entity_id: str) -> Optional[EmployeeExclusionMatch]:
         """Get an exclusion match object by entity_id"""
@@ -58,3 +59,11 @@ class EmployeeExclusionMatchService:
             raise APIException("Match object not found")
         
         return match
+
+    def get_matches_by_employee_id(self, organization_id: str, employee_id: str) -> List[EmployeeExclusionMatch]:
+        """Get all exclusion matches for a employee by their ID"""
+        matches = self.employee_exclusion_match_repo.get_many({"employee_id": employee_id, "organization_id": organization_id})
+        if not matches:
+            raise APIException("No matches found for the given employee ID")
+
+        return matches
