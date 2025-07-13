@@ -1,13 +1,14 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, ClassVar
+from rococo.models import VersionedModel
 
-@dataclass(kw_only=True)
-class CurrentEmployee():
+@dataclass
+class Employee(VersionedModel):
+    use_type_checking: ClassVar[bool] = True
     """
     Represents a current employee from the CSV import.
-    This is a non-versioned model that gets replaced on each import.
+    This is a versioned model that tracks employee data over time.
     """
-    id: int = None
     primary_branch: Optional[str] = None
     employee_id: Optional[str] = None
     first_name: Optional[str] = None
@@ -29,12 +30,4 @@ class CurrentEmployee():
     organization_id: Optional[str] = None
     caregiver_tags: Optional[str] = None
     social_security_number: Optional[str] = None
-
-    def as_dict(self):
-        """
-        Convert the CurrentEmployee instance to a dictionary.
-        
-        Returns:
-            dict: Dictionary representation of the CurrentEmployee instance
-        """
-        return {field.name: getattr(self, field.name) for field in self.__dataclass_fields__.values() if getattr(self, field.name) is not None}
+    person_id: Optional[str] = None

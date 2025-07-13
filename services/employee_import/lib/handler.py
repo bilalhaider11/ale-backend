@@ -1,6 +1,5 @@
 from common.app_logger import create_logger
-from .current_employee_handler import CurrentEmployeeHandler
-from .current_caregiver_handler import CurrentCaregiverHandler
+from .employee_handler import EmployeeHandler
 from common.tasks.send_message import send_message
 from common.app_config import config
 
@@ -12,7 +11,7 @@ class ListImportHandler:
     
     def __init__(self, config):
         self.config = config
-        self.employee_handler = CurrentEmployeeHandler(config)
+        self.employee_handler = EmployeeHandler(config)
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
         
     def process_list_file(self, bucket, key):

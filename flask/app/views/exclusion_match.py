@@ -4,7 +4,7 @@ from flask import request
 from flask_restx import Namespace, Resource
 
 from common.app_config import config
-from common.services.current_employee import CurrentEmployeeService
+from common.services.employee import EmployeeService
 from common.services.current_employees_file import CurrentEmployeesFileService
 from common.services.employee_exclusion_match import EmployeeExclusionMatchService
 from common.services.oig_employees_exclusion import OigEmployeesExclusionService
@@ -26,9 +26,8 @@ class EmployeeExclusionMatchStatus(Resource):
         Upload a CSV or XLSX file with employee data.
         The file will be saved to S3 with current datetime and copied as latest.csv.
         """
-        
-        current_employee_service = CurrentEmployeeService(config)
-        current_employee_count = current_employee_service.get_employees_count(organization_id=organization.entity_id)
+        employee_service = EmployeeService(config)
+        current_employee_count = employee_service.get_employees_count(organization_id=organization.entity_id)
 
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         matches_count = employee_exclusion_match_service.get_all_matches_count(organization.entity_id)
@@ -106,11 +105,11 @@ class EmployeeExclusionMatchRecord(Resource):
         """
 
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
-        current_employee_service = CurrentEmployeeService(config)
+        employee_service = EmployeeService(config)
         oig_exclusion_service = OigEmployeesExclusionService(config)
 
         match = employee_exclusion_match_service.get_match_by_entity_id(entity_id)
-        employee = current_employee_service.get_employee_by_id(match.employee_id, organization.entity_id) if match.employee_id else None
+        employee = employee_service.get_employee_by_id(match.employee_id, organization.entity_id) if match.employee_id else None
         oig_exclusion = oig_exclusion_service.get_exclusion_by_id(match.oig_exclusion_id) if match.oig_exclusion_id else None
 
         return get_success_response(

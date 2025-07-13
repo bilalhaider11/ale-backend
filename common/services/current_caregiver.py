@@ -16,7 +16,7 @@ class CurrentCaregiverService:
     def __init__(self, config):
         self.config = config
         self.repository_factory = RepositoryFactory(config)
-        self.caregiver_repo = self.repository_factory.get_repository(RepoType.CURRENT_CAREGIVER, message_queue_name="")
+        self.caregiver_repo = None
         self.s3_client = S3ClientService()
         self.bucket_name = config.AWS_S3_BUCKET_NAME
         self.caregivers_prefix = "caregivers-list/"

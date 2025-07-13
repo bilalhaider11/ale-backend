@@ -4,7 +4,6 @@ from flask import request
 from flask_restx import Namespace, Resource
 
 from common.app_config import config
-from common.services.current_employee import CurrentEmployeeService
 from common.services.current_employees_file import CurrentEmployeesFileService
 from app.helpers.response import get_success_response, get_failure_response
 from app.helpers.decorators import login_required, organization_required

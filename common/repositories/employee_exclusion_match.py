@@ -75,7 +75,7 @@ class EmployeeExclusionMatchRepository(BaseRepository):
                     WHEN ec.date_of_birth = oig.date_of_birth THEN 'name_and_dob'
                     ELSE 'name_only'
                 END AS match_type
-            FROM current_employee ec
+            FROM employee ec
             INNER JOIN oig_employees_exclusion oig ON 
                 LOWER(ec.first_name) = LOWER(oig.first_name) AND
                 LOWER(ec.last_name) = LOWER(oig.last_name)

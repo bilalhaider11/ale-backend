@@ -46,7 +46,7 @@ bash run.py
 
 ### Employee Import
 
-**Description:** Service processes CSV files for current employees and current caregivers that are uploaded to S3 under the employees-list/ and caregivers-list/ prefixes. It automatically updates the current_employee and current_caregiver tables with the latest data, maintaining indexed fields to enable fast and efficient employee lookups.
+**Description:** Service processes CSV files for current employees and current caregivers that are uploaded to S3 under the employees-list/ and caregivers-list/ prefixes. It automatically updates the employee table with the latest data, maintaining indexed fields to enable fast and efficient employee lookups.
 
 ---
 
