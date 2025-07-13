@@ -3,20 +3,20 @@ import os
 import csv
 from openpyxl import load_workbook
 from common.app_logger import create_logger
-from common.services.current_employee import CurrentEmployeeService
+from common.services.employee import EmployeeService
 from common.services.current_employees_file import CurrentEmployeesFileService
 from common.services.s3_client import S3ClientService
 from common.models.current_employees_file import CurrentEmployeesFileStatusEnum
 
 logger = create_logger()
 
-class CurrentEmployeeHandler:
+class EmployeeHandler:
     """Handler for processing employee CSV files"""
     
     def __init__(self, config):
         self.config = config
         self.s3_client = S3ClientService()
-        self.employee_service = CurrentEmployeeService(config)
+        self.employee_service = EmployeeService(config)
         self.employees_file_service = CurrentEmployeesFileService(config)
 
     def _read_excel_to_dict_list(self, file_path):
@@ -194,7 +194,7 @@ class CurrentEmployeeHandler:
             logger.info(f"Found {len(rows)} employee records in file")
             
             # Import new data
-            import_count = self.employee_service.bulk_import_employees(rows, organization_id=organization_id)
+            import_count = self.employee_service.bulk_import_employees(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
             employees_file.record_count = import_count
             self.employees_file_service.update_status(employees_file, CurrentEmployeesFileStatusEnum.IMPORTED)
 

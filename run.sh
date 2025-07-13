@@ -42,7 +42,7 @@ fi
 
 if "$FORCE_BUILD"; then
   echo "Recreating and running docker images of ALE backend..."
-  docker compose --env-file "${APP_ENV}.env" up -d --build --force-recreate
+  docker compose --env-file "${APP_ENV}.env" up -d --build --force-recreate --remove-orphans
 else
   echo "Running docker images of ALE backend..."
   docker compose --env-file "${APP_ENV}.env" up -d

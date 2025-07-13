@@ -64,8 +64,7 @@ class RepoType(Enum):
     FILE = auto()
     OIG_EMPLOYEES_EXCLUSION = auto()
     OIG_EXCLUSIONS_CHECK = auto()
-    CURRENT_CAREGIVER = auto()
-    CURRENT_EMPLOYEE = auto()
+    EMPLOYEE = auto()
     EMPLOYEE_EXCLUSION_MATCH = auto()
     CURRENT_EMPLOYEES_FILE = auto()
 
@@ -85,8 +84,7 @@ class RepositoryFactory:
         RepoType.FILE: FileRepository,
         RepoType.OIG_EMPLOYEES_EXCLUSION: OigEmployeesExclusionRepository,
         RepoType.OIG_EXCLUSIONS_CHECK: OigExclusionsCheckRepository,
-        RepoType.CURRENT_CAREGIVER: CurrentCaregiverRepository,
-        RepoType.CURRENT_EMPLOYEE: CurrentEmployeeRepository,
+        RepoType.EMPLOYEE: EmployeeRepository,
         RepoType.EMPLOYEE_EXCLUSION_MATCH: EmployeeExclusionMatchRepository,
         RepoType.CURRENT_EMPLOYEES_FILE: CurrentEmployeesFileRepository
     }

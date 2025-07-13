@@ -58,9 +58,9 @@ class OigEmployeesExclusion:
 
     def as_dict(self):
         """
-        Convert the CurrentEmployee instance to a dictionary.
+        Convert the OigEmployeesExclusion instance to a dictionary.
         
         Returns:
-            dict: Dictionary representation of the CurrentEmployee instance
+            dict: Dictionary representation of the OigEmployeesExclusion instance
         """
         return {field.name: getattr(self, field.name) for field in self.__dataclass_fields__.values() if getattr(self, field.name) is not None}

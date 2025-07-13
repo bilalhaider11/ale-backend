@@ -6,7 +6,7 @@ This service processes employee and caregiver CSV files uploaded to S3 and updat
 
 - Automatically triggered by S3 file uploads
 - Parses CSV files with employee or caregiver data based on S3 prefix
-- Replaces all records in the current_employee or current_caregiver table
+- Upserts all records into the `employee` table based on (first_name, last_name, employee_id) tuple.
 
 ## Setup
 

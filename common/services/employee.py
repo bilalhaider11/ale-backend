@@ -6,7 +6,7 @@ import botocore.exceptions
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
-from common.models.current_employee import CurrentEmployee
+from common.models.employee import Employee
 from common.models.current_employees_file import CurrentEmployeesFile, CurrentEmployeesFileStatusEnum
 from common.services.s3_client import S3ClientService
 from common.services.current_employees_file import CurrentEmployeesFileService
@@ -15,27 +15,23 @@ from common.helpers.csv_utils import get_first_matching_column_value
 logger = get_logger(__name__)
 
 
-class CurrentEmployeeService:
+class EmployeeService:
     
     def __init__(self, config):
         self.config = config
         self.repository_factory = RepositoryFactory(config)
-        self.current_employee_repo = self.repository_factory.get_repository(RepoType.CURRENT_EMPLOYEE, message_queue_name="")
+        self.employee_repo = self.repository_factory.get_repository(RepoType.EMPLOYEE, message_queue_name="")
+        self.person_repo = self.repository_factory.get_repository(RepoType.PERSON, message_queue_name="")
         self.current_employees_file_service = CurrentEmployeesFileService(config)
         self.s3_client = S3ClientService()
         self.bucket_name = config.AWS_S3_BUCKET_NAME
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
 
-    def delete_all_employees(self) -> bool:
-        """Delete all existing current employee records"""
-        logger.info("Deleting all existing current employee records...")
-        return self.current_employee_repo.truncate_table()
-    
-    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str) -> bool:
-        """Import CSV data into current_employee table using batch processing"""
+    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str = None) -> bool:
+        """Import CSV data into employee table using batch processing"""
         record_count = len(rows)
-        logger.info(f"Processing {record_count} current employee records...")
-        
+        logger.info(f"Processing {record_count} employee records...")
+
         records = []
         for row in rows:
             employee_type = None
@@ -52,7 +48,8 @@ class CurrentEmployeeService:
                 logger.warning(f"Skipping row with neither employee nor caregiver ID: {row}")
                 continue
 
-            record = CurrentEmployee(
+            record = Employee(
+                changed_by_id=user_id,
                 primary_branch=get_first_matching_column_value(row, ['primary branch', 'primary_branch']),
                 employee_id=get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id']),
                 first_name=get_first_matching_column_value(row, ['first name', 'first_name']),
@@ -79,8 +76,9 @@ class CurrentEmployeeService:
             records.append(record)
 
         count = len(records)
-        self.current_employee_repo.upsert_employees(records, organization_id)
-        logger.info(f"Successfully imported {count} current employee data")
+        self.employee_repo.upsert_employees(records, organization_id)
+
+        logger.info(f"Successfully imported {count} employee data")
         return count
 
 
@@ -158,27 +156,27 @@ class CurrentEmployeeService:
         return result
 
 
-    def get_employee_by_id(self, employee_id: str, organization_id: str) -> CurrentEmployee:
+    def get_employee_by_id(self, employee_id: str, organization_id: str) -> Employee:
         """
-        Retrieve a current employee record by employee ID.
+        Retrieve an employee record by employee ID.
         
         Args:
             employee_id (str): The unique identifier for the employee.
             organization_id (str): The ID of the organization to filter by.
         
         Returns:
-            CurrentEmployee: The employee record if found, otherwise None.
+            Employee: The employee record if found, otherwise None.
         """
-        return self.current_employee_repo.get_by_employee_id(employee_id, organization_id)
+        return self.employee_repo.get_by_employee_id(employee_id, organization_id)
 
     def get_employees_count(self, organization_id=None) -> int:
         """
-        Get the count of current employees in the database.
-        
+        Get the count of employees in the database.
+
         Returns:
-            int: The number of current employees.
+            int: The number of employees.
         """
-        return self.current_employee_repo.get_employees_count(organization_id=organization_id)
+        return self.employee_repo.get_employees_count(organization_id=organization_id)
 
     def reset_last_uploaded_file_status(self, organization_id: str):
         """

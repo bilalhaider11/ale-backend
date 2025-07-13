@@ -5,17 +5,17 @@ from flask_restx import Namespace, Resource
 
 from common.app_config import config
 from common.app_logger import logger
-from common.services.current_employee import CurrentEmployeeService
+from common.services.employee import EmployeeService
 from app.helpers.response import get_success_response, get_failure_response
 from app.helpers.decorators import login_required, organization_required
 from common.models.person_organization_role import PersonOrganizationRoleEnum
 
-current_employee_api = Namespace('current_employee', description='Current employee operations')
+employee_api = Namespace('employee', description='Employee operations')
 
 
-@current_employee_api.route('/upload')
-class CurrentEmployeeListUpload(Resource):
-    
+@employee_api.route('/upload')
+class EmployeeListUpload(Resource):
+
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person, organization):
@@ -45,9 +45,9 @@ class CurrentEmployeeListUpload(Resource):
 
         try:
             # Upload file to S3
-            current_employee_service = CurrentEmployeeService(config)
-            upload_result = current_employee_service.upload_employee_list(organization.entity_id, person.entity_id, temp_file_path, original_filename=file.filename, file_id=file_id)
-            
+            employee_service = EmployeeService(config)
+            upload_result = employee_service.upload_employee_list(organization.entity_id, person.entity_id, temp_file_path, original_filename=file.filename, file_id=file_id)
+
             # Clean up temporary file
             os.unlink(temp_file_path)
             

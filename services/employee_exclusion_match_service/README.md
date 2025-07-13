@@ -13,8 +13,7 @@ The service receives messages via RabbitMQ and performs the following operations
 
 - RabbitMQ for message processing
 - PostgreSQL database with the following tables:
-  - `current_employee`
-  - `current_caregiver` 
+  - `employee`
   - `oig_employees_exclusion`
   - `employee_exclusion_match`
 
