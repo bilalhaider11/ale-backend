@@ -63,14 +63,32 @@ class EmployeeExclusionMatch(Resource):
             message="Exclusion match data retrieved successfully"
         )
 
-@exclusion_match_api.route('/<string:entity_id>')
-class EmployeeExclusionMatchRecord(Resource):
+@exclusion_match_api.route('/employee/<string:employee_id>')
+class EmployeeExclusionMatchRecordByEmployee(Resource):
     
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def put(self, person, organization, entity_id):
+    def get(self, person, organization, employee_id):
         """
-        Update an exclusion match object with reviewer_notes or status.
+        Get exclusion match records for a specific employee.
+        """
+        
+        employee_exclusion_match_service = EmployeeExclusionMatchService(config)
+        matches = employee_exclusion_match_service.get_matches_by_employee_id(
+            organization_id=organization.entity_id,
+            employee_id=employee_id
+        )
+
+        return get_success_response(
+            data=matches,
+            message="Exclusion match records retrieved successfully"
+        )
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def put(self, person, organization, employee_id):
+        """
+        Update an exclusion match object with reviewer_notes or status by employee_id.
         """
 
         parsed_body = parse_request_body(request, ['reviewer_notes', 'status'])
@@ -84,38 +102,14 @@ class EmployeeExclusionMatchRecord(Resource):
                 return get_failure_response("Invalid value for status. Must be one of: pending, handled.")
 
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
-        match = employee_exclusion_match_service.update_exclusion_match(
-            entity_id=entity_id,
+        employee_exclusion_match_service.update_exclusion_match(
+            employee_id=employee_id,
             organization_id=organization.entity_id,
             reviewer_notes=reviewer_notes,
             reviewer=person,
             status=status
         )
-        
-        return get_success_response(
-            data=match.as_dict()
-        )
-
-
-    @login_required()
-    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def get(self, person, organization, entity_id):
-        """
-        Get an exclusion match object by entity_id along with employee and exclusion details.
-        """
-
-        employee_exclusion_match_service = EmployeeExclusionMatchService(config)
-        employee_service = EmployeeService(config)
-        oig_exclusion_service = OigEmployeesExclusionService(config)
-
-        match = employee_exclusion_match_service.get_match_by_entity_id(entity_id)
-        employee = employee_service.get_employee_by_id(match.employee_id, organization.entity_id) if match.employee_id else None
-        oig_exclusion = oig_exclusion_service.get_exclusion_by_id(match.oig_exclusion_id) if match.oig_exclusion_id else None
 
         return get_success_response(
-            data={
-                **match.as_dict(),
-                "employee": employee.as_dict() if employee else None,
-                "oig_exclusion": oig_exclusion.as_dict() if oig_exclusion else None
-            }
+            message="Matches updated successfully",
         )

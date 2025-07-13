@@ -68,7 +68,7 @@ class EmployeeExclusionMatchRepository(BaseRepository):
                 oig.date_of_birth,
                 oig.exclusion_type,
                 oig.exclusion_date,
-                ec.employee_id,
+                ec.entity_id AS employee_id,
                 oig.id AS oig_exclusion_id,
                 ec.organization_id,
                 CASE 
