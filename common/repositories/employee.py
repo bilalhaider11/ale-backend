@@ -199,11 +199,16 @@ class EmployeeRepository(BaseRepository):
                        THEN 'name_and_dob'
                        ELSE 'name_only'
                    END as match_type,
-                   COUNT(eem.entity_id) as match_count
+                   COUNT(eem.entity_id) as match_count,
+                   CASE 
+                       WHEN COUNT(CASE WHEN eem.status = 'pending' THEN 1 END) > 0 
+                       THEN 'pending'
+                       ELSE 'handled'
+                   END as status
             FROM employee e
-            INNER JOIN employee_exclusion_match eem ON e.entity_id = eem.employee_id
-            WHERE e.organization_id = %s
-            GROUP BY e.entity_id
+                INNER JOIN employee_exclusion_match eem ON e.entity_id = eem.employee_id
+                WHERE e.organization_id = %s
+                GROUP BY e.entity_id
         """
 
         with self.adapter:
@@ -215,6 +220,7 @@ class EmployeeRepository(BaseRepository):
                 # Extract match_type and match_count from the row
                 match_type = row.pop('match_type')
                 match_count = row.pop('match_count')
+                match_status = row.pop('status')
 
                 # Create Employee instance
                 employee = Employee(**row)
@@ -223,6 +229,7 @@ class EmployeeRepository(BaseRepository):
                 employee = employee.as_dict()
                 employee['match_type'] = match_type
                 employee['match_count'] = match_count
+                employee['status'] = match_status
 
                 employees.append(employee)
 
