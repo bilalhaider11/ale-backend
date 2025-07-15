@@ -7,7 +7,6 @@ from common.services.employee import EmployeeService
 from common.services.current_employees_file import CurrentEmployeesFileService
 from common.services.s3_client import S3ClientService
 from common.models.current_employees_file import CurrentEmployeesFileStatusEnum
-
 logger = create_logger()
 
 class EmployeeHandler:

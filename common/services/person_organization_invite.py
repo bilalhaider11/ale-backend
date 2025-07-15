@@ -12,15 +12,14 @@ class PersonOrganizationInvitationService:
 
     REQUIRED_FIELDS = ["email", "roles"]
 
-    def __init__(self, config, person_organization_role_service=None):
+    def __init__(self, config):
         self.config = config
         self.repository_factory = RepositoryFactory(config)
         self.person_organization_invite_repo = self.repository_factory.get_repository(RepoType.PERSON_ORGANIZATION_INVITATION)
         self.message_sender = MessageSender()
         self.EMAIL_TRANSMITTER_QUEUE_NAME = config.QUEUE_NAME_PREFIX + config.EMAIL_SERVICE_PROCESSOR_QUEUE_NAME
-        self.person_organization_role_service = person_organization_role_service
 
-    def create_invitation(self, organization_id, invitee_id, email, roles, first_name=None, last_name=None):
+    def create_invitation(self, organization_id, invitee_id, email, roles, invited_by_id, first_name=None, last_name=None):
         """Create a new pending invitation."""
         # Validate roles
         invalid_roles = [role for role in roles if role not in self.VALID_ROLES]
@@ -89,17 +88,22 @@ class PersonOrganizationInvitationService:
 
     def accept_invitation(self, invitation, invitee_id):
         """Accept an invitation and associate the person with the organization."""
+
         if invitation.status != 'pending':
             raise APIException("Invalid or expired invitation.", 400)
 
         roles = invitation.roles.split(",")
+
+        from common.services.person_organization_role import PersonOrganizationRoleService
+        person_organization_role_service = PersonOrganizationRoleService(self.config)
+
         for role in roles:
             por = PersonOrganizationRole(
                 person_id=invitee_id,
                 organization_id=invitation.organization_id,
                 role=role
             )
-            self.person_organization_role_service.save_person_organization_role(por)
+            person_organization_role_service.save_person_organization_role(por)
 
         invitation.status = 'accepted'
         invitation.accepted_on = datetime.now(timezone.utc)

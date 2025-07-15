@@ -1,8 +1,8 @@
 from flask_restx import Namespace, Resource
-from flask import request
+from flask import request, g
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
 from common.app_config import config
-from common.services import AuthService, PersonService
+from common.services import AuthService, PersonService, PersonOrganizationInvitationService
 
 # Create the auth blueprint
 auth_api = Namespace('auth', description="Auth related APIs")
@@ -28,16 +28,38 @@ class Signup(Resource):
         }}
     )
     def post(self):
-        parsed_body = parse_request_body(request, ['first_name', 'last_name', 'email_address'])
+        parsed_body = parse_request_body(request, ['first_name', 'last_name', 'email_address', 'invitation_token'])
         validate_required_fields(parsed_body)
 
         auth_service = AuthService(config)
 
-        auth_service.signup(
+        person_id = None
+        invitation = None
+        if 'invitation_token' in parsed_body:
+            invitation_service = PersonOrganizationInvitationService(config)
+            invitation = invitation_service.get_invitation_by_token(parsed_body['invitation_token'])
+
+            if not invitation:
+                return get_failure_response(message="Invalid or expired invitation token.")
+
+            if invitation.email.lower() != parsed_body['email_address'].lower():
+                return get_failure_response(message="Invalid email address for the invitation token.")
+
+            person_id = invitation.invitee_id
+
+        person = auth_service.signup(
             parsed_body['email_address'],
             parsed_body['first_name'],
-            parsed_body['last_name']
+            parsed_body['last_name'],
+            person_id=person_id
         )
+
+        g.person = person
+
+        if 'invitation_token' in parsed_body:
+            invitation_service = PersonOrganizationInvitationService(config)
+            invitation_service.accept_invitation(invitation, person_id)
+            
         return get_success_response(message="User signed up successfully and verification email is sent.")
 
 
@@ -59,8 +81,24 @@ class Login(Resource):
             parsed_body['password']
         )
 
+        invitation = None
+        if 'invitation_token' in parsed_body:
+            invitation_service = PersonOrganizationInvitationService(config)
+            invitation = invitation_service.get_invitation_by_token(parsed_body['invitation_token'])
+
+            if not invitation:
+                return get_failure_response(message="Invalid or expired invitation token.", status_code=400)
+
+            if invitation.email.lower() != parsed_body['email'].lower():
+                return get_failure_response(message="Invalid email address for the invitation token.")
+
         person_service = PersonService(config)
         person = person_service.get_person_by_email_address(email_address=parsed_body['email'])
+        g.person = person
+
+        if 'invitation_token' in parsed_body:
+            invitation_service = PersonOrganizationInvitationService(config)
+            invitation_service.accept_invitation(invitation, person.entity_id)
 
         return get_success_response(person=person.as_dict(), access_token=access_token, expiry=expiry)
 

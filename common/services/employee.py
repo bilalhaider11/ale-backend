@@ -2,7 +2,6 @@ from typing import List, Dict
 from datetime import datetime
 import os
 import uuid
-import botocore.exceptions
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
@@ -27,7 +26,7 @@ class EmployeeService:
         self.bucket_name = config.AWS_S3_BUCKET_NAME
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
 
-    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str = None) -> bool:
+    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> bool:
         """Import CSV data into employee table using batch processing"""
         record_count = len(rows)
         logger.info(f"Processing {record_count} employee records...")
@@ -167,7 +166,10 @@ class EmployeeService:
         Returns:
             Employee: The employee record if found, otherwise None.
         """
-        return self.employee_repo.get_by_employee_id(employee_id, organization_id)
+        return self.employee_repo.get_one({
+            'entity_id': employee_id,
+            'organization_id': organization_id
+        })
 
     def get_employees_count(self, organization_id=None) -> int:
         """
@@ -201,3 +203,28 @@ class EmployeeService:
             List[Employee]: List of Employee objects with matches.
         """
         return self.employee_repo.get_employees_with_matches(organization_id)
+
+    def get_employees_by_organization(self, organization_id: str) -> List[Employee]:
+        """
+        Get all employees belonging to a specific organization.
+
+        Args:
+            organization_id (str): The ID of the organization to filter by.
+
+        Returns:
+            List[Employee]: List of Employee objects belonging to the organization.
+        """
+        return self.employee_repo.get_employees_with_invitation_status(organization_id)
+    
+
+    def save_employee(self, employee: Employee) -> Employee:
+        """
+        Save an employee record to the database.
+        
+        Args:
+            employee (Employee): The employee object to save.
+        
+        Returns:
+            Employee: The saved employee object with updated entity_id.
+        """
+        return self.employee_repo.save(employee)
