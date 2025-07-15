@@ -236,3 +236,48 @@ class EmployeeRepository(BaseRepository):
             return employees
 
         return []
+
+
+    def get_employees_with_invitation_status(self, organization_id: str):
+        """
+        Get all employees with their invitation status.
+
+        Args:
+            organization_id: The organization ID to filter by
+
+        Returns:
+            List[Employee]: List of Employee instances with invitation status
+        """
+        query = """
+            SELECT e.*, 
+                   CASE 
+                       WHEN pir.status = 'accepted' THEN 'accepted'
+                       WHEN pir.status = 'pending' THEN 'pending'
+                       ELSE NULL
+                   END as invitation_status
+            FROM employee e
+                LEFT JOIN person_organization_invitation pir ON e.person_id = pir.invitee_id
+                WHERE e.organization_id = %s
+        """
+
+        with self.adapter:
+            result = self.adapter.execute_query(query, (organization_id,))
+
+        if result:
+            employees = []
+            for row in result:
+                # Extract invitation_status from the row
+                invitation_status = row.pop('invitation_status')
+
+                # Create Employee instance
+                employee = Employee(**row)
+
+                # Add invitation_status as an attribute
+                employee = employee.as_dict()
+                employee['invitation_status'] = invitation_status
+
+                employees.append(employee)
+
+            return employees
+
+        return []

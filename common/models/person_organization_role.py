@@ -11,6 +11,7 @@ class PersonOrganizationRoleEnum(str, Enum):
     RN = 'rn'
     AUDITOR = 'auditor'
     CAREGIVER = 'caregiver'
+    EMPLOYEE = 'employee'
 
     @classmethod
     def valid_values(cls):

@@ -155,6 +155,7 @@ class OrganizationInvite(Resource):
             roles=roles,
             first_name=first_name,
             last_name=last_name,
+            invited_by_id=person.entity_id
         )
         invitation_service.send_invitation_email(invitation, organization.name, person)
 
@@ -163,10 +164,9 @@ class OrganizationInvite(Resource):
 
 @organization_api.route('/accept-invitation/<string:token>')
 class AcceptInvitation(Resource):
-    @login_required()
+
     def get(self, token):
-        person_organization_role_service = PersonOrganizationRoleService(config)
-        invitation_service = PersonOrganizationInvitationService(config, person_organization_role_service)
+        invitation_service = PersonOrganizationInvitationService(config)
         email_service = EmailService(config)
         person_service = PersonService(config)
 

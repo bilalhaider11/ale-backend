@@ -31,7 +31,7 @@ class AuthService:
 
         self.message_sender = MessageSender()
 
-    def signup(self, email, first_name, last_name):
+    def signup(self, email, first_name, last_name, person_id=None):
         login_method = LoginMethod(
             method_type=LoginMethodType.EMAIL_PASSWORD,
             raw_password=self.config.DEFAULT_USER_PASSWORD
@@ -41,18 +41,26 @@ class AuthService:
         if existing_email:
             raise InputValidationError("The email address you provided is already registered.")
 
-        person = Person(first_name=first_name, last_name=last_name)
+        if person_id:
+            person = self.person_service.get_person_by_id(person_id)
+            if not person:
+                raise APIException("Invalid or expired invitation token.")
+        else:
+            person = Person(first_name=first_name, last_name=last_name)
 
-        email = Email(person_id=person.entity_id, email=email)
+        email = Email(changed_by_id=person.entity_id, person_id=person.entity_id, email=email)
 
         login_method.person_id = person.entity_id
         login_method.email_id = email.entity_id
+        login_method.changed_by_id = person.entity_id
 
         organization = Organization(
+            changed_by_id=person.entity_id,
             name=f"{first_name}'s Organization"
         )
 
         person_organization_role = PersonOrganizationRole(
+            changed_by_id=person.entity_id,
             person_id=person.entity_id,
             organization_id=organization.entity_id,
             role=PersonOrganizationRoleEnum.ADMIN.value
@@ -65,6 +73,7 @@ class AuthService:
         self.person_organization_role_service.save_person_organization_role(person_organization_role)
 
         self.send_welcome_email(login_method, person, email.email)
+        return person
 
     def generate_token(self, login_method: LoginMethod, email: str, token_type: str = 'reset_password'):
         person_id, email_id = login_method.person_id, login_method.email_id
