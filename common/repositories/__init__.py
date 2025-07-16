@@ -10,3 +10,4 @@ from .oig_exclusions_check import OigExclusionsCheckRepository
 from .employee import EmployeeRepository
 from .employee_exclusion_match import EmployeeExclusionMatchRepository
 from .current_employees_file import CurrentEmployeesFileRepository
+from .availability_slot import AvailabilitySlotRepository

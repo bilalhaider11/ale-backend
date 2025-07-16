@@ -9,3 +9,5 @@ from .file import FileService
 from .auth import AuthService
 from .oig_employees_exclusion import OigEmployeesExclusionService
 from .oig_exclusions_check import OigExclusionsCheckService
+from .availability_slot import AvailabilitySlotService
+from .employee import EmployeeService

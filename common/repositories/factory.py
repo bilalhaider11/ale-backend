@@ -67,6 +67,7 @@ class RepoType(Enum):
     EMPLOYEE = auto()
     EMPLOYEE_EXCLUSION_MATCH = auto()
     CURRENT_EMPLOYEES_FILE = auto()
+    AVAILABILITY_SLOT = auto()
 
 
 class RepositoryFactory:
@@ -86,7 +87,8 @@ class RepositoryFactory:
         RepoType.OIG_EXCLUSIONS_CHECK: OigExclusionsCheckRepository,
         RepoType.EMPLOYEE: EmployeeRepository,
         RepoType.EMPLOYEE_EXCLUSION_MATCH: EmployeeExclusionMatchRepository,
-        RepoType.CURRENT_EMPLOYEES_FILE: CurrentEmployeesFileRepository
+        RepoType.CURRENT_EMPLOYEES_FILE: CurrentEmployeesFileRepository,
+        RepoType.AVAILABILITY_SLOT: AvailabilitySlotRepository
     }
 
     def get_db_connection(self):

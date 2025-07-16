@@ -11,6 +11,7 @@ from common.helpers.exceptions import InputValidationError, APIException
 from common.app_config import get_config
 from common.utils.version import get_service_version, get_project_name
 from logger import set_request_exception_signal, logger
+from app.helpers.json_provider import CustomJSONProvider
 
 
 
@@ -29,6 +30,9 @@ def create_app():
 
     app = Flask(__name__)
     app.config.from_object(config)
+    
+    # Set custom JSON provider
+    app.json = CustomJSONProvider(app)
 
     with app.app_context():
         set_request_exception_signal(app)
