@@ -90,8 +90,8 @@ class EmployeeListMatches(Resource):
             data=matched_employees
         )
 
-@employee_api.route('')
-class Employee(Resource):
+@employee_api.route('/admin')
+class EmployeeAdmin(Resource):
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
@@ -104,6 +104,19 @@ class Employee(Resource):
             data=employees
         )
 
+@employee_api.route('')
+class Employee(Resource):
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.EMPLOYEE])
+    def get(self, person, organization):
+
+        employee_service = EmployeeService(config)
+        employee = employee_service.get_employee_by_person_id(person.entity_id, organization.entity_id)
+        return get_success_response(
+            message="Employee rerieved successfully",
+            data=employee
+        )
 
 @employee_api.route('/invite')
 class EmployeeInvite(Resource):

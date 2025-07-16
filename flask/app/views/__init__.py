@@ -6,6 +6,7 @@ from app.views.employee import employee_api
 from app.views.current_caregiver import current_caregiver_api
 from app.views.exclusion_match import exclusion_match_api
 from app.views.current_employees_file import current_employees_file_api
+from app.views.availability_slot import availability_slot_api
 
 def initialize_views(api):
     api.add_namespace(auth_api)
@@ -16,3 +17,4 @@ def initialize_views(api):
     api.add_namespace(current_caregiver_api)
     api.add_namespace(exclusion_match_api)
     api.add_namespace(current_employees_file_api)
+    api.add_namespace(availability_slot_api)

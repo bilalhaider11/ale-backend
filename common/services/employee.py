@@ -216,6 +216,17 @@ class EmployeeService:
         """
         return self.employee_repo.get_employees_with_invitation_status(organization_id)
     
+    def get_employee_by_person_id(self, person_id: str, organization_id: str) -> Employee:
+        """
+        Get employee for a specific person.
+
+        Args:
+            person_id (str): The ID of the person to filter by.
+
+        Returns:
+            Employee: The Employee object belonging to the person.
+        """
+        return self.employee_repo.get_one({'person_id': person_id, 'organization_id': organization_id})
 
     def save_employee(self, employee: Employee) -> Employee:
         """

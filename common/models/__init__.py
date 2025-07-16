@@ -12,3 +12,4 @@ from .employee import Employee
 from .current_caregiver import CurrentCaregiver
 from .employee_exclusion_match import EmployeeExclusionMatch
 from .current_employees_file import CurrentEmployeesFile, CurrentEmployeesFileStatusEnum
+from .availability_slot import AvailabilitySlot
