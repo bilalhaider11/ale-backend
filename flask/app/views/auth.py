@@ -29,15 +29,16 @@ class Signup(Resource):
     )
     def post(self):
         parsed_body = parse_request_body(request, ['first_name', 'last_name', 'email_address', 'invitation_token'])
+        invitation_token = parsed_body.pop('invitation_token', None)
         validate_required_fields(parsed_body)
 
         auth_service = AuthService(config)
 
         person_id = None
         invitation = None
-        if 'invitation_token' in parsed_body:
+        if invitation_token:
             invitation_service = PersonOrganizationInvitationService(config)
-            invitation = invitation_service.get_invitation_by_token(parsed_body['invitation_token'])
+            invitation = invitation_service.get_invitation_by_token(invitation_token)
 
             if not invitation:
                 return get_failure_response(message="Invalid or expired invitation token.")
@@ -56,7 +57,7 @@ class Signup(Resource):
 
         g.person = person
 
-        if 'invitation_token' in parsed_body:
+        if invitation_token:
             invitation_service = PersonOrganizationInvitationService(config)
             invitation_service.accept_invitation(invitation, person_id)
             
@@ -72,7 +73,8 @@ class Login(Resource):
         }}
     )
     def post(self):
-        parsed_body = parse_request_body(request, ['email', 'password'])
+        parsed_body = parse_request_body(request, ['email', 'password', 'invitation_token'])
+        invitation_token = parsed_body.pop('invitation_token', None)
         validate_required_fields(parsed_body)
 
         auth_service = AuthService(config)
@@ -82,9 +84,9 @@ class Login(Resource):
         )
 
         invitation = None
-        if 'invitation_token' in parsed_body:
+        if invitation_token:
             invitation_service = PersonOrganizationInvitationService(config)
-            invitation = invitation_service.get_invitation_by_token(parsed_body['invitation_token'])
+            invitation = invitation_service.get_invitation_by_token(invitation_token)
 
             if not invitation:
                 return get_failure_response(message="Invalid or expired invitation token.", status_code=400)
@@ -96,7 +98,7 @@ class Login(Resource):
         person = person_service.get_person_by_email_address(email_address=parsed_body['email'])
         g.person = person
 
-        if 'invitation_token' in parsed_body:
+        if invitation_token:
             invitation_service = PersonOrganizationInvitationService(config)
             invitation_service.accept_invitation(invitation, person.entity_id)
 
