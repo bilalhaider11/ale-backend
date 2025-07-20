@@ -1,7 +1,9 @@
 import os
 import tempfile
+import csv
 from flask import request
 from flask_restx import Namespace, Resource
+from openpyxl import load_workbook
 
 from common.app_config import config
 from common.app_logger import logger
@@ -26,8 +28,9 @@ class EmployeeListUpload(Resource):
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person, organization):
         """
-        Upload a CSV or XLSX file with employee or caregiver data.
-        The file will be saved to S3 with current datetime and copied as latest.csv.
+        Upload a CSV or XLSX file with employee/caregiver or physician data.
+        If file contains NPI column, it will be processed as physician data.
+        Otherwise, it will be processed as employee data.
         """
         if 'file' not in request.files:
             return get_failure_response("No file provided", status_code=400)
@@ -50,16 +53,48 @@ class EmployeeListUpload(Resource):
             temp_file_path = temp_file.name
 
         try:
+            # Detect file category by checking for NPI column
+            file_category = "employee"  # default
+            
+            if file_extension == '.xlsx':
+                workbook = load_workbook(temp_file_path, data_only=True)
+                worksheet = workbook.active
+                
+                # Check first 10 rows for header row with NPI
+                for row in worksheet.iter_rows(max_row=10, values_only=True):
+                    if row and any(cell and 'npi' in str(cell).lower() for cell in row):
+                        file_category = "physician"
+                        break
+            else:
+                # CSV file
+                with open(temp_file_path, 'r', encoding='utf-8') as csv_file:
+                    reader = csv.reader(csv_file)
+                    # Check first 10 rows for header row with NPI
+                    for i, row in enumerate(reader):
+                        if i >= 10:
+                            break
+                        if row and any(cell and 'npi' in cell.lower() for cell in row):
+                            file_category = "physician"
+                            break
+            
             # Upload file to S3
             employee_service = EmployeeService(config)
-            upload_result = employee_service.upload_employee_list(organization.entity_id, person.entity_id, temp_file_path, original_filename=file.filename, file_id=file_id)
+            upload_result = employee_service.upload_list_file(
+                organization_id=organization.entity_id, 
+                person_id=person.entity_id, 
+                file_path=temp_file_path,
+                file_category=file_category,
+                file_id=file_id,
+                original_filename=file.filename
+            )
 
             # Clean up temporary file
             os.unlink(temp_file_path)
             
             return get_success_response(
-                message="File uploaded successfully",
-                upload_info=upload_result
+                message=f"File uploaded successfully as {file_category} data",
+                upload_info=upload_result,
+                file_category=file_category
             )
 
         except Exception as e:
@@ -71,7 +106,6 @@ class EmployeeListUpload(Resource):
                 f"Error uploading file: {str(e)}",
                 status_code=500
             )
-
 
 @employee_api.route('/matches')
 class EmployeeListMatches(Resource):
