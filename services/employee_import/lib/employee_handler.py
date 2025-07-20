@@ -31,7 +31,7 @@ class EmployeeHandler:
         required_headers = [
             'first name', 
             'last name', 
-            ('employee id', 'caregiver id', 'employee_id', 'caregiver_id')
+            ('employee id', 'caregiver id', 'employee_id', 'caregiver_id', 'npi')
         ]
         
         workbook = load_workbook(file_path, data_only=True)
@@ -147,13 +147,13 @@ class EmployeeHandler:
             return result
 
 
-    def process_employee_list(self, key):
+    def process_employee_list(self, key, file_category):
         """
-        Process an employee CSV or XLSX file from S3
+        Process an employee or physician CSV or XLSX file from S3
         
         Args:
-            bucket (str): S3 bucket name
             key (str): S3 object key
+            file_category (str): Either "employee" or "physician"
             
         Returns:
             bool: True if successful, False otherwise
@@ -190,10 +190,15 @@ class EmployeeHandler:
                 )
                 return False
             
-            logger.info(f"Found {len(rows)} employee records in file")
+            logger.info(f"Found {len(rows)} {file_category} records in file")
             
             # Import new data
-            import_count = self.employee_service.bulk_import_employees(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
+            if file_category == "physician":
+                from common.services.physician import PhysicianService
+                physician_service = PhysicianService(self.config)
+                import_count = physician_service.bulk_import_physicians(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
+            else:
+                import_count = self.employee_service.bulk_import_employees(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
             employees_file.record_count = import_count
             self.employees_file_service.update_status(employees_file, CurrentEmployeesFileStatusEnum.IMPORTED)
 
