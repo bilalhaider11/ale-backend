@@ -25,6 +25,7 @@ class EmployeeService:
         self.s3_client = S3ClientService()
         self.bucket_name = config.AWS_S3_BUCKET_NAME
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
+        self.physicians_prefix = f"{config.AWS_S3_KEY_PREFIX}physicians-list/"
 
     def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> bool:
         """Import CSV data into employee table using batch processing"""
@@ -81,19 +82,28 @@ class EmployeeService:
         return count
 
 
-    def upload_employee_list(self, organization_id, person_id, file_path, file_id=None, original_filename=None):
+    def upload_list_file(self, organization_id, person_id, file_path, file_category, file_id=None, original_filename=None):
         """
-        Upload a CSV or XLSX file to S3 bucket under employees-list/ prefix.
-        Creates a timestamped file: employees-list/<organization_id>/<timestamp>.<extension>
+        Upload a CSV or XLSX file to S3 bucket under the appropriate prefix based on file category.
+        Creates a timestamped file in the appropriate S3 location.
         
         Args:
+            organization_id (str): The ID of the organization
+            person_id (str): The ID of the person uploading the file
             file_path (str): Local path to the CSV or XLSX file
-            original_filename (str): Original filename to store in metadata
+            file_category (str): Type of file - "employee" or "physician"
+            file_id (str, optional): ID to use for the file, if None a new UUID will be generated
+            original_filename (str, optional): Original filename to store in metadata
         
         Returns:
             dict: Information about the uploaded file including key and URL
         """
-        logger.info(f"Uploading employee list file: {file_path} for organization: {organization_id}")
+        # Determine which prefix to use based on file category
+        s3_prefix = self.employees_prefix
+        if file_category == "physician":
+            s3_prefix = self.physicians_prefix
+        
+        logger.info(f"Uploading {file_category} list file: {file_path} for organization: {organization_id}")
 
         if file_id is None:
             file_id = uuid.uuid4().hex
@@ -107,7 +117,7 @@ class EmployeeService:
         content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_type == 'xlsx' else 'text/csv'
         
         # Define S3 key for timestamped file
-        file_id_key = f"{self.employees_prefix}{organization_id}/{file_id}"
+        file_id_key = f"{s3_prefix}{organization_id}/{file_id}"
 
         # Prepare metadata
         metadata = {
@@ -131,7 +141,8 @@ class EmployeeService:
             s3_key=file_id_key,
             uploaded_at=datetime.now(),
             uploaded_by=person_id,
-            status=CurrentEmployeesFileStatusEnum.PENDING
+            status=CurrentEmployeesFileStatusEnum.PENDING,
+            file_category=file_category
         )
 
         # Save file metadata to database
@@ -152,8 +163,7 @@ class EmployeeService:
             "file_metadata": saved_file
         }
 
-        return result
-
+        return result    
 
     def get_employee_by_id(self, employee_id: str, organization_id: str) -> Employee:
         """

@@ -27,8 +27,8 @@ class EmployeeExclusionMatchService:
         """Get all employee exclusion matches"""
         return self.employee_exclusion_match_repo.get_all_count(organization_id=organization_id)
 
-    def update_exclusion_match(self, employee_id: str, organization_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
-        matches = self.employee_exclusion_match_repo.get_many({"employee_id": employee_id, "organization_id": organization_id})
+    def update_exclusion_match(self, matched_entity_id: str, matched_entity_type: str, organization_id: str, reviewer: Person, reviewer_notes: str=None, status: str=None):
+        matches = self.employee_exclusion_match_repo.get_many({"matched_entity_id": matched_entity_id, "matched_entity_type": matched_entity_type, "organization_id": organization_id})
         if not matches:
             raise APIException("Match object not found")
 
@@ -60,10 +60,14 @@ class EmployeeExclusionMatchService:
         
         return match
 
-    def get_matches_by_employee_id(self, organization_id: str, employee_id: str) -> List[EmployeeExclusionMatch]:
-        """Get all exclusion matches for a employee by their ID"""
-        matches = self.employee_exclusion_match_repo.get_many({"employee_id": employee_id, "organization_id": organization_id})
+    def get_matches_by_entity(self, organization_id: str, entity_id: str, entity_type: str) -> List[EmployeeExclusionMatch]:
+        """Get all exclusion matches for an entity by their ID and type"""
+        matches = self.employee_exclusion_match_repo.get_many({"matched_entity_id": entity_id, "matched_entity_type": entity_type, "organization_id": organization_id})
         if not matches:
-            raise APIException("No matches found for the given employee ID")
+            raise APIException(f"No matches found for the given {entity_type} ID")
 
         return matches
+    
+    def get_matches_by_employee_id(self, organization_id: str, employee_id: str) -> List[EmployeeExclusionMatch]:
+        """Get all exclusion matches for a employee by their ID"""
+        return self.get_matches_by_entity(organization_id, employee_id, 'employee')
