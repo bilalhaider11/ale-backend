@@ -15,7 +15,8 @@ class EmployeeExclusionMatch(VersionedModel):
     exclusion_date: Optional[date] = None
     match_type: Optional[str] = None
     status: str = 'pending'
-    employee_id: Optional[str] = None
+    matched_entity_type: Optional[str] = None
+    matched_entity_id: Optional[str] = None
     oig_exclusion_id: Optional[str] = None
     reviewer_notes: Optional[str] = None
     reviewer_id: Optional[str] = None
