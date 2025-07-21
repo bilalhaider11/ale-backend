@@ -6,7 +6,7 @@ from common.app_logger import logger
 
 def setup_employee_import_queue():
     """
-    Set up the SQS queue and S3 notification for employee and caregiver imports
+    Set up the SQS queue and S3 notification for employee and physician imports
     
     Returns:
         dict: Information about the created resources
@@ -22,6 +22,7 @@ def setup_employee_import_queue():
     queue_name = config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME
     bucket_name = config.AWS_S3_BUCKET_NAME
     employee_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
+    physician_prefix = f"{config.AWS_S3_KEY_PREFIX}physicians-list/"
     
     # Step 1: Create or get the SQS queue
     try:
@@ -47,20 +48,27 @@ def setup_employee_import_queue():
     )
     queue_arn = attrs['Attributes']['QueueArn']
     
-    # Step 2: Set up S3 notifications for both prefixes
+    # Step 2: Set up S3 notifications for employee and physician prefixes
     employee_setup_result = setup_s3_to_sqs_notification(
         bucket_name=bucket_name,
         queue_name=queue_name,
         s3_prefix_filter=employee_prefix
     )
     
-    logger.info(f"Employee and caregiver import queue setup complete")
+    physician_setup_result = setup_s3_to_sqs_notification(
+        bucket_name=bucket_name,
+        queue_name=queue_name,
+        s3_prefix_filter=physician_prefix
+    )
+    
+    logger.info(f"Employee and physician import queue setup complete")
     
     return {
         'QueueUrl': queue_url,
         'QueueArn': queue_arn,
         'QueueName': queue_name,
-        'EmployeeS3Setup': employee_setup_result
+        'EmployeeS3Setup': employee_setup_result,
+        'PhysicianS3Setup': physician_setup_result
     }
 
 

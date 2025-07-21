@@ -69,3 +69,105 @@ class PersonRepository(BaseRepository):
 
         logger.info(f"Upserting person records for employees completed: %s records inserted, %s records updated, %s records unchanged.", result['inserted'], result['updated'], result['unchanged'])
         return result
+
+    def get_persons_by_ids(self, person_ids: list) -> dict:
+        """
+        Get multiple persons by their entity IDs.
+        
+        Args:
+            person_ids: List of person entity IDs
+            
+        Returns:
+            dict: Map of entity_id to Person object
+        """
+        if not person_ids:
+            return {}
+        
+        # Build SQL query with parameterized placeholders
+        placeholders = ', '.join(['%s'] * len(person_ids))
+        query = f"""
+            SELECT * FROM person 
+            WHERE entity_id IN ({placeholders})
+        """
+        
+        # Execute query and fetch results
+        persons = {}
+        try:
+            with self.adapter:
+                results = self.adapter.execute_query(query, person_ids)
+            
+            # Convert results to Person objects
+            for row in results:
+                person = self.MODEL(**row)
+                persons[person.entity_id] = person
+                        
+        except Exception as e:
+            logger.error(f"Error fetching persons by IDs: {e}")
+            raise
+        
+        return persons
+
+    def upsert_persons_from_physicians(self, physician_records: list, user_id: str) -> dict:
+        """
+        Bulk upsert person records for physicians.
+        
+        Args:
+            physician_records: List of Physician instances to process
+            organization_id: Organization ID
+            user_id: User making the changes
+            
+        Returns:
+            dict: Map of NPI to person_id
+        """
+        logger.info(f"Upserting person records for %s physicians...", len(physician_records))
+        
+        # Get all persons with person_ids from physician records
+        person_ids = [p.person_id for p in physician_records if p.person_id]
+        existing_persons = self.get_persons_by_ids(person_ids)
+        
+        npi_to_person_id = {}
+        persons_to_save = []
+        
+        for physician in physician_records:
+            if not physician.national_provider_identifier:
+                continue
+                
+            # Extract name from physician record (assuming these fields exist)
+            first_name = getattr(physician, 'first_name', None)
+            last_name = getattr(physician, 'last_name', None)
+            
+            if physician.person_id and physician.person_id in existing_persons:
+                # Update existing person if needed
+                person = existing_persons[physician.person_id]
+                updated = False
+                
+                if first_name and person.first_name != first_name:
+                    person.first_name = first_name
+                    updated = True
+                if last_name and person.last_name != last_name:
+                    person.last_name = last_name
+                    updated = True
+                    
+                if updated:
+                    person.changed_by_id = user_id
+                    persons_to_save.append(person)
+                    
+                npi_to_person_id[physician.national_provider_identifier] = physician.person_id
+                
+            elif first_name or last_name:
+                # Create new person
+                new_person = Person(
+                    first_name=first_name,
+                    last_name=last_name,
+                    changed_by_id=user_id
+                )
+                persons_to_save.append(new_person)
+                npi_to_person_id[physician.national_provider_identifier] = new_person.entity_id
+        
+        # Batch save all persons
+        if persons_to_save:
+            for person in persons_to_save:
+                self.save(person)
+        
+        logger.info(f"Upserted %s person records", len(persons_to_save))
+        return npi_to_person_id

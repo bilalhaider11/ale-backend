@@ -13,6 +13,7 @@ class ListImportHandler:
         self.config = config
         self.employee_handler = EmployeeHandler(config)
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
+        self.physicians_prefix = f"{config.AWS_S3_KEY_PREFIX}physicians-list/"
         
     def process_list_file(self, bucket, key):
         """
@@ -27,11 +28,15 @@ class ListImportHandler:
         """
         if key.startswith(self.employees_prefix):
             logger.info(f"Processing employee list file: {bucket}/{key}")
-            import_success = self.employee_handler.process_employee_list(key)
+            import_success = self.employee_handler.process_employee_list(key, "employee")
             if import_success:
                 self.trigger_match_service(key)
-
-        elif not key.startswith(self.employees_prefix):
+        elif key.startswith(self.physicians_prefix):
+            logger.info(f"Processing physician list file: {bucket}/{key}")
+            import_success = self.employee_handler.process_employee_list(key, "physician")
+            if import_success:
+                self.trigger_match_service(key)
+        else:
             logger.info(f"Unknown prefix for list file: {key}")
 
 

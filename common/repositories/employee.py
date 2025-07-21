@@ -184,15 +184,17 @@ class EmployeeRepository(BaseRepository):
 
     def get_employees_with_matches(self, organization_id: str):
         """
-        Get all employees with their exclusion match counts.
+        Get all employees and physicians with their exclusion match counts.
 
         Args:
             organization_id: The organization ID to filter by
 
         Returns:
-            List[Employee]: List of Employee instances with match details
+            List[dict]: List of entity dictionaries with match details
+                    Each dictionary has an 'entity_type' field that is either 'employee' or 'physician'
         """
-        query = """
+        # First, get the employee matches
+        employee_query = """
             SELECT e.*,
                    CASE 
                        WHEN COUNT(CASE WHEN eem.match_type = 'name_and_dob' THEN 1 END) > 0 
@@ -206,17 +208,46 @@ class EmployeeRepository(BaseRepository):
                        ELSE 'handled'
                    END as status
             FROM employee e
-                INNER JOIN employee_exclusion_match eem ON e.entity_id = eem.employee_id
-                WHERE e.organization_id = %s
+                INNER JOIN employee_exclusion_match eem ON e.entity_id = eem.matched_entity_id
+                WHERE e.organization_id = %s AND eem.matched_entity_type = 'employee'
                 GROUP BY e.entity_id
         """
 
         with self.adapter:
-            result = self.adapter.execute_query(query, (organization_id,))
+            employee_results = self.adapter.execute_query(employee_query, (organization_id,))
 
-        if result:
-            employees = []
-            for row in result:
+        # Now, get the physician matches - we'll use a direct SQL query
+        physician_query = """
+            SELECT p.*,
+                per.first_name,
+                per.last_name,
+                CASE
+                    WHEN COUNT(CASE WHEN eem.match_type = 'name_and_dob' THEN 1 END) > 0
+                    THEN 'name_and_dob'
+                    ELSE 'name_only'
+                END AS match_type,
+                COUNT(eem.entity_id) AS match_count,
+                CASE
+                    WHEN COUNT(CASE WHEN eem.status = 'pending' THEN 1 END) > 0
+                    THEN 'pending'
+                    ELSE 'handled'
+                END AS status
+            FROM physician p
+            INNER JOIN person per ON p.person_id = per.entity_id
+            INNER JOIN employee_exclusion_match eem ON p.entity_id = eem.matched_entity_id
+            WHERE p.organization_id = %s
+            AND eem.matched_entity_type = 'physician'
+            GROUP BY p.entity_id, per.first_name, per.last_name
+        """
+
+        with self.adapter:
+            physician_results = self.adapter.execute_query(physician_query, (organization_id,))
+
+        results = []
+
+        # Process employee results
+        if employee_results:
+            for row in employee_results:
                 # Extract match_type and match_count from the row
                 match_type = row.pop('match_type')
                 match_count = row.pop('match_count')
@@ -226,16 +257,40 @@ class EmployeeRepository(BaseRepository):
                 employee = Employee(**row)
 
                 # Add match_type and match_count as attributes
-                employee = employee.as_dict()
-                employee['match_type'] = match_type
-                employee['match_count'] = match_count
-                employee['status'] = match_status
+                employee_dict = employee.as_dict()
+                employee_dict['match_type'] = match_type
+                employee_dict['match_count'] = match_count
+                employee_dict['status'] = match_status
+                employee_dict['entity_type'] = 'employee'
 
-                employees.append(employee)
+                results.append(employee_dict)
 
-            return employees
+        # Process physician results
+        if physician_results:
+            for row in physician_results:
+                # Extract match_type, match_count, and names from the row
+                match_type = row.pop('match_type')
+                match_count = row.pop('match_count')
+                match_status = row.pop('status')
+                first_name = row.pop('first_name', None)
+                last_name = row.pop('last_name', None)
 
-        return []
+                # Create a dictionary from the row
+                physician_dict = dict(row)
+                physician_dict['match_type'] = match_type
+                physician_dict['match_count'] = match_count
+                physician_dict['status'] = match_status
+                physician_dict['entity_type'] = 'physician'
+                
+                # Add names from person record if available
+                if first_name:
+                    physician_dict['first_name'] = first_name
+                if last_name:
+                    physician_dict['last_name'] = last_name
+
+                results.append(physician_dict)
+
+        return results
 
 
     def get_employees_with_invitation_status(self, organization_id: str):

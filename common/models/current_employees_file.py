@@ -20,7 +20,7 @@ class CurrentEmployeesFileStatusEnum(str, Enum):
     def values(cls):
         return [v.value for v in cls.__members__.values() if isinstance(v, cls)]
 
-@dataclass
+@dataclass(kw_only=True)
 class CurrentEmployeesFile(VersionedModel):
     use_type_checking: ClassVar[bool] = True
 
@@ -34,3 +34,4 @@ class CurrentEmployeesFile(VersionedModel):
     status: Optional[str] = None
     error_message: Optional[str] = None
     record_count: Optional[int] = None
+    file_category: Optional[str] = None  # 'employee' or 'physician'
