@@ -76,7 +76,7 @@ class Config(BaseConfig):
     def DEFAULT_USER_PASSWORD(self):
         import random, string
         if self.APP_ENV == "production":
-            return ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+            return 'P!'.join(random.choices(string.ascii_letters + string.digits, k=12))
         else:
             return 'Default@Password123'
 
