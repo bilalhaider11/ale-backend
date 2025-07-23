@@ -2,8 +2,8 @@
   "configurations": [
     {
       "provider": "mailjet",
-      "sourceEmail": "ALE Healthtech <system@alehealthtech.com>",
-      "errorReportingEmail": "ahmadhassanminnhas@gmail.com"
+      "sourceEmail": "ALE Homecare Solutions <system@alehomehealth.com>",
+      "errorReportingEmail": "jay@alehealthtech.com"
     }
   ],
   "events": {
