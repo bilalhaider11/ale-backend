@@ -31,3 +31,11 @@ class Employee(VersionedModel):
     caregiver_tags: Optional[str] = None
     social_security_number: Optional[str] = None
     person_id: Optional[str] = None
+
+
+    def validate_date_of_birth(self):
+        """
+        If date_of_birth is empty, it sets it to None.
+        """
+        if not self.date_of_birth:
+            self.date_of_birth = None

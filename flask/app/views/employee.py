@@ -11,6 +11,7 @@ from common.services.employee import EmployeeService
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
 from app.helpers.decorators import login_required, organization_required
 from common.models.person_organization_role import PersonOrganizationRoleEnum
+from common.models import Employee
 from common.services import (
     PersonOrganizationInvitationService,
     PersonService,
@@ -139,7 +140,7 @@ class EmployeeAdmin(Resource):
         )
 
 @employee_api.route('')
-class Employee(Resource):
+class EmployeeResource(Resource):
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.EMPLOYEE])
@@ -151,6 +152,78 @@ class Employee(Resource):
             message="Employee rerieved successfully",
             data=employee
         )
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person, organization):
+        """
+        Update or create an employee record.
+        """
+        employee_service = EmployeeService(config)
+        person_service = PersonService(config)
+        
+        # Parse request body
+        parsed_body = parse_request_body(request, [
+            'entity_id',
+            'first_name',
+            'last_name',
+            'employee_id',
+            'date_of_birth',
+            'email_address',
+            'social_security_number',
+        ])
+
+        entity_id = parsed_body.pop('entity_id', None)
+        date_of_birth = parsed_body.pop('date_of_birth', None)
+        email_address = parsed_body.pop('email_address', None)
+        social_security_number = parsed_body.pop('social_security_number', None)
+
+        validate_required_fields(parsed_body)
+        
+        if entity_id:
+            # Update existing employee
+            employee = employee_service.get_employee_by_id(entity_id, organization.entity_id)
+            if not employee:
+                return get_failure_response("Employee not found", status_code=200)
+            
+            employee.first_name = parsed_body['first_name']
+            employee.last_name = parsed_body['last_name']
+            employee.employee_id = parsed_body['employee_id']
+            employee.date_of_birth = date_of_birth
+            employee.email_address = email_address
+            employee.social_security_number = social_security_number
+
+            if employee.person_id:
+                person = person_service.get_person_by_id(employee.person_id)
+                if person and (person.first_name != employee.first_name or person.last_name != employee.last_name):
+                    person.first_name = employee.first_name
+                    person.last_name = employee.last_name
+                    person_service.save_person(person)
+
+            employee = employee_service.save_employee(employee)
+            action = "updated"
+
+        else:
+            employee = Employee(
+                first_name=parsed_body['first_name'],
+                last_name=parsed_body['last_name'],
+                employee_id=parsed_body['employee_id'],
+                date_of_birth=date_of_birth,
+                email_address=email_address,
+                social_security_number=social_security_number,
+                organization_id=organization.entity_id
+            )
+
+            employee = employee_service.save_employee(employee)
+
+            action = "created"
+        
+        employee_service.trigger_match_for_employee(employee.entity_id)
+        return get_success_response(
+            message=f"Employee {action} successfully",
+            data=employee.as_dict()
+        )
+
 
 @employee_api.route('/invite')
 class EmployeeInvite(Resource):
