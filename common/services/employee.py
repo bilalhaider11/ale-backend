@@ -10,6 +10,7 @@ from common.models.current_employees_file import CurrentEmployeesFile, CurrentEm
 from common.services.s3_client import S3ClientService
 from common.services.current_employees_file import CurrentEmployeesFileService
 from common.helpers.csv_utils import get_first_matching_column_value
+from common.tasks.send_message import send_message
 
 logger = get_logger(__name__)
 
@@ -165,19 +166,19 @@ class EmployeeService:
 
         return result    
 
-    def get_employee_by_id(self, employee_id: str, organization_id: str) -> Employee:
+    def get_employee_by_id(self, entity_id: str, organization_id: str) -> Employee:
         """
         Retrieve an employee record by employee ID.
         
         Args:
-            employee_id (str): The unique identifier for the employee.
+            entity_id (str): The unique identifier for the employee.
             organization_id (str): The ID of the organization to filter by.
         
         Returns:
             Employee: The employee record if found, otherwise None.
         """
         return self.employee_repo.get_one({
-            'entity_id': employee_id,
+            'entity_id': entity_id,
             'organization_id': organization_id
         })
 
@@ -249,3 +250,17 @@ class EmployeeService:
             Employee: The saved employee object with updated entity_id.
         """
         return self.employee_repo.save(employee)
+
+    def trigger_match_for_employee(self, entity_id: str):
+        logger.info("Triggering matching process for employee: %s", entity_id)
+        logger.info("Sending message to queue: %s",
+            self.config.PREFIXED_EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME
+        )
+        send_message(
+            queue_name=self.config.PREFIXED_EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME,
+            data={
+                'action': 'match_exclusions',
+                'source': 'employee_creation',
+                'employee_id': entity_id
+            }
+        )

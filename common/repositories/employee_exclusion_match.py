@@ -51,6 +51,37 @@ class EmployeeExclusionMatchRepository(BaseRepository):
         return None
 
 
+    def find_exclusion_matches_for_employee(self, employee_id: str) -> List[EmployeeExclusionMatch]:
+        query = """
+            SELECT 
+                COALESCE(p.first_name, ec.first_name) AS first_name,
+                COALESCE(p.last_name, ec.last_name) AS last_name,
+                oig.date_of_birth,
+                oig.exclusion_type,
+                oig.exclusion_date,
+                'employee' AS matched_entity_type,
+                ec.entity_id AS matched_entity_id,
+                oig.id AS oig_exclusion_id,
+                ec.organization_id,
+                CASE 
+                    WHEN ec.date_of_birth = oig.date_of_birth THEN 'name_and_dob'
+                    ELSE 'name_only'
+                END AS match_type
+            FROM employee ec
+            LEFT JOIN person p ON ec.person_id IS NOT NULL AND p.entity_id = ec.person_id
+            JOIN oig_employees_exclusion oig ON 
+                LOWER(COALESCE(p.first_name, ec.first_name)) = LOWER(oig.first_name) AND
+                LOWER(COALESCE(p.last_name, ec.last_name)) = LOWER(oig.last_name)
+            WHERE ec.entity_id = %s
+        """
+        params = (employee_id,)
+
+        with self.adapter:
+            results = self.adapter.execute_query(query, params)
+
+        return [EmployeeExclusionMatch(**row) for row in results] if results else []
+
+
     def find_exclusion_matches(self, organization_id: str = None) -> List[EmployeeExclusionMatch]:
         """
         Finds matches between employees/caregivers/physicians and OIG exclusion list.
@@ -66,8 +97,8 @@ class EmployeeExclusionMatchRepository(BaseRepository):
         # Build the base query for employees
         employee_query = """
             SELECT 
-                ec.first_name,
-                ec.last_name,
+                COALESCE(p.first_name, ec.first_name) AS first_name,
+                COALESCE(p.last_name, ec.last_name) AS last_name,
                 oig.date_of_birth,
                 oig.exclusion_type,
                 oig.exclusion_date,
@@ -80,9 +111,10 @@ class EmployeeExclusionMatchRepository(BaseRepository):
                     ELSE 'name_only'
                 END AS match_type
             FROM employee ec
-            INNER JOIN oig_employees_exclusion oig ON 
-                LOWER(ec.first_name) = LOWER(oig.first_name) AND
-                LOWER(ec.last_name) = LOWER(oig.last_name)
+            LEFT JOIN person p ON ec.person_id IS NOT NULL AND p.entity_id = ec.person_id
+            JOIN oig_employees_exclusion oig ON 
+                LOWER(COALESCE(p.first_name, ec.first_name)) = LOWER(oig.first_name) AND
+                LOWER(COALESCE(p.last_name, ec.last_name)) = LOWER(oig.last_name)
         """
         
         # Add organization filter if provided
