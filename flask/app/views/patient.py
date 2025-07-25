@@ -26,9 +26,13 @@ class PatientList(Resource):
         patients = patient_service.get_all_patients_for_organization(organization.entity_id)
         
         return get_success_response(
-            patients=[patient.as_dict() for patient in patients],
+            patients=patients,
             count=len(patients)
         )
+        # return get_success_response(
+        #     patients=[patient.as_dict() for patient in patients],
+        #     count=len(patients)
+        # )
 
 @patient_api.route('/upload')
 class PatientFileUpload(Resource):
@@ -118,7 +122,7 @@ class PatientCreate(Resource):
             
             return get_success_response(
                 message="Patient created successfully",
-                patient=created_patient.as_dict()
+                patient=created_patient.as_dict(convert_datetime_to_iso_string=True, convert_uuids=True)
             )
             
         except Exception as e:
