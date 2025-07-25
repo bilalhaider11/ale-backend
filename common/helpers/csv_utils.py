@@ -40,7 +40,7 @@ def get_first_matching_column_value(
     return None
 
 
-def parse_date(date_str) -> Optional[date]:
+def parse_date(date_str: str) -> Optional[date]:
     """Parse date string to date object"""
     if not date_str or date_str == '':
         return None

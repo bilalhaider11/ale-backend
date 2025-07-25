@@ -69,7 +69,8 @@ class RepoType(Enum):
     CURRENT_EMPLOYEES_FILE = auto()
     AVAILABILITY_SLOT = auto()
     PHYSICIAN = auto()
-
+    PATIENT = auto()
+    PATIENTS_FILE = auto()
 
 class RepositoryFactory:
 
@@ -90,7 +91,9 @@ class RepositoryFactory:
         RepoType.EMPLOYEE_EXCLUSION_MATCH: EmployeeExclusionMatchRepository,
         RepoType.CURRENT_EMPLOYEES_FILE: CurrentEmployeesFileRepository,
         RepoType.AVAILABILITY_SLOT: AvailabilitySlotRepository,
-        RepoType.PHYSICIAN: PhysicianRepository
+        RepoType.PHYSICIAN: PhysicianRepository,
+        RepoType.PATIENT: PatientRepository,
+        RepoType.PATIENTS_FILE: PatientsFileRepository,
     }
 
     def get_db_connection(self):

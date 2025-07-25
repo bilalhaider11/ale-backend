@@ -12,3 +12,5 @@ from .employee_exclusion_match import EmployeeExclusionMatchRepository
 from .current_employees_file import CurrentEmployeesFileRepository
 from .availability_slot import AvailabilitySlotRepository
 from .physician import PhysicianRepository
+from .patient import PatientRepository
+from .patients_file import PatientsFileRepository

@@ -1,4 +1,5 @@
 import uuid
+from typing import List, Dict
 from common.repositories.base import BaseRepository
 from common.models.person import Person
 from common.app_logger import get_logger
@@ -171,3 +172,46 @@ class PersonRepository(BaseRepository):
         
         logger.info(f"Upserted %s person records", len(persons_to_save))
         return npi_to_person_id
+
+    def upsert_persons_from_patients(self, patients: List, user_id: str) -> Dict[str, str]:
+        """
+        Bulk upsert persons from patient data and return SSN to person_id mapping.
+        
+        Args:
+            patients: List of Patient objects with temporary first_name and last_name attributes
+            user_id: ID of the user making the changes
+            
+        Returns:
+            Dict mapping SSN to person_id
+        """
+        ssn_to_person_id = {}
+        
+        for patient in patients:
+            if not (hasattr(patient, 'first_name') or hasattr(patient, 'last_name')):
+                continue
+                
+            # Check if person already exists (if patient has person_id)
+            if patient.person_id:
+                person = self.get_one({"entity_id": patient.person_id})
+                if person:
+                    # Update existing person
+                    person.first_name = getattr(patient, 'first_name', person.first_name)
+                    person.last_name = getattr(patient, 'last_name', person.last_name)
+                    person.changed_by_id = user_id
+                    self.save(person)
+                    if patient.social_security_number:
+                        ssn_to_person_id[patient.social_security_number] = person.entity_id
+                    continue
+            
+            # Create new person
+            person = Person(
+                first_name=getattr(patient, 'first_name', None),
+                last_name=getattr(patient, 'last_name', None),
+                changed_by_id=user_id
+            )
+            saved_person = self.save(person)
+            
+            if patient.social_security_number:
+                ssn_to_person_id[patient.social_security_number] = saved_person.entity_id
+        
+        return ssn_to_person_id
