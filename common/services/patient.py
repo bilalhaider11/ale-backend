@@ -1,0 +1,244 @@
+from typing import List, Dict, Optional
+from datetime import date, datetime, timedelta
+import os
+import uuid
+from common.helpers.csv_utils import parse_date
+from common.app_logger import get_logger
+from common.repositories.factory import RepositoryFactory, RepoType
+from common.models.patient import Patient
+from common.services.s3_client import S3ClientService
+from common.helpers.csv_utils import get_first_matching_column_value, parse_date_string
+from common.services.patients_file import PatientsFileService
+from common.models.patients_file import PatientsFile, PatientsFileStatusEnum
+from common.services.person import PersonService
+
+logger = get_logger(__name__)
+
+class PatientService:
+    
+    def __init__(self, config, person_id=None):
+        self.config = config
+        self.repository_factory = RepositoryFactory(config)
+        self.patient_repo = self.repository_factory.get_repository(RepoType.PATIENT, message_queue_name="")
+        self.person_repo = self.repository_factory.get_repository(RepoType.PERSON, message_queue_name="")
+        self.s3_client = S3ClientService()
+        self.bucket_name = config.AWS_S3_BUCKET_NAME
+        self.patients_prefix = f"{config.AWS_S3_KEY_PREFIX}patients-list/" 
+        self.patient_file_service = PatientsFileService(config)
+        self.person_service = PersonService(config)
+
+    def bulk_import_patients(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> int:
+        """Import CSV data into patient table using batch processing."""
+        record_count = len(rows)
+        logger.info(f"Processing {record_count} patient records...")
+
+        # Get all existing patients for this organization
+        existing_patients = self.patient_repo.get_many({"organization_id": organization_id})
+        
+        # Create a map of SSN to patient for quick lookup
+        existing_patients_map = {}
+        if existing_patients:
+            for patient in existing_patients:
+                if patient.social_security_number:
+                    existing_patients_map[patient.social_security_number] = patient
+
+        # Temporary structure to hold patient data with names
+        patient_data = []
+        for row in rows:
+            first_name = get_first_matching_column_value(row, ["first name", "first_name"])
+            last_name = get_first_matching_column_value(row, ["last name", "last_name"])
+            dob_raw = get_first_matching_column_value(row, ["date of birth", "date_of_birth", "dob"])
+            ssn = get_first_matching_column_value(row, ["social security number", "ssn"], match_mode="contains")
+
+            if not ssn:
+                logger.warning(f"Skipping row without SSN: {row}")
+                continue
+
+            date_of_birth = parse_date(dob_raw)
+
+            patient_data.append({
+                'ssn': ssn,
+                'first_name': first_name,
+                'last_name': last_name,
+                'date_of_birth': date_of_birth,
+                'existing_patient': existing_patients_map.get(ssn)
+            })
+
+        # Create temporary patient objects with name data
+        temp_patients = []
+        for data in patient_data:
+            patient = Patient(
+                changed_by_id=user_id,
+                date_of_birth=data['date_of_birth'],
+                social_security_number=data['ssn'],
+                organization_id=organization_id,
+                person_id=data['existing_patient'].person_id if data['existing_patient'] else None
+            )
+            # Temporarily store name data on patient object
+            patient.first_name = data['first_name']
+            patient.last_name = data['last_name']
+            temp_patients.append(patient)
+
+        # Bulk upsert persons and get SSN to person_id mapping
+        ssn_to_person_id = self.person_repo.upsert_persons_from_patients(temp_patients, user_id)
+
+        # Now create final patient records with person_ids
+        records = []
+        for data in patient_data:
+            existing = data['existing_patient']
+            
+            record = Patient(
+                changed_by_id=user_id,
+                date_of_birth=data['date_of_birth'],
+                social_security_number=data['ssn'],
+                organization_id=organization_id,
+                person_id=ssn_to_person_id.get(data['ssn']) or (existing.person_id if existing else None)
+            )
+            
+            # If patient exists, preserve the care-related fields
+            if existing:
+                record.care_period_start = existing.care_period_start
+                record.care_period_end = existing.care_period_end
+                record.weekly_quota = existing.weekly_quota
+                record.current_week_remaining_quota = existing.current_week_remaining_quota
+            
+            records.append(record)
+
+        count = len(records)
+        if count:
+            self.patient_repo.upsert_patients(records, organization_id)
+
+        logger.info(f"Successfully imported {count} patient records")
+        return count
+
+    def upload_patient_list(self, organization_id: str, person_id: str, file_path: str, original_filename: str = None, file_id=None) -> Dict:
+        """
+        Upload a patient list file to S3
+        
+        Args:
+            organization_id (str): Organization ID
+            person_id (str): ID of the person uploading the file
+            file_path (str): Local path to the file
+            file_id (str, optional): ID to use for the file, if None a new UUID will be generated
+            original_filename (str): Original filename
+            
+        Returns:
+            Dict: Information about the uploaded file
+        """
+        logger.info(f"Uploading patient list for organization: {organization_id}")
+        
+        if file_id is None:
+            file_id = uuid.uuid4().hex
+
+        # Generate timestamp for file naming
+        timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+
+        # Determine file extension and file type
+        file_extension = '.xlsx' if file_path.lower().endswith('.xlsx') else '.csv'
+        file_type = 'xlsx' if file_path.lower().endswith('.xlsx') else 'csv'
+        content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_type == 'xlsx' else 'text/csv'
+        
+        # Define S3 key
+        s3_key = f"{self.patients_prefix}{organization_id}/{file_id}"
+
+        # Prepare metadata
+        metadata = {
+            "upload_date": timestamp,
+            "organization_id": organization_id,
+            "uploaded_by": person_id
+        }
+        
+        if original_filename:
+            metadata["original_filename"] = original_filename
+        
+        # Upload the file
+        self.s3_client.upload_file(
+            file_path=file_path,
+            s3_key=s3_key,
+            metadata=metadata,
+            content_type=content_type
+        )
+
+        # Get file size
+        file_size = os.path.getsize(file_path)
+
+        # Create CurrentEmployeesFile instance
+        patients_file = PatientsFile(
+            entity_id=file_id,
+            organization_id=organization_id,
+            file_name=original_filename or f"{timestamp}{file_extension}",
+            file_size=file_size,
+            file_type=file_type,
+            s3_key=s3_key,
+            uploaded_at=datetime.now(),
+            uploaded_by=person_id,
+            status=PatientsFileStatusEnum.PENDING,
+        )
+
+        logger.info(f"Patient Object: {patients_file}")
+
+        # # Save file metadata to database
+        saved_file = self.patient_file_service.save_patient_file(patients_file)
+
+        result = {
+            "file": {
+                "url": self.s3_client.generate_presigned_url(s3_key, filename=original_filename or f"{timestamp}{file_extension}"),
+            },
+            "file_metadata": saved_file
+        }
+
+        return result  
+
+    def get_all_patients_for_organization(self, organization_id: str) -> List[Patient]:
+        """
+        Get all patients associated with an organization.
+        
+        Args:
+            organization_id: The organization ID to filter by
+            
+        Returns:
+            List of Patient instances
+        """
+        return self.patient_repo.get_patients_for_organization(organization_id)
+    
+    def create_single_patient(self, organization_id: str, user_id: str, first_name: str, last_name: str, date_of_birth: str, ssn: str) -> Dict:
+ 
+        dob = parse_date(date_of_birth)
+        if not dob:
+            raise ValueError(f"Invalid date format: {date_of_birth}")
+
+        if self.patient_repo.get_many(
+            {"organization_id": organization_id, "social_security_number": ssn}
+        ):
+            raise ValueError(f"Patient with SSN {ssn} already exists in this organization")
+
+        temp = Patient(
+            changed_by_id=user_id,
+            date_of_birth=dob,
+            social_security_number=ssn,
+            organization_id=organization_id,
+        )
+        temp.first_name = first_name
+        temp.last_name = last_name
+
+        ssn_to_pid = self.person_repo.upsert_persons_from_patients([temp], user_id)
+        person_id = ssn_to_pid.get(ssn)
+
+        patient = Patient(
+            changed_by_id=user_id,
+            date_of_birth=dob,
+            social_security_number=ssn,
+            organization_id=organization_id,
+            person_id=person_id,
+        )
+        saved = self.patient_repo.save(patient)
+
+        if person_id:
+            person = self.person_repo.get_one({"entity_id": person_id})
+            if person:
+                saved.first_name = person.first_name
+                saved.last_name = person.last_name
+
+        logger.info("Successfully created patient with ID: %s", saved.entity_id)
+        return saved
+        
