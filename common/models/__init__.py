@@ -13,3 +13,6 @@ from .current_caregiver import CurrentCaregiver
 from .employee_exclusion_match import EmployeeExclusionMatch
 from .current_employees_file import CurrentEmployeesFile, CurrentEmployeesFileStatusEnum
 from .availability_slot import AvailabilitySlot
+from .patient import Patient
+from .patients_file import PatientsFile, PatientsFileStatusEnum
+from .patient_care_slot import PatientCareSlot
