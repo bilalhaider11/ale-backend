@@ -41,12 +41,12 @@ class PatientRepository(BaseRepository):
                 
                 # Create Patient instance
                 patient = Patient(**row)
+                data = patient.as_dict()
                 
-                # Add person fields as attributes (not part of the model)
-                patient.first_name = first_name
-                patient.last_name = last_name
+                data["first_name"] = first_name
+                data["last_name"] = last_name
                 
-                patients.append(patient)
+                patients.append(data)
             
             return patients
         
