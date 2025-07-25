@@ -154,6 +154,22 @@ services:
       postgres:
         condition: service_healthy
 
+  patient_import:
+    image: ${ECR_START_URL}/patient-import:${TAG}
+    container_name: ale_patient_import
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/patient_import/Dockerfile
+    networks:
+      - backnet
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   employee_exclusion_match_service:
     image: ${ECR_START_URL}/employee-exclusion-match-service:${TAG}
     container_name: ale_employee_exclusion_match_service
