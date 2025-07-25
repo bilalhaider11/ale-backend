@@ -50,6 +50,12 @@ bash run.py
 
 ---
 
+### Patient Import
+
+**Description:** Service processes CSV and XLSX files for patients that are uploaded to S3 under the patients-list/ prefix. It automatically updates the patient table with the latest data, maintaining indexed fields to enable fast and efficient patient lookups.
+
+---
+
 ### OIG Update Check
 
 **Description:** Daily cron service that monitors the OIG (Office of Inspector General) exclusions database for updates and automatically imports new data when available. Maintains the `oig_employees_exclusion` table with current exclusion records and tracks check status in `oig_exclusions_check` table.
