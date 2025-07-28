@@ -1,7 +1,8 @@
 import uuid
 
 from common.repositories.base import BaseRepository
-from common.models.employee import Employee
+from common.models import Employee, Person
+from rococo.models import VersionedModel
 from common.app_logger import logger
 
 
@@ -108,6 +109,12 @@ class EmployeeRepository(BaseRepository):
         records_to_insert = []
         records_to_update = []
 
+        from common.services import PersonService
+        from common.app_config import config
+        person_service = PersonService(config)
+
+        person_records_to_insert = []
+
         # Process each record to determine if it should be inserted or updated
         for record in records:
             # Set organization_id if not already set
@@ -130,6 +137,37 @@ class EmployeeRepository(BaseRepository):
                 records_to_update.append(record)
             else:
                 # Record doesn't exist, prepare for insert
+
+                def names_differ(person1, person2):
+                    return (
+                        person1.first_name.strip().lower() != person2.first_name.strip().lower() or
+                        person1.last_name.strip().lower() != person2.last_name.strip().lower()
+                    )
+
+                def create_and_attach_person(record):
+                    person = Person(first_name=record.first_name, last_name=record.last_name)
+                    record.person_id = person.entity_id
+                    person_records_to_insert.append(person)
+                    return person
+
+                # Check if the person needs to be merged.
+                if record.email_address:
+                    existing_person = person_service.get_person_by_email_address(record.email_address)
+
+                    if existing_person:
+                        if names_differ(existing_person, record):
+                            # Email exists but name is different — create and attach new person
+                            create_and_attach_person(record)
+                        else:
+                            # Match found — use existing person
+                            record.person_id = existing_person.entity_id
+                    else:
+                        # Email not found — create new person
+                        create_and_attach_person(record)
+                else:
+                    # No email — create new person
+                    create_and_attach_person(record)
+                
                 records_to_insert.append(record)
 
 
@@ -140,29 +178,36 @@ class EmployeeRepository(BaseRepository):
 
         # Perform batch inserts in chunks
         if records_to_insert:
-            for idx, insert_batch in enumerate(self._batch_employees(records_to_insert, batch_size=100)):
+            for idx, insert_batch in enumerate(self._batch_records(records_to_insert, batch_size=100)):
                 logger.info("Inserting batch %s of size %s", idx + 1, len(insert_batch))
                 inserted_count += self._batch_save_employees(insert_batch)
 
         # Perform batch updates in chunks
         if records_to_update:
-            for idx, update_batch in enumerate(self._batch_employees(records_to_update, batch_size=100)):
+            for idx, update_batch in enumerate(self._batch_records(records_to_update, batch_size=100)):
                 logger.info("Updating batch %s of size %s", idx + 1, len(update_batch))
                 updated_count += self._batch_save_employees(update_batch)
 
+        # Save person records if any
+        if person_records_to_insert:
+            for idx, person_batch in enumerate(self._batch_records(person_records_to_insert, batch_size=100)):
+                logger.info("Inserting person batch %s of size %s", idx + 1, len(person_batch))
+                person_service.save_persons(person_batch)
+
         logger.info("Upsert employees completed: %s records inserted, %s records updated.", inserted_count, updated_count)
+        logger.info("%s person records inserted.", len(person_records_to_insert))
         return records_to_insert + records_to_update
 
-    def _batch_employees(self, records: list[Employee], batch_size: int = 1000):
+    def _batch_records(self, records: list[VersionedModel], batch_size: int = 1000):
         """
-        Split a list of employee records into batches of specified size.
+        Split a list of versioned model records into batches of specified size.
 
         Args:
-            records: List of Employee instances to batch
+            records: List of VersionedModel instances to batch
             batch_size: Size of each batch (default: 1000)
 
         Yields:
-            List[Employee]: Batches of employee records
+            List[VersionedModel]: Batches of VersionedModel records
         """
         for i in range(0, len(records), batch_size):
             yield records[i:i + batch_size]
@@ -311,7 +356,7 @@ class EmployeeRepository(BaseRepository):
                        ELSE NULL
                    END as invitation_status
             FROM employee e
-                LEFT JOIN person_organization_invitation pir ON e.person_id = pir.invitee_id
+                LEFT JOIN person_organization_invitation pir ON e.person_id = pir.invitee_id AND pir.organization_id = e.organization_id
                 WHERE e.organization_id = %s
         """
 

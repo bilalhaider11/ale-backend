@@ -215,3 +215,14 @@ class PersonRepository(BaseRepository):
                 ssn_to_person_id[patient.social_security_number] = saved_person.entity_id
         
         return ssn_to_person_id
+
+    def save_multiple(self, persons: list[Person]):
+        """
+        Save multiple Person records in a single transaction.
+        
+        Args:
+            persons: List of Person instances to save
+        """
+        for person in persons:
+            person = self.save(person)
+        return persons

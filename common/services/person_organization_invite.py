@@ -26,7 +26,7 @@ class PersonOrganizationInvitationService:
         if invalid_roles:
             raise APIException(f"Invalid roles: {', '.join(invalid_roles)}", 400)
 
-        token = self.generate_invitation_token(organization_id, email, invitee_id)
+        token = self.generate_invitation_token(organization_id, email, invitee_id, first_name, last_name)
 
         # Create invitation
         person_organization_invitation = PersonOrganizationInvitation(
@@ -42,13 +42,15 @@ class PersonOrganizationInvitationService:
 
         return self.person_organization_invite_repo.save(person_organization_invitation)
 
-    def generate_invitation_token(self, organization_id, email, invitee_id):
+    def generate_invitation_token(self, organization_id, email, invitee_id, first_name, last_name):
         """Generate a JWT token for the invitation."""
         token = jwt.encode(
             {
                 'organization_id': organization_id,
                 'email': email,
                 'invitee_id': invitee_id,
+                'first_name': first_name,
+                'last_name': last_name,
                 'exp': time.time() + int(self.config.INVITATION_TOKEN_EXPIRE),
             },
             self.config.AUTH_JWT_SECRET,

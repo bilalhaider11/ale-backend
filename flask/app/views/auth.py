@@ -45,6 +45,10 @@ class Signup(Resource):
 
             if invitation.email.lower() != parsed_body['email_address'].lower():
                 return get_failure_response(message="Invalid email address for the invitation token.")
+            
+            if invitation.first_name.lower() != parsed_body['first_name'].lower() or \
+                invitation.last_name.lower() != parsed_body['last_name'].lower():
+                 return get_failure_response(message="Invitation name does not match provided name.")
 
             person_id = invitation.invitee_id
 
