@@ -17,6 +17,9 @@ class PersonService:
         person = self.person_repo.save(person)
         return person
 
+    def save_persons(self, persons: list[Person]):
+        return self.person_repo.save_multiple(persons)
+
     def get_person_by_email_address(self, email_address: str):
         email_obj = self.email_service.get_email_by_email_address(email_address)
         if not email_obj:

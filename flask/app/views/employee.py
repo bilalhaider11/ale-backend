@@ -248,36 +248,27 @@ class EmployeeInvite(Resource):
         employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
         if not employee:
             return get_failure_response(message="Employee not found.", status_code=404)
+        
+        if not employee.email_address:
+            return get_failure_response(message="Employee must have an email address to send invitation.", status_code=200)
 
         # Get the organization record
         org = organization_service.get_organization_by_id(organization.entity_id)
         if not org:
             return get_failure_response(message="Organization not found.", status_code=404)
+        
+        employee_person = person_service.get_person_by_id(employee.person_id)
 
-        invited_person = None
-        
-        # Try to find person by person_id if present
-        if employee.person_id:
-            invited_person = person_service.get_person_by_id(employee.person_id)
-        
-        # If not found and email is available, try to find by email
-        if not invited_person and employee.email_address:
-            invited_person = person_service.get_person_by_email_address(employee.email_address)
-        
-        # If still not found, create a new person
-        if not invited_person:
-            if not employee.first_name or not employee.last_name:
-                return get_failure_response(
-                    message="Employee must have first name and last name to create invitation.", 
-                    status_code=400
-                )
-            
-            new_person = Person(
-                first_name=employee.first_name,
-                last_name=employee.last_name
-            )
-            invited_person = person_service.save_person(new_person)
+        existing_person = person_service.get_person_by_email_address(employee.email_address)
+        if existing_person and existing_person.entity_id != employee_person.entity_id:
+            if existing_person.first_name.strip().lower() != employee_person.first_name.strip().lower() or \
+                existing_person.last_name.strip().lower() != employee_person.last_name.strip().lower():
+                # If names don't match, we have a potential conflict
+                return get_failure_response(message="Email address is already in use by another person under a different name.", status_code=200)
 
+            invited_person = existing_person
+        else:
+            invited_person = employee_person
 
         # Create and send invitation with employee role
         invitation = invitation_service.create_invitation(
