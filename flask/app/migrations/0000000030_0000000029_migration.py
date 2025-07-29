@@ -34,23 +34,23 @@ def upgrade(migration):
                 first_name, 
                 last_name
             ) VALUES (
-                '{person_entity_id}', 
-                '{person_version}', 
+                %s, 
+                %s, 
                 '00000000000000000000000000000000', 
                 true, 
-                '{changed_by_id}', 
+                %s, 
                 CURRENT_TIMESTAMP, 
-                '{first_name}', 
-                '{last_name}'
+                %s, 
+                %s
             )
-        """)
+        """, args=(person_entity_id, person_version, changed_by_id, first_name, last_name))
         
         # Update employee record with the new person_id
         migration.execute(f"""
             UPDATE employee 
-            SET person_id = '{person_entity_id}' 
-            WHERE entity_id = '{employee_id}'
-        """)
+            SET person_id = %s 
+            WHERE entity_id = %s
+        """, args=(person_entity_id, employee_id))
 
     migration.update_version_table(version=revision)
 
