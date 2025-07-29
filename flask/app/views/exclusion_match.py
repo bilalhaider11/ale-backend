@@ -103,7 +103,8 @@ class EmployeeExclusionMatchRecordByEmployee(Resource):
 
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         employee_exclusion_match_service.update_exclusion_match(
-            employee_id=employee_id,
+            matched_entity_type="employee",
+            matched_entity_id=employee_id,
             organization_id=organization.entity_id,
             reviewer_notes=reviewer_notes,
             reviewer=person,
