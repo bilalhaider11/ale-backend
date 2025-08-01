@@ -17,7 +17,7 @@ from common.services import (
     PersonService,
     EmailService
 )
-from common.models import PersonOrganizationRoleEnum
+from common.models import PersonOrganizationRoleEnum, Person
 from app.helpers.decorators import (login_required,
                                     organization_required,
                                     has_role
@@ -136,8 +136,7 @@ class OrganizationInvite(Resource):
             return get_failure_response(message="Organization not found.", status_code=404)
 
         person_by_email = person_service.get_person_by_email_address(email)
-        invited_person_id = None
-        
+
         if person_by_email:
             invited_person_id = person_by_email.entity_id
             # Check if the existing person already has any of the invited roles
@@ -146,11 +145,18 @@ class OrganizationInvite(Resource):
             if already_assigned_roles:
                 roles_str = ", ".join(already_assigned_roles)
                 return get_failure_response(message=f"Person already has the role(s): {roles_str} in this organization.", status_code=400)
-        
-        # Create and send invitation, works whether person exists or not
+        else:
+            person = Person(
+                first_name=first_name,
+                last_name=last_name
+            )
+            person = person_service.save_person(person)
+            invited_person_id = person.entity_id
+
+        # Create and send invitation, create a person if does not exist.
         invitation = invitation_service.create_invitation(
             organization_id=organization_id,
-            invitee_id=invited_person_id,  # This can be None if the user is new
+            invitee_id=invited_person_id,
             email=email,
             roles=roles,
             first_name=first_name,
