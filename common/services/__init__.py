@@ -11,3 +11,4 @@ from .oig_employees_exclusion import OigEmployeesExclusionService
 from .oig_exclusions_check import OigExclusionsCheckService
 from .availability_slot import AvailabilitySlotService
 from .employee import EmployeeService
+from .organization_partnership import OrganizationPartnershipService

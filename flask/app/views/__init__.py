@@ -10,6 +10,7 @@ from app.views.availability_slot import availability_slot_api
 from app.views.physician import physician_api
 from app.views.patient import patient_api
 from app.views.patients_file import patients_file_api
+from app.views.organization_partnership import organization_partnership_api
 
 
 def initialize_views(api):
@@ -25,3 +26,4 @@ def initialize_views(api):
     api.add_namespace(physician_api)
     api.add_namespace(patient_api)
     api.add_namespace(patients_file_api)
+    api.add_namespace(organization_partnership_api)

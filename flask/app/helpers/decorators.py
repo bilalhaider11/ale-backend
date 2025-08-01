@@ -11,6 +11,7 @@ from common.services.email import EmailService
 from common.services.person import PersonService
 from common.services.auth import AuthService
 from common.services.auth import AuthService
+from common.services.organization_partnership import OrganizationPartnershipService
 from common.services import OrganizationService, PersonOrganizationRoleService
 
 from common.models import PersonOrganizationRoleEnum
@@ -152,6 +153,32 @@ def has_role(*allowed_roles):
                     return get_failure_response("Access denied: invalid organization.", status_code=403)
 
             return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def with_partner_organization_ids():
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            organization = kwargs.get('organization') or getattr(g, 'organization', None)
+
+            if not organization:
+                raise Exception("with_partner_organization_ids requires `organization` to be injected by @organization_required")
+
+            organization_partnership_service = OrganizationPartnershipService(config)
+            partner_ids = organization_partnership_service.get_active_partner_ids_for_organization(organization.entity_id)
+
+            # handle arguments based on the function parameters
+            func_params = signature(func).parameters
+            extra_args = {}
+
+            if 'partner_organization_ids' in func_params:
+                extra_args['partner_organization_ids'] = partner_ids + [organization.entity_id]
+
+            return func(self, *args, **kwargs, **extra_args)
 
         return wrapper
 

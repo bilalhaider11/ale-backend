@@ -22,6 +22,10 @@ class OrganizationService:
         organization = self.organization_repo.get_one({"entity_id": entity_id})
         return organization
 
+    def get_organization_by_subdomain(self, subdomain: str):
+        organization = self.organization_repo.get_one({"subdomain": subdomain})
+        return organization
+
     def get_organizations_with_roles_by_person(self, person_id: str):
         results = self.organization_repo.get_organizations_by_person_id(person_id)
 

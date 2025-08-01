@@ -215,17 +215,17 @@ class EmployeeService:
         """
         return self.employee_repo.get_employees_with_matches(organization_id)
 
-    def get_employees_by_organization(self, organization_id: str) -> List[Employee]:
+    def get_employees_by_organization(self, organization_ids: List[str]) -> List[Employee]:
         """
         Get all employees belonging to a specific organization.
 
         Args:
-            organization_id (str): The ID of the organization to filter by.
+            organization_ids (List[str]): The IDs of the organizations to filter by.
 
         Returns:
             List[Employee]: List of Employee objects belonging to the organization.
         """
-        return self.employee_repo.get_employees_with_invitation_status(organization_id)
+        return self.employee_repo.get_employees_with_invitation_status(organization_ids)
     
     def get_employee_by_person_id(self, person_id: str, organization_id: str) -> Employee:
         """
