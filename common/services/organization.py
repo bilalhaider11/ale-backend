@@ -22,6 +22,10 @@ class OrganizationService:
         organization = self.organization_repo.get_one({"entity_id": entity_id})
         return organization
 
+    def get_organization_by_subdomain(self, subdomain: str):
+        organization = self.organization_repo.get_one({"subdomain": subdomain})
+        return organization
+
     def get_organizations_with_roles_by_person(self, person_id: str):
         results = self.organization_repo.get_organizations_by_person_id(person_id)
 
@@ -194,3 +198,10 @@ class OrganizationService:
         except Exception as e:
             logger.error(f"Error sending message to SQS: {str(e)}")
             return False
+
+
+    def get_organization_partners(self, organization_id: str):
+        """
+        Get all partner organizations associated with the given organization ID.
+        """
+        return self.organization_repo.get_partner_organizations(organization_id)

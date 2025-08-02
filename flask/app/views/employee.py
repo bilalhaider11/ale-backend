@@ -9,7 +9,7 @@ from common.app_config import config
 from common.app_logger import logger
 from common.services.employee import EmployeeService
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
-from app.helpers.decorators import login_required, organization_required
+from app.helpers.decorators import login_required, organization_required, with_partner_organization_ids
 from common.models.person_organization_role import PersonOrganizationRoleEnum
 from common.models import Employee
 from common.services import (
@@ -130,12 +130,12 @@ class EmployeeAdmin(Resource):
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def get(self, person, organization):
-
+    @with_partner_organization_ids()
+    def get(self, person, organization, partner_organization_ids):
         employee_service = EmployeeService(config)
-        employees = employee_service.get_employees_by_organization(organization.entity_id)
+        employees = employee_service.get_employees_by_organization(partner_organization_ids)
         return get_success_response(
-            message="Employees rerieved successfully",
+            message="Employees retrieved successfully",
             data=employees
         )
 
@@ -199,11 +199,23 @@ class EmployeeResource(Resource):
                     person.first_name = employee.first_name
                     person.last_name = employee.last_name
                     person_service.save_person(person)
+            else:
+                person=Person(
+                    first_name=employee.first_name,
+                    last_name=employee.last_name,
+                )
+                person = person_service.save_person(person)
+                employee.person_id = person.entity_id
 
             employee = employee_service.save_employee(employee)
             action = "updated"
 
         else:
+            person = Person(
+                first_name=parsed_body['first_name'],
+                last_name=parsed_body['last_name']
+            )
+            person = person_service.save_person(person)
             employee = Employee(
                 first_name=parsed_body['first_name'],
                 last_name=parsed_body['last_name'],

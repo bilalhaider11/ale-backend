@@ -15,7 +15,7 @@ from common.services import (
     PersonOrganizationInvitationService,
     PersonOrganizationRoleService,
     PersonService,
-    EmailService
+    EmailService,
 )
 from common.models import PersonOrganizationRoleEnum, Person
 from app.helpers.decorators import (login_required,
@@ -194,3 +194,15 @@ class AcceptInvitation(Resource):
             return get_success_response(message="Invitation accepted successfully.")
         except APIException as e:
             return get_failure_response(message=str(e), status_code=400)
+
+
+@organization_api.route('/partners')
+class OrganizationPartners(Resource):
+
+    @login_required()
+    @organization_required()
+
+    def get(self, person, organization):
+        organization_service = OrganizationService(config)
+        organization_partners = organization_service.get_organization_partners(organization.entity_id)
+        return get_success_response(data=organization_partners)
