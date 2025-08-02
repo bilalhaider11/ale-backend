@@ -199,11 +199,23 @@ class EmployeeResource(Resource):
                     person.first_name = employee.first_name
                     person.last_name = employee.last_name
                     person_service.save_person(person)
+            else:
+                person=Person(
+                    first_name=employee.first_name,
+                    last_name=employee.last_name,
+                )
+                person = person_service.save_person(person)
+                employee.person_id = person.entity_id
 
             employee = employee_service.save_employee(employee)
             action = "updated"
 
         else:
+            person = Person(
+                first_name=parsed_body['first_name'],
+                last_name=parsed_body['last_name']
+            )
+            person = person_service.save_person(person)
             employee = Employee(
                 first_name=parsed_body['first_name'],
                 last_name=parsed_body['last_name'],

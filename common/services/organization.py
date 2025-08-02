@@ -198,3 +198,10 @@ class OrganizationService:
         except Exception as e:
             logger.error(f"Error sending message to SQS: {str(e)}")
             return False
+
+
+    def get_organization_partners(self, organization_id: str):
+        """
+        Get all partner organizations associated with the given organization ID.
+        """
+        return self.organization_repo.get_partner_organizations(organization_id)
