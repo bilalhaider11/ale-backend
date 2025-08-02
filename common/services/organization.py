@@ -29,39 +29,49 @@ class OrganizationService:
     def get_organizations_with_roles_by_person(self, person_id: str):
         results = self.organization_repo.get_organizations_by_person_id(person_id)
 
-        formatted_results = []
+        # Dictionary to group organizations by entity_id
+        orgs_map = {}
+
         for result in results:
             if isinstance(result, dict):
-                # Create Organization instance
                 role = result.pop('role', None)
+                org_id = result.get('entity_id')
                 org = Organization(**result)
                 org_dict = org.as_dict()
-                
+
                 # Add CloudFront domain to logo_url if it exists
                 if org.logo_url:
                     cloudfront_domain = self.config.CLOUDFRONT_DISTRIBUTION_DOMAIN
                     if not cloudfront_domain.startswith(('http://', 'https://')):
                         cloudfront_domain = f"https://{cloudfront_domain}"
                     org_dict['logo_url'] = f"{cloudfront_domain}/{org.logo_url}"
-                    
-                if role:
-                    org_dict['role'] = role
-                formatted_results.append(org_dict)
-            else:
-                org_dict = result.as_dict()
+
+                if org_id not in orgs_map:
+                    orgs_map[org_id] = org_dict
+                    orgs_map[org_id]['roles'] = []
                 
+                if role and role not in orgs_map[org_id]['roles']:
+                    orgs_map[org_id]['roles'].append(role)
+
+            else:
+                org_id = result.entity_id
+                org_dict = result.as_dict()
+
                 # Add CloudFront domain to logo_url if it exists
                 if result.logo_url:
                     cloudfront_domain = self.config.CLOUDFRONT_DISTRIBUTION_DOMAIN
                     if not cloudfront_domain.startswith(('http://', 'https://')):
                         cloudfront_domain = f"https://{cloudfront_domain}"
                     org_dict['logo_url'] = f"{cloudfront_domain}/{result.logo_url}"
-                    
-                if hasattr(result, 'role'):
-                    org_dict['role'] = result.role
-                formatted_results.append(org_dict)
-        
-        return formatted_results
+
+                if org_id not in orgs_map:
+                    orgs_map[org_id] = org_dict
+                    orgs_map[org_id]['roles'] = []
+                
+                if hasattr(result, 'role') and result.role not in orgs_map[org_id]['roles']:
+                    orgs_map[org_id]['roles'].append(result.role)
+
+        return list(orgs_map.values())
 
     def get_persons_with_roles_in_organization(self, organization_id: str):
         organization_repo = self.repository_factory.get_repository(RepoType.PERSON_ORGANIZATION_ROLE)
