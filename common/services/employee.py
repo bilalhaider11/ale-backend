@@ -33,6 +33,22 @@ class EmployeeService:
         record_count = len(rows)
         logger.info(f"Processing {record_count} employee records...")
 
+        def safe_parse_date(date_string: str):
+            if not date_string or not date_string.strip():
+                return None
+
+            import dateparser
+            try:
+                dt = dateparser.parse(date_string, settings={
+                    'DATE_ORDER': 'MDY',
+                    'PREFER_DAY_OF_MONTH': 'first',
+                    'PREFER_DATES_FROM': 'past',
+                    'STRICT_PARSING': True
+                })
+                return dt.date().isoformat() if dt else None
+            except Exception as e:
+                return None
+
         records = []
         for row in rows:
             employee_type = None
@@ -48,6 +64,11 @@ class EmployeeService:
             if employee_type is None:
                 logger.warning(f"Skipping row with neither employee nor caregiver ID: {row}")
                 continue
+
+            # Parse dates
+            parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
+            parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
+            parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date of birth']))
 
             record = Employee(
                 changed_by_id=user_id,
@@ -66,9 +87,9 @@ class EmployeeService:
                 email_address=get_first_matching_column_value(row, ['email address', 'email']),
                 phone_1=get_first_matching_column_value(row, ['phone 1', 'phone']),
                 phone_2=get_first_matching_column_value(row, ['phone 2']),
-                payroll_start_date=get_first_matching_column_value(row, ['payroll start date']),
-                hire_date=get_first_matching_column_value(row, ['hire date']),
-                date_of_birth=get_first_matching_column_value(row, ['date of birth']),
+                payroll_start_date=parsed_payroll_start_date,
+                hire_date=parsed_hire_date,
+                date_of_birth=parsed_date_of_birth,
                 caregiver_tags=get_first_matching_column_value(row, ['caregiver tags', 'tags']),
                 social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
