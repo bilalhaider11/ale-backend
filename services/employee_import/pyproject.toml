@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "employee-import"
-version = "0.0.11"
+version = "0.0.12"
 description = "Service for importing employee data from CSV files"
 authors = ["ALE Healthtech Team"]
 readme = "README.md"
@@ -30,6 +30,7 @@ werkzeug = "^3.0.3"
 pydantic-settings = "^2.2.1"
 pyjwt = "^2.10.1"
 openpyxl = "^3.1.5"
+dateparser = "^1.2.2"
 
 [build-system]
 requires = ["poetry-core"]
