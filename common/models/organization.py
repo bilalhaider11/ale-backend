@@ -7,3 +7,10 @@ from common.app_config import config
 class Organization(BaseOrganization):
     logo_url: Optional[str] = None
     subdomain: Optional[str] = None
+    
+    def validate_name(self):
+        """
+        Truncate organization name to 128 characters.
+        """
+        if type(self.name) is str:
+            self.name = self.name[:128]
