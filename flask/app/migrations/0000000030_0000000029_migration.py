@@ -14,8 +14,8 @@ def upgrade(migration):
     
     for employee in employees_without_person:
         employee_id = employee['entity_id']
-        first_name = employee['first_name'] or ""
-        last_name = employee['last_name'] or ""
+        first_name = (employee['first_name'] or "")[:128]
+        last_name = (employee['last_name'] or "")[:128]
         changed_by_id = employee['changed_by_id'] or ""
         
         # Generate a new entity_id for the person record
