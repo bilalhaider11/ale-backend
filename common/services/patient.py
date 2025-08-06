@@ -177,7 +177,7 @@ class PatientService:
 
         logger.info(f"Patient Object: {patients_file}")
 
-        # # Save file metadata to database
+        # Save file metadata to database
         saved_file = self.patient_file_service.save_patient_file(patients_file)
 
         result = {
@@ -242,3 +242,31 @@ class PatientService:
         logger.info("Successfully created patient with ID: %s", saved.entity_id)
         return saved
         
+    def get_patient_by_id(self, entity_id: str, organization_id: str) -> Patient:
+
+        """
+        Retrieve an patient record by patient ID.
+        
+        Args:
+            entity_id (str): The unique identifier for the patient.
+            organization_id (str): The ID of the organization to filter by.
+        
+        Returns:
+            Patient: The patient record if found, otherwise None.
+        """
+        return self.patient_repo.get_one({
+            'entity_id': entity_id,
+            'organization_id': organization_id
+        }) 
+
+    def save_patient(self, patient: Patient) -> Patient:
+        """
+        Save an patient record to the database.
+        
+        Args:
+            patient (Patient): The patient object to save.
+        
+        Returns:
+            Patient: The saved patient object with updated entity_id.
+        """
+        return self.patient_repo.save(patient)

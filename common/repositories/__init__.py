@@ -15,3 +15,4 @@ from .physician import PhysicianRepository
 from .patient import PatientRepository
 from .patients_file import PatientsFileRepository
 from .organization_partnership import OrganizationPartnershipRepository
+from .patient_care_slot import PatientCareSlotRepository
