@@ -14,4 +14,4 @@ class Patient(VersionedModel):
     care_period_start: date = None
     care_period_end: date = None
     weekly_quota: int = None
-    current_week_remaining_quota: int = None  
+    care_duration: float = None  
