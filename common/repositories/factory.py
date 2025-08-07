@@ -73,6 +73,7 @@ class RepoType(Enum):
     PATIENTS_FILE = auto()
     ORGANIZATION_PARTNERSHIP = auto()
     PATIENT_CARE_SLOT = auto()
+    CARE_VISIT = auto()
 
 class RepositoryFactory:
 
@@ -99,6 +100,7 @@ class RepositoryFactory:
         RepoType.ORGANIZATION_PARTNERSHIP: OrganizationPartnershipRepository,
         RepoType.PATIENT_CARE_SLOT: PatientCareSlotRepository,
 
+        RepoType.CARE_VISIT: CareVisitRepository,
     }
 
     def get_db_connection(self):

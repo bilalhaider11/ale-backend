@@ -12,3 +12,4 @@ from .oig_exclusions_check import OigExclusionsCheckService
 from .availability_slot import AvailabilitySlotService
 from .employee import EmployeeService
 from .organization_partnership import OrganizationPartnershipService
+from .care_visit import CareVisitService
