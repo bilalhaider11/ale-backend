@@ -18,6 +18,8 @@ from common.services.patient_care_slot import PatientCareSlotService
 logger = create_logger()
 
 patient_api = Namespace('patient', description='Patient management endpoints')
+
+
 @patient_api.route('/admin')
 class PatientList(Resource):
     
@@ -32,6 +34,8 @@ class PatientList(Resource):
             patients=patients,
             count=len(patients)
         )
+
+
 @patient_api.route('/upload')
 class PatientFileUpload(Resource):
     
@@ -320,4 +324,28 @@ class PatientCareSlots(Resource):
                 'care_duration': care_duration,
                 'slots_count': len(updated_slots)
             }
+        )
+
+@patient_api.route('/by/slot')
+class PatientsBySlot(Resource):
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization):
+        """
+        Get all patients for the organization.
+        """
+
+        date = request.args['date']
+        slot_start_time = request.args['start_time']
+        slot_end_time = request.args['end_time']
+
+        # TODO: Update this implementation to return patients according to care slots filtering.
+
+        patient_service = PatientService(config)
+        patients = patient_service.get_all_patients_for_organization(organization.entity_id)
+
+        return get_success_response(
+            patients=patients,
+            count=len(patients)
         )
