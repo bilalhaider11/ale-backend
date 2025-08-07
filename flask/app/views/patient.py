@@ -300,7 +300,8 @@ class PatientCareSlots(Resource):
         
         if patient.weekly_quota is not None and total_hours > patient.weekly_quota:
             return get_failure_response(
-                f"Total slot duration ({total_hours:.2f} hours) exceeds the weekly quota ({patient.weekly_quota} hours)",
+                f"Weekly quota exceeded: attempted {total_hours:.2f} h "
+                    f"(limit {patient.weekly_quota} h).",
                 status_code=400
             )
             
