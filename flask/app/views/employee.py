@@ -15,9 +15,11 @@ from common.models import Employee
 from common.services import (
     PersonOrganizationInvitationService,
     PersonService,
-    OrganizationService
+    OrganizationService,
+    AvailabilitySlotService
 )
 from common.models import Person
+from datetime import datetime
 
 employee_api = Namespace('employee', description='Employee operations')
 
@@ -223,7 +225,8 @@ class EmployeeResource(Resource):
                 date_of_birth=date_of_birth,
                 email_address=email_address,
                 social_security_number=social_security_number,
-                organization_id=organization.entity_id
+                organization_id=organization.entity_id,
+                person_id=person.entity_id
             )
 
             employee = employee_service.save_employee(employee)
@@ -298,3 +301,42 @@ class EmployeeInvite(Resource):
         employee_service.save_employee(employee)
 
         return get_success_response(message="Employee invitation sent successfully.")
+
+
+
+@employee_api.route('/by/slot')
+class EmployeesBySlot(Resource):
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization):
+        """
+        Get all employees for the organization.
+        """
+
+        date = request.args['date']
+        slot_start_time = request.args['start_time']
+        slot_end_time = request.args['end_time']
+        patient_id = request.args['patient_id']
+
+        # Parse date and time strings
+        try:
+            date = datetime.strptime(date, '%Y-%m-%d').date()
+            slot_start_time = datetime.strptime(slot_start_time, '%H:%M').time()
+            slot_end_time = datetime.strptime(slot_end_time, '%H:%M').time()
+        except ValueError:
+            return get_failure_response("Invalid date or time format", status_code=400)
+
+        availability_slot_service = AvailabilitySlotService(config)
+        availability_slots = availability_slot_service.get_availability_slots_for_time_slot(
+            start_time=slot_start_time,
+            end_time=slot_end_time,
+            visit_date=date,
+            patient_id=patient_id,
+            organization_ids=[organization.entity_id]
+        )
+
+        return get_success_response(
+            slots=availability_slots,
+            count=len(availability_slots)
+        )

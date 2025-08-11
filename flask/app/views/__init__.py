@@ -12,6 +12,7 @@ from app.views.patient import patient_api
 from app.views.patients_file import patients_file_api
 from app.views.organization_partnership import organization_partnership_api
 from app.views.care_visit import care_visit_api
+from app.views.patient_care_slot import patient_care_slot_api
 
 
 def initialize_views(api):
@@ -29,3 +30,4 @@ def initialize_views(api):
     api.add_namespace(patients_file_api)
     api.add_namespace(organization_partnership_api)
     api.add_namespace(care_visit_api)
+    api.add_namespace(patient_care_slot_api)

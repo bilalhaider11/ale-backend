@@ -19,12 +19,20 @@ class CareVisitService:
             employee_id=employee_id
         )
 
+    def get_patient_care_visits_by_date_range(self, start_date, end_date, patient_id):
+        return self.care_visit_repo.get_care_visits(
+            start_date=start_date,
+            end_date=end_date,
+            patient_id=patient_id
+        )
+
     def save_care_visit(self, care_visit: CareVisit):
         return self.care_visit_repo.save(care_visit)
 
     def schedule_care_visit(self, patient_id: str, employee_id: str, visit_date: datetime, 
                            scheduled_start_time: datetime, scheduled_end_time: datetime, 
-                           scheduled_by_id: str, availability_slot_id: str, organization_id: str):
+                           scheduled_by_id: str, availability_slot_key: str, patient_care_slot_key: str, organization_id: str):
+
         care_visit = CareVisit(
             status=CareVisitStatusEnum.SCHEDULED,
             patient_id=patient_id,
@@ -33,7 +41,8 @@ class CareVisitService:
             scheduled_start_time=scheduled_start_time,
             scheduled_end_time=scheduled_end_time,
             scheduled_by_id=scheduled_by_id,
-            availability_slot_id=availability_slot_id,
+            availability_slot_key=availability_slot_key,
+            patient_care_slot_key=patient_care_slot_key,
             organization_id=organization_id
         )
         return self.save_care_visit(care_visit)

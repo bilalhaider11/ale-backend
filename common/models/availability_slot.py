@@ -12,7 +12,22 @@ class AvailabilitySlot(VersionedModel):
     start_time: time = None
     end_time: time = None
     employee_id: str = None
+    logical_key: str = ""
 
     def validate_day_of_week(self):
         if not isinstance(self.day_of_week, int) or self.day_of_week < 0 or self.day_of_week > 6:
             self.day_of_week = 0
+
+    def validate_logical_key(self):
+        # Ensure logical key is set and consistent.
+        self.logical_key = self.generate_logical_key(
+            employee_id=self.employee_id,
+            day_of_week=self.day_of_week,
+            start_time=self.start_time,
+            end_time=self.end_time
+        )
+
+    @classmethod
+    def generate_logical_key(cls, employee_id: str, day_of_week: int, start_time: time, end_time: time) -> str:
+        """Generates a logical key for the availability slot."""
+        return f"{employee_id}-{day_of_week}-{start_time.strftime('%H:%M:%S')}-{end_time.strftime('%H:%M:%S')}"
