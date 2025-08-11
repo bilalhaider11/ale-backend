@@ -1,9 +1,6 @@
-from typing import List
 from datetime import datetime
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.care_visit import CareVisit, CareVisitStatusEnum
-
-
 class CareVisitService:
 
     def __init__(self, config):
@@ -46,3 +43,25 @@ class CareVisitService:
             organization_id=organization_id
         )
         return self.save_care_visit(care_visit)
+
+    def get_care_visit_by_id(self, care_visit_id: str) -> CareVisit:
+        return self.care_visit_repo.get_one({"entity_id": care_visit_id})
+
+    def process_missed_visits(self, employee_id=None, current_datetime=None) -> int:
+        care_visits = self.care_visit_repo.get_care_visits(
+            employee_id=employee_id
+        )
+        
+        count = 0
+        for visit_data in care_visits:
+            if (visit_data.get('status') == CareVisitStatusEnum.SCHEDULED and 
+                visit_data.get('scheduled_end_time') and 
+                visit_data['scheduled_end_time'] < current_datetime):
+                
+                care_visit = self.get_care_visit_by_id(visit_data['entity_id'])
+                if care_visit:
+                    care_visit.status = CareVisitStatusEnum.MISSED
+                    self.save_care_visit(care_visit)
+                    count += 1
+                
+        return count

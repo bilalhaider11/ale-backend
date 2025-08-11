@@ -10,6 +10,8 @@ class CareVisitStatusEnum(StrEnum):
     CLOCKED_IN = "clocked_in"
     CLOCKED_OUT = "clocked_out"
     CANCELLED = "cancelled"
+    MISSED = "missed"
+    COMPLETED = "completed"
 
     def __repr__(self):
         return str(self.value)
