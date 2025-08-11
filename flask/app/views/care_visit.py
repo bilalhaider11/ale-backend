@@ -19,8 +19,9 @@ from common.services import (
     PersonService,
     EmailService,
     EmployeeService,
+    PatientService
 )
-from common.models import PersonOrganizationRoleEnum, Person
+from common.models import PersonOrganizationRoleEnum, Person, CareVisitStatusEnum
 from app.helpers.decorators import (login_required,
                                     organization_required,
                                     has_role
@@ -30,8 +31,8 @@ from common.helpers.exceptions import APIException
 # Create the care visits blueprint
 care_visit_api = Namespace('care_visit', description="Care Visit-related APIs")
 
-@care_visit_api.route('/<employee_id>')
-class CareVisits(Resource):
+@care_visit_api.route('/employee/<employee_id>')
+class EmployeeCareVisits(Resource):
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN, PersonOrganizationRoleEnum.EMPLOYEE])
@@ -63,7 +64,7 @@ class CareVisits(Resource):
         # Validate required fields
         required_fields = [
             'patient_id', 'visit_date', 'scheduled_start_time', 
-            'scheduled_end_time', 'availability_slot_id'
+            'scheduled_end_time', 'availability_slot_key', 'patient_care_slot_key'
         ]
 
         data = parse_request_body(request, required_fields)
@@ -84,9 +85,89 @@ class CareVisits(Resource):
             scheduled_start_time=scheduled_start_time,
             scheduled_end_time=scheduled_end_time,
             scheduled_by_id=person.entity_id,
-            availability_slot_id=data['availability_slot_id'],
+            availability_slot_key=data['availability_slot_key'],
+            patient_care_slot_key=data['patient_care_slot_key'],
             organization_id=organization.entity_id
         )
         
         return get_success_response(care_visit=care_visit)
-            
+
+@care_visit_api.route('/patient/<patient_id>')
+class PatientCareVisits(Resource):
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization, role, patient_id):
+        care_visit_service = CareVisitService(config)
+        patient_service = PatientService(config)
+
+        # Get query parameters for date range
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+
+        care_visits = care_visit_service.get_patient_care_visits_by_date_range(
+            start_date=start_date,
+            end_date=end_date,
+            patient_id=patient_id
+        )
+        return get_success_response(care_visits=care_visits)
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person, organization, role, patient_id):
+        
+        # Validate required fields
+        required_fields = [
+            'employee_id', 'visit_date', 'scheduled_start_time', 
+            'scheduled_end_time', 'availability_slot_key', 'patient_care_slot_key'
+        ]
+
+        data = parse_request_body(request, required_fields)
+
+        validate_required_fields(data)
+        
+        # Parse datetime fields
+        visit_date = datetime.fromisoformat(data['visit_date'].replace('Z', ''))
+        scheduled_start_time = datetime.fromisoformat(data['scheduled_start_time'].replace('Z', ''))
+        scheduled_end_time = datetime.fromisoformat(data['scheduled_end_time'].replace('Z', ''))
+
+        care_visit_service = CareVisitService(config)
+        
+        care_visit = care_visit_service.schedule_care_visit(
+            patient_id=patient_id,
+            employee_id=data['employee_id'],
+            visit_date=visit_date,
+            scheduled_start_time=scheduled_start_time,
+            scheduled_end_time=scheduled_end_time,
+            scheduled_by_id=person.entity_id,
+            availability_slot_key=data['availability_slot_key'],
+            patient_care_slot_key=data['patient_care_slot_key'],
+            organization_id=organization.entity_id
+        )
+        
+        return get_success_response(care_visit=care_visit)
+
+
+
+@care_visit_api.route('/<string:care_visit_id>')
+class CareVisit(Resource):
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def delete(self, person, organization, role, care_visit_id):
+        care_visit_service = CareVisitService(config)
+        
+        # Get the care visit by ID
+        care_visit_repo = care_visit_service.care_visit_repo
+        care_visit = care_visit_repo.get_one({'entity_id': care_visit_id})
+
+        if not care_visit:
+            return get_failure_response("Care visit not found", status_code=404)
+        
+        # Set status to cancelled
+        care_visit.status = CareVisitStatusEnum.CANCELLED
+        
+        # Save the cancelled care visit
+        care_visit_repo.delete(care_visit)
+        
+        return get_success_response(message="Care visit cancelled successfully")

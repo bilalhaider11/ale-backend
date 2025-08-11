@@ -99,7 +99,6 @@ class RepositoryFactory:
         RepoType.PATIENTS_FILE: PatientsFileRepository,
         RepoType.ORGANIZATION_PARTNERSHIP: OrganizationPartnershipRepository,
         RepoType.PATIENT_CARE_SLOT: PatientCareSlotRepository,
-
         RepoType.CARE_VISIT: CareVisitRepository,
     }
 

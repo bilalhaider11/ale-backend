@@ -340,13 +340,26 @@ class PatientsBySlot(Resource):
         date = request.args['date']
         slot_start_time = request.args['start_time']
         slot_end_time = request.args['end_time']
+        employee_id = request.args['employee_id']
 
-        # TODO: Update this implementation to return patients according to care slots filtering.
+        # Parse date and time strings
+        try:
+            date = datetime.strptime(date, '%Y-%m-%d').date()
+            slot_start_time = datetime.strptime(slot_start_time, '%H:%M').time()
+            slot_end_time = datetime.strptime(slot_end_time, '%H:%M').time()
+        except ValueError:
+            return get_failure_response("Invalid date or time format", status_code=400)
 
-        patient_service = PatientService(config)
-        patients = patient_service.get_all_patients_for_organization(organization.entity_id)
+        patient_care_slot_service = PatientCareSlotService(config)
+        patient_care_slots = patient_care_slot_service.get_patient_care_slots_for_time_slot(
+            start_time=slot_start_time,
+            end_time=slot_end_time,
+            visit_date=date,
+            employee_id=employee_id,
+            organization_ids=[organization.entity_id]
+        )
 
         return get_success_response(
-            patients=patients,
-            count=len(patients)
+            slots=patient_care_slots,
+            count=len(patient_care_slots)
         )

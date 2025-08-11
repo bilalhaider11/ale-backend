@@ -13,3 +13,5 @@ from .availability_slot import AvailabilitySlotService
 from .employee import EmployeeService
 from .organization_partnership import OrganizationPartnershipService
 from .care_visit import CareVisitService
+from .patient import PatientService
+from .patient_care_slot import PatientCareSlotService

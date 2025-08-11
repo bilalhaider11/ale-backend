@@ -6,7 +6,7 @@ class CareVisitRepository(BaseRepository):
     MODEL = CareVisit
 
     def get_care_visits(self, start_date = None, end_date = None, employee_id = None, patient_id = None):
-        conditions = []
+        conditions = ["cv.active = true"]
         params = ()
 
         if start_date:
@@ -25,9 +25,14 @@ class CareVisitRepository(BaseRepository):
         conditions_str = ('WHERE ' + ' AND '.join(conditions)) if conditions else ''
 
         query = f"""
-            SELECT cv.*, (ps.first_name || ' ' || ps.last_name) AS patient_name FROM care_visit cv
+            SELECT cv.*, 
+                (pp.first_name || ' ' || pp.last_name) AS patient_name,
+                (pe.first_name || ' ' || pe.last_name) AS employee_name
+            FROM care_visit cv
                 LEFT JOIN patient p ON cv.patient_id = p.entity_id
-                LEFT JOIN person ps ON p.person_id = ps.entity_id
+                LEFT JOIN employee e ON cv.employee_id = e.entity_id
+                LEFT JOIN person pp ON p.person_id = pp.entity_id
+                LEFT JOIN person pe ON e.person_id = pe.entity_id
             {conditions_str}
         """
 
@@ -36,9 +41,11 @@ class CareVisitRepository(BaseRepository):
             output = []
             for result in results:
                 patient_name = result.pop('patient_name', None)
+                employee_name = result.pop('employee_name', None)
                 care_visit = self.MODEL(**result)
                 care_visit_dict = care_visit.as_dict()
                 care_visit_dict['patient_name'] = patient_name
+                care_visit_dict['employee_name'] = employee_name
                 output.append(care_visit_dict)
 
             return output

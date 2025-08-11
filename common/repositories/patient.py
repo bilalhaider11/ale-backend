@@ -1,6 +1,7 @@
 from common.repositories.base import BaseRepository
 from common.models.patient import Patient
 from common.app_logger import logger
+from datetime import time
 
 class PatientRepository(BaseRepository):
     MODEL = Patient
