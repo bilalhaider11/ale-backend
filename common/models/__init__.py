@@ -18,3 +18,4 @@ from .patients_file import PatientsFile, PatientsFileStatusEnum
 from .patient_care_slot import PatientCareSlot
 from .organization_partnership import OrganizationPartnership, OrganizationPartnershipStatusEnum
 from .care_visit import CareVisit, CareVisitStatusEnum
+from .form_data import FormData
