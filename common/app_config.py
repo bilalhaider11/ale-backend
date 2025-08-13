@@ -73,6 +73,12 @@ class Config(BaseConfig):
     OIG_WEBPAGE_URL: str = Field(default="")
     OIG_CSV_DOWNLOAD_URL: str = Field(default="")
 
+    GOOGLE_CLIENT_ID: str = Field(default="")
+    GOOGLE_CLIENT_SECRET: str = Field(default="")
+
+    MICROSOFT_CLIENT_ID: str = Field(default="")
+    MICROSOFT_CLIENT_SECRET: str = Field(default="")
+
     @property
     def DEFAULT_USER_PASSWORD(self):
         import random, string

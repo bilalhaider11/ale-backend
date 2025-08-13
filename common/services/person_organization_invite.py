@@ -88,6 +88,10 @@ class PersonOrganizationInvitationService:
         """Retrieve an invitation by its token."""
         return self.person_organization_invite_repo.get_one({"token": token})
 
+    def get_invitation_by_invitee_id(self, invitee_id):
+        """Retrieve an invitation by its token."""
+        return self.person_organization_invite_repo.get_one({"invitee_id": invitee_id})
+
     def accept_invitation(self, invitation, invitee_id):
         """Accept an invitation and associate the person with the organization."""
 

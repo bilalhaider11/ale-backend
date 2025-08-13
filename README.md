@@ -83,6 +83,13 @@ This repository contains the backend services for the **ALE Healthtech** system,
 
 </details>
 
+<details>
+<summary>OAuth Configuration</summary>
+
+For setting up Google and Microsoft OAuth authentication, see the [OAuth Setup Guide](oauth.md).
+
+</details>
+
 
 ### Running the system
 

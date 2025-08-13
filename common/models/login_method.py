@@ -1,12 +1,19 @@
 from dataclasses import dataclass, field
 from typing import Optional
 import string
+from enum import Enum
+import json
 
 from werkzeug.security import generate_password_hash
 
-from rococo.models.login_method import LoginMethodType
 from rococo.models.versioned_model import ModelValidationError
 from rococo.models import LoginMethod as BaseLoginMethod
+
+
+class LoginMethodType(str, Enum):
+    EMAIL_PASSWORD = "email-password"
+    GOOGLE = "google"
+    MICROSOFT = "microsoft"
 
 
 @dataclass
@@ -51,3 +58,6 @@ class LoginMethod(BaseLoginMethod):
         if errors:
             raise ModelValidationError(errors)
 
+    def validate_method_data(self):
+        if type(self.method_data) is dict:
+            self.method_data = json.dumps(self.method_data)

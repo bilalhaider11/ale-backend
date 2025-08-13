@@ -1,8 +1,11 @@
 from flask_restx import Namespace, Resource
 from flask import request, g
+import requests
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
 from common.app_config import config
 from common.services import AuthService, PersonService, PersonOrganizationInvitationService
+from common.services.oauth import OAuthClient
+from common.app_logger import logger
 
 # Create the auth blueprint
 auth_api = Namespace('auth', description="Auth related APIs")
@@ -52,7 +55,7 @@ class Signup(Resource):
 
             person_id = invitation.invitee_id
 
-        person = auth_service.signup(
+        person = auth_service.signup_by_email(
             parsed_body['email_address'],
             parsed_body['first_name'],
             parsed_body['last_name'],
@@ -163,3 +166,78 @@ class ResendWelcomeEmail(Resource):
         auth_service.resend_welcome_email(parsed_body.get('email'))
 
         return get_success_response(message="Welcome email resent successfully.")
+
+
+@auth_api.route('/<string:provider>/exchange')
+class OAuthExchange(Resource):
+    def post(self, provider):
+        parsed_body = parse_request_body(
+            request,
+            ['code', 'redirect_uri', 'code_verifier', 'invitation_token']
+        )
+        invitation_token = parsed_body.pop('invitation_token', None)
+        validate_required_fields(parsed_body)
+
+        oauth_client = OAuthClient(config)
+        auth_service = AuthService(config)
+
+        # Token exchange + user info retrieval
+        if provider == "google":
+            token_response = oauth_client.get_google_token(
+                parsed_body['code'],
+                parsed_body['redirect_uri'],
+                parsed_body['code_verifier']
+            )
+            user_info = oauth_client.get_google_user_info(token_response['access_token'])
+
+        elif provider == "microsoft":
+            token_response = oauth_client.get_microsoft_token(
+                parsed_body['code'],
+                parsed_body['redirect_uri'],
+                parsed_body['code_verifier']
+            )
+            user_info = oauth_client.get_microsoft_user_info(token_response['access_token'])
+
+        else:
+            return get_failure_response(message=f"Unsupported provider: {provider}")
+
+        # Normalize name + email
+        if provider == "google":
+            email = user_info.get('email')
+            name = user_info.get('name', '')
+
+        elif provider == "microsoft":
+            email = user_info.get('upn') or user_info.get('email')
+            name = user_info.get('name', '')
+
+        if not email:
+            return get_failure_response(message=f"{provider.capitalize()} user info does not contain email.")
+
+        name_parts = name.split(' ', 1)
+        first_name, last_name = name_parts[0], name_parts[1] if len(name_parts) > 1 else ""
+
+        # Invitation logic
+        person_id = None
+        if invitation_token:
+            invitation_service = PersonOrganizationInvitationService(config)
+            invitation = invitation_service.get_invitation_by_token(invitation_token)
+            if not invitation:
+                return get_failure_response(message="Invalid or expired invitation token.")
+            if invitation.email.lower() != email.lower():
+                return get_failure_response(message="Invalid email address for the invitation token.")
+            person_id = invitation.invitee_id
+            first_name, last_name = invitation.first_name, invitation.last_name
+
+        # Login
+        access_token, expiry, person = auth_service.login_user_by_oauth(
+            email, first_name, last_name,
+            provider=provider,
+            provider_data=user_info,
+            person_id=person_id
+        )
+        g.person = person
+
+        if invitation_token:
+            invitation_service.accept_invitation(invitation, person.entity_id)
+
+        return get_success_response(person=person.as_dict(), access_token=access_token, expiry=expiry)

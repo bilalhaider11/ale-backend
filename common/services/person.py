@@ -28,6 +28,14 @@ class PersonService:
         person = self.person_repo.get_one({"entity_id": email_obj.person_id})
         return person
 
+    def get_person_by_email_id(self, email_id: str):
+        email_obj = self.email_service.get_email_by_id(email_id)
+        if not email_obj:
+            return
+        
+        person = self.person_repo.get_one({"entity_id": email_obj.person_id})
+        return person
+
     def get_person_by_id(self, entity_id: str):
         person = self.person_repo.get_one({"entity_id": entity_id})
         return person
