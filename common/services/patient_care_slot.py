@@ -65,26 +65,6 @@ class PatientCareSlotService:
         # Return the weekly duration for the patient
         return self.get_patient_care_slots_by_week(patient_id, week_start_date)
 
-    def apply_consistent_slots_to_days(self, patient_id: str, selected_days: List[int], 
-                                      consistent_slots: List[Dict], week_start_date: date, 
-                                      week_end_date: date) -> List[PatientCareSlot]:
-        """Apply consistent time slots to all selected days for a specific week."""
-        slots = []
-        for day in selected_days:
-            for slot_data in consistent_slots:
-                slot = PatientCareSlot(
-                    patient_id=patient_id,
-                    day_of_week=day,
-                    start_time=slot_data['start_time'],
-                    end_time=slot_data['end_time'],
-                    week_start_date=week_start_date,
-                    week_end_date=week_end_date,
-                    is_consistent_slot=True
-                )
-                slots.append(slot)
-        
-        return slots
-
     def get_patient_care_slots_by_week(self, patient_id: str, week_start_date: date):
         """Get all care slots for a patient in a specific week."""
         # Get all slots for the patient first
@@ -113,7 +93,6 @@ class PatientCareSlotService:
                 'entity_id': slot.entity_id,
                 'start_time': slot.start_time,
                 'end_time': slot.end_time,
-                'is_consistent_slot': slot.is_consistent_slot
             })
         
         # Sort slots within each day by start time
@@ -216,3 +195,12 @@ class PatientCareSlotService:
                 **PatientCareSlot(**row).as_dict()
             } for row in sorted_results
         ]
+    
+    def check_weekly_quota(self, slots: List[PatientCareSlot]) -> float:
+        total_hours = 0
+        for slot in slots:
+            if slot.start_time and slot.end_time:
+                start_minutes = slot.start_time.hour * 60 + slot.start_time.minute
+                end_minutes = slot.end_time.hour * 60 + slot.end_time.minute
+                total_hours += (end_minutes - start_minutes) / 60
+        return total_hours
