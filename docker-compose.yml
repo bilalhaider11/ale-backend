@@ -147,6 +147,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   employee_import:
     image: ale_employee_import
@@ -164,6 +166,8 @@ services:
       - ./${APP_ENV}.env
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   patient_import:
