@@ -1,6 +1,6 @@
 from common.services import (
     PersonService, EmailService, LoginMethodService, OrganizationService,
-    PersonOrganizationRoleService
+    PersonOrganizationRoleService, PersonOrganizationInvitationService
 )
 from common.models import Person, Email, LoginMethod, Organization, PersonOrganizationRole, PersonOrganizationRoleEnum
 from common.models.login_method import LoginMethodType
@@ -28,10 +28,11 @@ class AuthService:
         self.login_method_service = LoginMethodService(config)
         self.organization_service = OrganizationService(config)
         self.person_organization_role_service = PersonOrganizationRoleService(config)
+        self.person_organization_invitation_service = PersonOrganizationInvitationService(config)
 
         self.message_sender = MessageSender()
 
-    def signup(self, email, first_name, last_name, person_id=None):
+    def signup_by_email(self, email, first_name, last_name, person_id=None):
         login_method = LoginMethod(
             method_type=LoginMethodType.EMAIL_PASSWORD,
             raw_password=self.config.DEFAULT_USER_PASSWORD
@@ -74,6 +75,110 @@ class AuthService:
 
         self.send_welcome_email(login_method, person, email.email)
         return person
+
+
+    def login_user_by_oauth(self, email, first_name, last_name, provider, provider_data, person_id=None):
+
+        provider_method_map = {
+            'google': LoginMethodType.GOOGLE,
+            'microsoft': LoginMethodType.MICROSOFT
+        }
+
+        try:
+            login_method_type = provider_method_map[provider]
+        except KeyError:
+            raise InputValidationError(f"Unsupported provider: {provider}")
+
+        is_new_email = False
+        is_new_person = False
+        has_new_roles = False
+
+        invitation = None
+
+        if person_id:
+            # Person is already invited. Fetch existing email and person.
+            person = self.person_service.get_person_by_id(person_id)
+            invitation = self.person_organization_invitation_service.get_invitation_by_invitee_id(person_id)
+            if invitation.email.lower() != email.lower():
+                raise InputValidationError("The invitation token you used is not valid for this email. Please log in with the same email that was invited.")
+            email_entity = self.email_service.get_email_by_person_id(person.entity_id, email)
+            if not email_entity:
+                # Create new email if it does not exist
+                email_entity = Email(person_id=person.entity_id, email=email, is_verified=True)
+                is_new_email = True
+        else:
+            # Check if email and person already exist
+            email_entity = self.email_service.get_email_by_email_address(email)
+            if not email_entity:
+                # Create new email if it does not exist
+                email_entity = Email(person_id=person_id, email=email, is_verified=True)
+                is_new_email = True
+
+            if not email_entity.is_verified:
+                email_entity.is_verified = True
+                is_new_email = True
+
+            person = self.person_service.get_person_by_email_id(email_entity.entity_id)
+            if not person:
+                person = Person(first_name=first_name, last_name=last_name)
+                email_entity.person_id = person.entity_id
+                is_new_person = True
+
+        # Check if login method already exists
+        login_method = self.login_method_service.get_login_method_by_email_id(email_entity.entity_id, method_type=login_method_type)
+        if not login_method:
+            # Create new login method if it does not exist
+            login_method = LoginMethod(
+                method_type=login_method_type,
+                method_data=provider_data,
+                person_id=person.entity_id,
+                email_id=email_entity.entity_id,
+                changed_by_id=person.entity_id,
+            )
+        else:
+            if login_method.person_id != person.entity_id:
+                raise InputValidationError("This social account is linked to another user.")
+            login_method.provider_data = provider_data
+            login_method.changed_by_id = person.entity_id
+
+
+        person_roles = self.person_organization_role_service.get_roles_by_person_id(person.entity_id)
+        logger.info(f"Person entity ID: {person.entity_id}")
+        logger.info(f"Person roles: {person_roles}")
+
+        if not invitation and not person_roles:
+            # Assign admin role in default organization if no roles exist 
+            organization = Organization(
+                changed_by_id=person.entity_id,
+                name=f"{first_name}'s Organization"
+            )
+
+            person_organization_role = PersonOrganizationRole(
+                changed_by_id=person.entity_id,
+                person_id=person.entity_id,
+                organization_id=organization.entity_id,
+                role=PersonOrganizationRoleEnum.ADMIN.value
+            )
+
+            has_new_roles = True
+
+
+        if is_new_person:
+            person = self.person_service.save_person(person)
+        if is_new_email:
+            email_entity = self.email_service.save_email(email_entity)
+        
+        login_method = self.login_method_service.save_login_method(login_method)
+
+        if has_new_roles:
+            self.organization_service.save_organization(organization)
+            self.person_organization_role_service.save_person_organization_role(person_organization_role)
+
+        access_token, expiry = self.generate_access_token(login_method)
+        # TODO: Optional send welcome email
+        return access_token, expiry, person
+
+
 
     def generate_token(self, login_method: LoginMethod, email: str, token_type: str = 'reset_password'):
         person_id, email_id = login_method.person_id, login_method.email_id

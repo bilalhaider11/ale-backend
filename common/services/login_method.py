@@ -14,8 +14,8 @@ class LoginMethodService:
         login_method = self.login_method_repo.save(login_method)
         return login_method
 
-    def get_login_method_by_email_id(self, email_id: str):
-        login_method = self.login_method_repo.get_one({"email_id": email_id, "method_type": LoginMethodType.EMAIL_PASSWORD})
+    def get_login_method_by_email_id(self, email_id: str, method_type: LoginMethodType = LoginMethodType.EMAIL_PASSWORD):
+        login_method = self.login_method_repo.get_one({"email_id": email_id, "method_type": method_type})
         return login_method
     
     def get_login_method_by_id(self, entity_id: str):
@@ -25,3 +25,4 @@ class LoginMethodService:
     def update_password(self, login_method: LoginMethod, password: str) -> LoginMethod:
         login_method.password = password
         return self.login_method_repo.save(login_method)
+
