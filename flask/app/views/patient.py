@@ -7,6 +7,7 @@ from common.app_logger import create_logger
 from datetime import datetime, timedelta
 from app.helpers.decorators import login_required, organization_required
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
+from common.helpers.exceptions import InputValidationError
 
 from common.models.patient_care_slot import PatientCareSlot
 from common.models import Person, Patient
@@ -210,98 +211,70 @@ class PatientCareSlots(Resource):
         patient_service = PatientService(config)
         patient_care_slot_service = PatientCareSlotService(config)
         
-        parsed_body = parse_request_body(request, [
-            'week_start_date',
-            'week_end_date',
-            'selected_days',
-            'consistent_slots',
-            'day_specific_slots'
-        ])
+        request_json = request.get_json(force=True)
+        if not isinstance(request_json, list):
+            raise InputValidationError("A list of slots is required")
         
-        week_start_date = parsed_body.get('week_start_date')
-        week_end_date = parsed_body.get('week_end_date')
-
-        validate_required_fields({'week_start_date': week_start_date})
+        week_start_date = request.args.get('week_start_date')
+        if not week_start_date:
+            today = datetime.now().date()
+            week_start_date = today - timedelta(days=today.weekday())
+        else:
+            try:
+                week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
+                if week_start_date.weekday() != 0:
+                    return get_failure_response("week_start_date must be a Monday", status_code=400)
+            except ValueError:
+                raise InputValidationError("week_start_date must be in 'YYYY-MM-DD' format")
+        
+        week_end_date = week_start_date + timedelta(days=6)
         
         patient = patient_service.get_patient_by_id(patient_id, organization.entity_id)
         if not patient:
             return get_failure_response("Patient not found in this organization", status_code=404)
-        
-        try:
-            week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
-        except ValueError:
-            return get_failure_response("week_start_date must be in 'YYYY-MM-DD' format", status_code=400)
-        
-        if week_start_date.weekday() != 0:
-            return get_failure_response("week_start_date must be a Monday", status_code=400)
-        
-        if not week_end_date:
-            week_end_date = week_start_date + timedelta(days=6)
-        else:
-            try:
-                week_end_date = datetime.strptime(week_end_date, '%Y-%m-%d').date()
-                if week_end_date != week_start_date + timedelta(days=6):
-                    return get_failure_response("week_end_date must be exactly 6 days after week_start_date", status_code=400)
-            except ValueError:
-                return get_failure_response("week_end_date must be in 'YYYY-MM-DD' format", status_code=400)
+            
+        if patient.weekly_quota is None or patient.weekly_quota == 0:
+            return get_failure_response("Please set a weekly quota before adding care slots.", status_code=400)
         
         slots = []
         
-        selected_days = parsed_body.get('selected_days', [])
-        consistent_slots_data = parsed_body.get('consistent_slots', [])
-        
-        if selected_days and consistent_slots_data:
-            for day in selected_days:
-                if not isinstance(day, int) or day < 0 or day > 6:
-                    return get_failure_response("selected_days must contain integers between 0 and 6", status_code=400)
+        for slot_data in request_json:
+            if not isinstance(slot_data, dict):
+                raise InputValidationError("Each slot must be an object")
             
-            consistent_slots = []
-            for slot_data in consistent_slots_data:
-                try:
-                    start_time = datetime.strptime(slot_data['start_time'], '%H:%M').time()
-                    end_time = datetime.strptime(slot_data['end_time'], '%H:%M').time()
-                    consistent_slots.append({
-                        'start_time': start_time,
-                        'end_time': end_time
-                    })
-                except (ValueError, TypeError, KeyError):
-                    return get_failure_response("consistent_slots must have start_time and end_time in 'HH:MM' format", status_code=400)
+            required_fields = ["day_of_week", "start_time", "end_time"]
+            if not all(field in slot_data for field in required_fields):
+                raise InputValidationError("Each slot must have day_of_week, start_time, and end_time")
             
-            slots.extend(patient_care_slot_service.apply_consistent_slots_to_days(
-                patient_id, selected_days, consistent_slots, week_start_date, week_end_date
-            ))
-        
-        day_specific_slots = parsed_body.get('day_specific_slots', {})
-        for day_str, day_slots in day_specific_slots.items():
+            day_of_week = slot_data['day_of_week']
+            if not isinstance(day_of_week, int) or day_of_week < 0 or day_of_week > 6:
+                raise InputValidationError("day_of_week must be an integer between 0 and 6")
+            
             try:
-                day = int(day_str)
-                for slot_data in day_slots:
-                    start_time = datetime.strptime(slot_data['start_time'], '%H:%M').time()
-                    end_time = datetime.strptime(slot_data['end_time'], '%H:%M').time()
-                    
-                    slot = PatientCareSlot(
-                        day_of_week=day,
-                        start_time=start_time,
-                        end_time=end_time,
-                        week_start_date=week_start_date,
-                        week_end_date=week_end_date,
-                        is_consistent_slot=False
-                    )
-                    slots.append(slot)
-            except (ValueError, TypeError, KeyError):
-                return get_failure_response("Error processing day_specific_slots. Format should be day: [{start_time, end_time}]", status_code=400)
+                start_time = datetime.strptime(slot_data['start_time'], '%H:%M').time()
+                end_time = datetime.strptime(slot_data['end_time'], '%H:%M').time()
+            except ValueError:
+                raise InputValidationError("start_time and end_time must be in 'HH:MM' format")
+            
+            if start_time >= end_time:
+                raise InputValidationError("start_time must be before end_time")
+            
+            # Create slot object
+            slot = PatientCareSlot(
+                day_of_week=day_of_week,
+                start_time=start_time,
+                end_time=end_time,
+                week_start_date=week_start_date,
+                week_end_date=week_end_date,
+            )
+            slots.append(slot)
         
-        total_hours = 0
-        for slot in slots:
-            if slot.start_time and slot.end_time:
-                start_minutes = slot.start_time.hour * 60 + slot.start_time.minute
-                end_minutes = slot.end_time.hour * 60 + slot.end_time.minute
-                total_hours += (end_minutes - start_minutes) / 60
-        
+        total_hours = patient_care_slot_service.check_weekly_quota(slots)
+
         if patient.weekly_quota is not None and total_hours > patient.weekly_quota:
             return get_failure_response(
-                f"Weekly quota exceeded: attempted {total_hours:.2f} h "
-                    f"(limit {patient.weekly_quota} h).",
+                f"Weekly quota exceeded: attempted {total_hours:.2f} h, "
+                f"limit {patient.weekly_quota} h.",
                 status_code=400
             )
             
@@ -314,7 +287,6 @@ class PatientCareSlots(Resource):
         
         current_week_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, week_start_date)
         care_duration = patient_care_slot_service.calculate_total_weekly_duration(patient_id, week_start_date)
-        
         care_requirements_saved = len(updated_slots) > 0
         
         return get_success_response(
