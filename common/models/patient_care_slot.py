@@ -13,7 +13,6 @@ class PatientCareSlot(VersionedModel):
     end_time: time = None
     week_start_date: date = None
     week_end_date: date = None
-    is_consistent_slot: bool = True
     logical_key: str = ""
 
     def validate_logical_key(self):
