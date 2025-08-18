@@ -87,6 +87,48 @@ class PersonOrganizationInvitationService:
     def get_invitation_by_token(self, token):
         """Retrieve an invitation by its token."""
         return self.person_organization_invite_repo.get_one({"token": token})
+        
+    def get_invitation_by_id(self, entity_id):
+        """Retrieve an invitation by its entity ID."""
+        return self.person_organization_invite_repo.get_one({"entity_id": entity_id})
+    
+    def update_invitation(self, entity_id, first_name=None, last_name=None, email=None, phone_number=None, roles=None):
+        """Update an invitation's details."""
+        invitation = self.get_invitation_by_id(entity_id)
+        if not invitation:
+            return None
+            
+        if first_name is not None:
+            invitation.first_name = first_name
+            
+        if last_name is not None:
+            invitation.last_name = last_name
+            
+        if email is not None:
+            invitation.email = email
+            
+        if phone_number is not None:
+            invitation.phone_number = phone_number
+            
+        if roles is not None:
+            invalid_roles = [role for role in roles if role not in self.VALID_ROLES]
+            if invalid_roles:
+                raise APIException(f"Invalid roles: {', '.join(invalid_roles)}", 400)
+            invitation.roles = ",".join(roles)
+            
+        return self.person_organization_invite_repo.save(invitation)
+        
+    def delete_invitation(self, invitation):
+        """Delete an invitation by its entity ID."""
+        return self.person_organization_invite_repo.delete_invitation(invitation.entity_id)
+            
+    def resend_invitation(self, invitation, organization_name, person):
+        """Resend an invitation email with the acceptance link."""
+        if invitation.status != 'pending':
+            raise APIException("Cannot resend an invitation that is not pending.")
+            
+        self.send_invitation_email(invitation, organization_name, person)
+        return True
 
     def get_invitation_by_invitee_id(self, invitee_id):
         """Retrieve an invitation by its token."""
@@ -96,22 +138,30 @@ class PersonOrganizationInvitationService:
         """Accept an invitation and associate the person with the organization."""
 
         if invitation.status != 'pending':
-            raise APIException("Invalid or expired invitation.", 400)
+            raise APIException("Invalid or expired invitation.")
 
         roles = invitation.roles.split(",")
 
         from common.services.person_organization_role import PersonOrganizationRoleService
         person_organization_role_service = PersonOrganizationRoleService(self.config)
-
+        
+        # Get existing roles to avoid duplicates
+        existing_roles = person_organization_role_service.get_roles_of_person_in_organization(
+            invitee_id, invitation.organization_id
+        )
+        
+        # Only add roles that don't already exist
         for role in roles:
-            por = PersonOrganizationRole(
-                person_id=invitee_id,
-                organization_id=invitation.organization_id,
-                role=role
-            )
-            person_organization_role_service.save_person_organization_role(por)
+            if role not in existing_roles:
+                # Always create a new role
+                por = PersonOrganizationRole(
+                    person_id=invitee_id,
+                    organization_id=invitation.organization_id,
+                    role=role
+                )
+                person_organization_role_service.save_person_organization_role(por)
 
-        invitation.status = 'accepted'
+        invitation.status = 'active'
         invitation.accepted_on = datetime.now(timezone.utc)
         invitation.invitee_id = invitee_id
         self.person_organization_invite_repo.save(invitation)

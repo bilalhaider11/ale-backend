@@ -28,3 +28,17 @@ class EmailService:
     def get_email_by_person_id(self, person_id: str, email: str):
         email = self.email_repo.get_one({'person_id': person_id, 'email': email})
         return email
+        
+    def update_email_address(self, person_id: str, new_email_address: str):
+        email = self.email_repo.get_one({'person_id': person_id})
+
+        if email:
+            email.email = new_email_address
+        else:
+            email = Email(
+                person_id=person_id,
+                email=new_email_address,
+                is_verified=False
+            )
+        
+        return self.save_email(email)
