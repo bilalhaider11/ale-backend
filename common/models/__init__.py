@@ -20,3 +20,4 @@ from .organization_partnership import OrganizationPartnership, OrganizationPartn
 from .care_visit import CareVisit, CareVisitStatusEnum
 from .form_data import FormData
 from .fax_template import FaxTemplate
+from .phone_number import PhoneNumber
