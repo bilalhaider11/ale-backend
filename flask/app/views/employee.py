@@ -134,8 +134,11 @@ class EmployeeAdmin(Resource):
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     @with_partner_organization_ids()
     def get(self, person, organization, partner_organization_ids):
+        # Get employee_type from query parameters
+        employee_type = request.args.get('employee_type', None)
+        
         employee_service = EmployeeService(config)
-        employees = employee_service.get_employees_by_organization(partner_organization_ids)
+        employees = employee_service.get_employees_by_organization(partner_organization_ids, employee_type=employee_type)
         return get_success_response(
             message="Employees retrieved successfully",
             data=employees
@@ -173,6 +176,7 @@ class EmployeeResource(Resource):
             'date_of_birth',
             'email_address',
             'social_security_number',
+            'employee_type'
         ])
 
         entity_id = parsed_body.pop('entity_id', None)
@@ -226,7 +230,8 @@ class EmployeeResource(Resource):
                 email_address=email_address,
                 social_security_number=social_security_number,
                 organization_id=organization.entity_id,
-                person_id=person.entity_id
+                person_id=person.entity_id,
+                employee_type=parsed_body['employee_type']
             )
 
             employee = employee_service.save_employee(employee)
