@@ -338,12 +338,13 @@ class EmployeeRepository(BaseRepository):
         return results
 
 
-    def get_employees_with_invitation_status(self, organization_ids: list[str]):
+    def get_employees_with_invitation_status(self, organization_ids: list[str], employee_type: str = None):
         """
         Get all employees with their invitation status.
 
         Args:
             organization_ids: The organization IDs to filter by
+            employee_type: Optional employee type to filter by
 
         Returns:
             List[Employee]: List of Employee instances with invitation status
@@ -359,9 +360,15 @@ class EmployeeRepository(BaseRepository):
                 LEFT JOIN person_organization_invitation pir ON e.person_id = pir.invitee_id AND pir.organization_id = e.organization_id
                 WHERE e.organization_id IN %s
         """
+        
+        params = [tuple(organization_ids)]
+        
+        if employee_type:
+            query += " AND e.employee_type = %s"
+            params.append(employee_type)
 
         with self.adapter:
-            result = self.adapter.execute_query(query, (tuple(organization_ids),))
+            result = self.adapter.execute_query(query, tuple(params))
 
         if result:
             employees = []
