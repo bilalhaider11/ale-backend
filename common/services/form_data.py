@@ -21,7 +21,7 @@ class FormDataService:
         self.person_repo = self.repository_factory.get_repository(RepoType.PERSON)
 
     def save_form_field(self, person_id: str, form_name: str, field_name: str, value: str, 
-                       changed_by_id: str = None, organization_id: str = None) -> FormData:
+                       organization_id: str = None) -> FormData:
         """
         Save a new form field value.
         
@@ -30,7 +30,6 @@ class FormDataService:
             form_name: The name of the form
             field_name: The name of the field
             value: The field value
-            changed_by_id: ID of the user making the change
             organization_id: Organization ID for employee updates
             
         Returns:
@@ -53,7 +52,7 @@ class FormDataService:
 
         # Save the form field
         form_data = self.form_data_repo.save_form_field(
-            person_id, form_name, field_name, value, changed_by_id
+            person_id, form_name, field_name, value
         )
 
         # Check if this field should update employee data
