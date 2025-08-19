@@ -64,7 +64,6 @@ class FormDataResource(Resource):
             
             # Get person_id from request and changed_by_id from authenticated user
             person_id = data['person_id']
-            changed_by_id = person.entity_id
             
             # Initialize service
             form_data_service = FormDataService(config)
@@ -75,7 +74,6 @@ class FormDataResource(Resource):
                 form_name=data['form_name'],
                 field_name=data['field_name'],
                 value=data.get('value', ''),
-                changed_by_id=changed_by_id,
                 organization_id=organization.entity_id
             )
             
