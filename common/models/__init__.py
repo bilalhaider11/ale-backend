@@ -19,3 +19,4 @@ from .patient_care_slot import PatientCareSlot
 from .organization_partnership import OrganizationPartnership, OrganizationPartnershipStatusEnum
 from .care_visit import CareVisit, CareVisitStatusEnum
 from .form_data import FormData
+from .fax_template import FaxTemplate

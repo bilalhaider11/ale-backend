@@ -18,3 +18,4 @@ from .organization_partnership import OrganizationPartnershipRepository
 from .patient_care_slot import PatientCareSlotRepository
 from .care_visit import CareVisitRepository
 from .form_data import FormDataRepository
+from .fax_template import FaxTemplateRepository

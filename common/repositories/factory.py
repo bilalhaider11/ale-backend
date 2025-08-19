@@ -75,6 +75,7 @@ class RepoType(Enum):
     PATIENT_CARE_SLOT = auto()
     CARE_VISIT = auto()
     FORM_DATA = auto()
+    FAX_TEMPLATE = auto()
 
 class RepositoryFactory:
 
@@ -102,6 +103,7 @@ class RepositoryFactory:
         RepoType.PATIENT_CARE_SLOT: PatientCareSlotRepository,
         RepoType.CARE_VISIT: CareVisitRepository,
         RepoType.FORM_DATA: FormDataRepository,
+        RepoType.FAX_TEMPLATE: FaxTemplateRepository,
     }
 
     def get_db_connection(self):

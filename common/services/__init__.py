@@ -16,3 +16,4 @@ from .care_visit import CareVisitService
 from .patient import PatientService
 from .patient_care_slot import PatientCareSlotService
 from .form_data import FormDataService
+from .fax_template import FaxTemplateService
