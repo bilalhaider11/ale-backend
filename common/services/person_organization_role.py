@@ -12,6 +12,10 @@ class PersonOrganizationRoleService:
     def save_person_organization_role(self, person_organization_role: PersonOrganizationRole):
         person_organization_role = self.person_organization_role_repo.save(person_organization_role)
         return person_organization_role
+    
+    def delete_person_organization_role(self, person_organization_role: PersonOrganizationRole):
+        person_organization_role = self.person_organization_role_repo.delete(person_organization_role)
+        return person_organization_role
 
     def get_roles_by_person_id(self, person_id: str):
         person_organization_roles = self.person_organization_role_repo.get_many({"person_id": person_id})
@@ -67,26 +71,22 @@ class PersonOrganizationRoleService:
         to_add = list(desired - current)
         to_remove = list(current - desired)
 
-        added, reactivated, deactivated = [], [], []
-
         for role in to_add:
-            status = self.person_organization_role_repo.role_active(person_id, organization_id, role)
-            if status == "reactivated":
-                reactivated.append(role)
-            elif status == "created":
-                added.append(role)
-            # status can be "unchanged" but shouldn't happen because of to_add
+            person_organization_role = PersonOrganizationRole(
+            person_id=person_id,
+            organization_id=organization_id,
+            role=role,
+            active=True
+            )
+            self.save_person_organization_role(person_organization_role)
 
         for role in to_remove:
-            if self.person_organization_role_repo.role_inactive(person_id, organization_id, role):
-                deactivated.append(role)
-
-        return {
-            "added": added,
-            "reactivated": reactivated,
-            "deactivated": deactivated,
-            "unchanged": list(desired & current),
-        }
+            person_organization_role = self.person_organization_role_repo.get_one({
+                "person_id": person_id,
+                "organization_id": organization_id,
+                "role":role
+            })
+            self.person_organization_role_repo.delete(person_organization_role)
         
     def delete_roles_for_person_in_organization(self, person_id: str, organization_id: str):
         """

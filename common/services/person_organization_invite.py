@@ -42,6 +42,32 @@ class PersonOrganizationInvitationService:
 
         return self.person_organization_invite_repo.save(person_organization_invitation)
 
+    def check_existing_invitation(self, email: str, organization_id: str, entity_id: str = None):
+        """
+        Check if a user with the given email already has an active or pending invitation to the organization.
+        
+        Args:
+            email (str): The email address to check.
+            organization_id (str): The organization ID.
+            entity_id (str, optional): The entity ID of an existing invitation being updated. Defaults to None.
+            
+        Returns:
+            tuple: (has_existing_invitation, message) where has_existing_invitation is a boolean 
+                   and message is an error message if an existing invitation is found.
+        """
+        existing_invitations = self.person_organization_invite_repo.get_many({
+            "email": email,
+            "organization_id": organization_id
+        })
+        
+        for invitation in existing_invitations:
+            if invitation.status == 'pending' and not entity_id:
+                return True, "User already has a pending invitation to this organization."
+            elif invitation.status == 'active' and not entity_id:
+                return True, "User is already a member of this organization. To add roles, please update them in Edit."
+        
+        return False, None
+        
     def generate_invitation_token(self, organization_id, email, invitee_id, first_name, last_name):
         """Generate a JWT token for the invitation."""
         token = jwt.encode(

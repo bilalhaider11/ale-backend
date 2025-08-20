@@ -159,6 +159,13 @@ class OrganizationInvite(Resource):
                     message="You cannot invite yourself to an organization you already administer.",
                     status_code=400
                 )
+                
+            # Check if user is already invited or has a pending invitation
+            has_existing_invitation, error_message = invitation_service.check_existing_invitation(
+                email, organization_id, entity_id
+            )
+            if has_existing_invitation:
+                return get_failure_response(message=error_message, status_code=400)
 
             if entity_id:
                 invitation = invitation_service.get_invitation_by_id(entity_id)

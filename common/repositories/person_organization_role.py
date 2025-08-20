@@ -131,65 +131,11 @@ class PersonOrganizationRoleRepository(BaseRepository):
         with self.adapter:
             rows = self.adapter.execute_query(q, (person_id, organization_id, *self.VALID_ROLES))
         return [r["role"] for r in rows or []]
-
-    def _select_role_entity_any_state(self, person_id: str, organization_id: str, role: str):
-        q = """
-            SELECT entity_id, active
-            FROM person_organization_role
-            WHERE person_id = %s AND organization_id = %s AND role = %s
-            LIMIT 1;
-        """
-        with self.adapter:
-            rows = self.adapter.execute_query(q, (person_id, organization_id, role))
-        return rows[0] if rows else None  # {'entity_id': ..., 'active': t/f}
-
-    def role_active(self, person_id: str, organization_id: str, role: str):
-        """
-        Ensure exactly ONE row exists for (person, org, role) and it's active.
-        Returns: "reactivated" | "created" | "unchanged"
-        """
-        row = self._select_role_entity_any_state(person_id, organization_id, role)
-        if row:
-            if row["active"]:
-                return "unchanged"
-            # reactivate
-            with self.adapter:
-                self.adapter.execute_query(
-                    "UPDATE person_organization_role SET active = TRUE WHERE entity_id = %s;",
-                    (row["entity_id"],)
-                )
-            return "reactivated"
-
-        # Use generic save to populate entity_id/version fields.
-        new = PersonOrganizationRole(
-            person_id=person_id,
-            organization_id=organization_id,
-            role=role,
-            active=True
-        )
-        self.save(new)
-
-        return "created"
-
-    def role_inactive(self, person_id: str, organization_id: str, role: str) -> bool:
-        """
-        Ensure the row exists and is inactive. Returns True if changed state to inactive.
-        """
-        row = self._select_role_entity_any_state(person_id, organization_id, role)
-        if not row:
-            return False
-        if row["active"]:
-            with self.adapter:
-                self.adapter.execute_query(
-                    "UPDATE person_organization_role SET active = FALSE WHERE entity_id = %s;",
-                    (row["entity_id"],)
-                )
-            return True
-        return False
         
     def delete_roles_for_person_in_organization(self, person_id: str, organization_id: str):
         """
         Delete all roles for a person in an organization.
+        In this data model, deletion means setting active=False.
         
         Args:
             person_id (str): The ID of the person.
@@ -198,14 +144,21 @@ class PersonOrganizationRoleRepository(BaseRepository):
         Returns:
             bool: True if deletion was successful.
         """
+        # Get all active roles for this person in this organization
         query = """
-            DELETE FROM person_organization_role
-            WHERE person_id = %s AND organization_id = %s
+            SELECT entity_id 
+            FROM person_organization_role
+            WHERE person_id = %s AND organization_id = %s AND active = TRUE
         """
         params = (person_id, organization_id)
         
         with self.adapter:
-            self.adapter.execute_query(query, params)
-            
+            rows = self.adapter.execute_query(query, params)
+        
+        for row in rows:
+            role_obj = self.get_one({"entity_id": row["entity_id"]})
+            if role_obj:
+                self.delete(role_obj)
+                
         return True
 
