@@ -29,8 +29,7 @@ def upgrade(migration: PostgresMigration):
             print(f"Database: '{db_name}', Initial collation version: {old_version}")
 
             # Execute the collation version refresh
-            # refresh_sql = f'ALTER DATABASE "{db_name}" REFRESH COLLATION VERSION;'
-            refresh_sql = f'ALTER DATABASE "rococo-sample-db" REFRESH COLLATION VERSION;'
+            refresh_sql = f'ALTER DATABASE "{db_name}" REFRESH COLLATION VERSION;'
             migration.db_adapter.execute_query(refresh_sql)
             
             # Verify the collation version was updated by running the same query again
