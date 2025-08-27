@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "oig-verifier"
+version = "0.0.1"
+description = "OIG verification service for exclusion matches"
+authors = ["Axel"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+psycopg2-binary = "^2.9.10"
+rollbar = "0.16.3"
+pydantic-settings = "^2.2.1"
+werkzeug = "^3.0.6"
+pyjwt = "^2.10.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api" 

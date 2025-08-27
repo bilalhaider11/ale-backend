@@ -188,6 +188,24 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  oig_verifier:
+    image: ${ECR_START_URL}/oig-verifier:${TAG}
+    container_name: ale_oig_verifier
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/oig_verifier/Dockerfile
+    networks:
+      - backnet
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
 
 volumes:
   ale-backend-postgres-data:

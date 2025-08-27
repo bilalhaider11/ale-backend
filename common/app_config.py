@@ -54,6 +54,7 @@ class Config(BaseConfig):
     ORGANIZATION_PROCESSOR_QUEUE_NAME: str = Field(alias='OrganizationProcessor_QUEUE_NAME', default='organization-processor')
     EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME: str = Field(alias='EmployeeImportProcessor_QUEUE_NAME', default='employee-import')
     EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME: str = Field(alias='EmployeeExclusionMatchProcessor_QUEUE_NAME', default='employee-exclusion-match-processor')
+    OIG_VERIFIER_PROCESSOR_QUEUE_NAME: str = Field(alias='OigVerifierProcessor_QUEUE_NAME', default='oig-verifier')
     PATIENT_IMPORT_PROCESSOR_QUEUE_NAME: str = Field(alias='PatientImportProcessor_QUEUE_NAME', default='patient-import')
 
     BASE_DOMAIN: str = Field(default=None)
@@ -116,6 +117,12 @@ class Config(BaseConfig):
         if self.QUEUE_NAME_PREFIX:
             return f"{self.QUEUE_NAME_PREFIX}{self.EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME}"
         return self.EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME
+    
+    @property
+    def PREFIXED_OIG_VERIFIER_QUEUE_NAME(self):
+        if self.QUEUE_NAME_PREFIX:
+            return f"{self.QUEUE_NAME_PREFIX}{self.OIG_VERIFIER_PROCESSOR_QUEUE_NAME}"
+        return self.OIG_VERIFIER_PROCESSOR_QUEUE_NAME
     
     @property
     def PREFIXED_PATIENT_IMPORT_PROCESSOR_QUEUE_NAME(self):
