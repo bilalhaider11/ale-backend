@@ -77,8 +77,9 @@ The service expects messages in the following format:
 
 ## Verification Results
 
-- **Match**: Employee is confirmed to be on the OIG exclusion list
-- **No Match**: Employee is not on the OIG exclusion list or SSN doesn't match
+- **Match**: Employee is confirmed to be on the OIG exclusion list (SSN matches)
+- **NoMatch**: Employee's name was found but SSN doesn't match the exclusion record
+- **NoSearch**: Employee's name was not found in the OIG database at all
 - **Error**: Technical error occurred during verification
 - **Skipped**: Verification was skipped (e.g., no SSN available)
 

@@ -35,7 +35,6 @@ class OIGVerifier:
         self.screenshot_dir = screenshot_dir
         self.driver = None
         self.current_result_dir = None
-        self.screenshot_index = 0
         
         # Create main screenshot directory if it doesn't exist
         if not os.path.exists(screenshot_dir):
@@ -79,11 +78,8 @@ class OIGVerifier:
             logger.error("No result directory set")
             return None
         
-        # Increment screenshot index
-        self.screenshot_index += 1
-        
         # Create filename with index prefix
-        indexed_filename = f"{self.screenshot_index:02d}_{filename}.png"
+        indexed_filename = f"{filename}.png"
         full_filename = f"{self.current_result_dir}/{indexed_filename}"
         
         try:
@@ -122,15 +118,12 @@ class OIGVerifier:
             last_name_field.clear()
             last_name_field.send_keys(last_name)
             
-            self.take_screenshot("before_search")
-            
             # Click the Search button
             search_button = self.driver.find_element(By.ID, "ctl00_cpExclusions_ibSearchSP")
             search_button.click()
             
             # Wait for results page to load
             time.sleep(5)
-            self.take_screenshot("search_results")
             
             # Check if we have search results by looking for the results table
             try:
@@ -143,7 +136,6 @@ class OIGVerifier:
                     
         except Exception as e:
             logger.error(f"Error during name search: {e}")
-            self.take_screenshot("search_error")
             return False
     
     def verify_ssn(self, ssn):
@@ -154,7 +146,7 @@ class OIGVerifier:
             ssn (str): SSN without dashes
             
         Returns:
-            str: "Match" or "No Match" or "Error"
+            str: "Match", "NoMatch", or "Error"
         """
         try:
             logger.info(f"Verifying SSN: {ssn}")
@@ -164,19 +156,16 @@ class OIGVerifier:
             
             if not verify_links:
                 logger.warning("No Verify links found")
-                return "Error: No Verify links found"
+                return "Error"
             
             # Click the first Verify link
             verify_links[0].click()
             time.sleep(3)
-            self.take_screenshot("verify_page")
             
             # Enter the SSN
             ssn_field = self.driver.find_element(By.ID, "ctl00_cpExclusions_txtSSN")
             ssn_field.clear()
             ssn_field.send_keys(ssn)
-            
-            self.take_screenshot("before_verify")
             
             # Click the Verify button
             verify_button = self.driver.find_element(By.ID, "ctl00_cpExclusions_ibtnVerify")
@@ -184,7 +173,6 @@ class OIGVerifier:
             
             # Wait for verification result
             time.sleep(3)
-            self.take_screenshot("verification_result")
             
             # Check the result based on the actual HTML structure
             try:
@@ -192,7 +180,7 @@ class OIGVerifier:
                 no_match_popup = self.driver.find_element(By.ID, "ctl00_cpExclusions_invalid")
                 if no_match_popup.is_displayed():
                     logger.info("SSN verification failed - No match found")
-                    return "No Match"
+                    return "NoMatch"
             except NoSuchElementException:
                 pass
             
@@ -201,7 +189,7 @@ class OIGVerifier:
                 no_match_img = self.driver.find_element(By.ID, "ctl00_cpExclusions_print_verification")
                 if "verify-no-match" in no_match_img.get_attribute("src"):
                     logger.info("SSN verification failed - No match found (image)")
-                    return "No Match"
+                    return "NoMatch"
             except NoSuchElementException:
                 pass
             
@@ -217,19 +205,18 @@ class OIGVerifier:
             # If we can't determine the result clearly, check if we're still on the verify page
             try:
                 self.driver.find_element(By.ID, "ctl00_cpExclusions_txtSSN")
-                logger.warning("Still on verify page - could not determine result, assuming No Match")
-                return "No Match"
+                logger.warning("Still on verify page - could not determine result, assuming NoMatch")
+                return "NoMatch"
             except NoSuchElementException:
                 pass
             
-            # If we can't determine the result, assume No Match for safety
-            logger.warning("Could not determine verification result, assuming No Match")
-            return "No Match"
+            # If we can't determine the result, assume NoMatch for safety
+            logger.warning("Could not determine verification result, assuming NoMatch")
+            return "NoMatch"
                         
         except Exception as e:
             logger.error(f"Error during SSN verification: {e}")
-            self.take_screenshot("verification_error")
-            return f"Error: {str(e)}"
+            return "Error"
     
     def verify_person(self, first_name, last_name, ssn):
         """
@@ -241,7 +228,7 @@ class OIGVerifier:
             ssn (str): SSN without dashes
             
         Returns:
-            str: "Match", "No Match", or error message
+            str: "Match", "NoMatch", "NoSearch", or "Error"
         """
         try:
             # Create initial directory for screenshots
@@ -253,27 +240,35 @@ class OIGVerifier:
             os.makedirs(self.current_result_dir, exist_ok=True)
             logger.info(f"Created temporary directory: {self.current_result_dir}")
             
-            # Reset screenshot index for new verification
-            self.screenshot_index = 0
-            
             # Step 1: Search by name
             search_success = self.search_by_name(first_name, last_name)
             
             if not search_success:
-                # Rename directory for no match
-                result = "NoMatch"
+                # Take final screenshot for NoSearch result
+                self.take_screenshot("nosearch_result")
+                
+                # Rename directory for no search results
+                result = "NoSearch"
                 final_dir_name = f"{first_name}_{last_name}_{ssn}_{result}_{timestamp}"
                 final_dir = os.path.join(self.screenshot_dir, final_dir_name)
                 os.rename(self.current_result_dir, final_dir)
                 self.current_result_dir = final_dir
                 logger.info(f"Renamed directory to: {self.current_result_dir}")
-                return "No Match: No search results found"
+                return "NoSearch"
             
             # Step 2: Verify SSN
             result = self.verify_ssn(ssn)
             
+            # Take final screenshot based on result
+            if result == "Match":
+                self.take_screenshot("match_result")
+            elif result == "NoMatch":
+                self.take_screenshot("nomatch_result")
+            elif result == "Error":
+                self.take_screenshot("error_result")
+            
             # Rename directory based on verification result
-            if "No Match" in result:
+            if "NoMatch" in result:
                 result_word = "NoMatch"
             elif "Match" in result:
                 result_word = "Match"
@@ -290,7 +285,12 @@ class OIGVerifier:
             
         except Exception as e:
             logger.error(f"Error in verification process: {e}")
-            return f"Error: {str(e)}"
+            # Take error screenshot if possible
+            try:
+                self.take_screenshot("error_result")
+            except:
+                pass
+            return "Error"
     
     def close(self):
         """Close the browser and clean up"""

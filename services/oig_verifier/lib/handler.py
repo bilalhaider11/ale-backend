@@ -143,14 +143,18 @@ def perform_oig_verification(first_name, last_name, ssn):
         result = verifier.verify_person(first_name, last_name, clean_ssn)
         
         # Parse the result
-        if "Match" in result and "No Match" not in result:
+        if result == "Match":
             status = 'verified'
             oig_result = 'Match'
             notes = f"OIG verification successful - Match confirmed for {first_name} {last_name}"
-        elif "No Match" in result:
+        elif result == "NoMatch":
             status = 'verified'
-            oig_result = 'No Match'
+            oig_result = 'NoMatch'
             notes = f"OIG verification completed - No match found for {first_name} {last_name}"
+        elif result == "NoSearch":
+            status = 'verified'
+            oig_result = 'NoSearch'
+            notes = f"OIG verification completed - No search results found for {first_name} {last_name}"
         else:
             status = 'error'
             oig_result = 'Error'
@@ -200,7 +204,9 @@ def update_match_verification_status(match, verification_result, employee_exclus
         if verification_result['status'] == 'verified':
             if verification_result['result'] == 'Match':
                 match.status = 'confirmed'
-            elif verification_result['result'] == 'No Match':
+            elif verification_result['result'] == 'NoMatch':
+                match.status = 'cleared'
+            elif verification_result['result'] == 'NoSearch':
                 match.status = 'cleared'
         elif verification_result['status'] == 'error':
             match.status = 'error'
