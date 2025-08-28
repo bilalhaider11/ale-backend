@@ -19,26 +19,23 @@ from selenium.common.exceptions import NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 import logging
 
+# Import S3 client service
+from common.services.s3_client import S3ClientService
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class OIGVerifier:
-    def __init__(self, screenshot_dir="screenshots"):
+    def __init__(self):
         """
         Initialize the OIG Verifier
-        
-        Args:
-            screenshot_dir (str): Directory to save screenshots
         """
         self.base_url = "https://exclusions.oig.hhs.gov/Default.aspx"
-        self.screenshot_dir = screenshot_dir
         self.driver = None
-        self.current_result_dir = None
         
-        # Create main screenshot directory if it doesn't exist
-        if not os.path.exists(screenshot_dir):
-            os.makedirs(screenshot_dir)
+        # Initialize S3 client
+        self.s3_client = S3ClientService()
         
         # Set up Chrome options
         chrome_options = Options()
@@ -72,22 +69,55 @@ class OIGVerifier:
           logger.error(f"Can't run OIG verification script on local")
           raise Exception(f"Can't run OIG verification script on local")
     
-    def take_screenshot(self, filename):
-        """Take a screenshot and save it to the current result directory"""
-        if not self.current_result_dir:
-            logger.error("No result directory set")
-            return None
-        
-        # Create filename with index prefix
-        indexed_filename = f"{filename}.png"
-        full_filename = f"{self.current_result_dir}/{indexed_filename}"
-        
+    def take_screenshot(self, filename, organization_id, person_id):
+        """Take a screenshot and save it to S3 with the specified naming convention"""
         try:
-            self.driver.save_screenshot(full_filename)
-            logger.info(f"Screenshot saved: {full_filename}")
-            return full_filename
+            # Create temporary local filename
+            temp_local_path = f"/tmp/{filename}_{int(time.time())}.png"
+            
+            # Take screenshot locally first
+            self.driver.save_screenshot(temp_local_path)
+            logger.info(f"Temporary screenshot saved: {temp_local_path}")
+            
+            # Generate S3 key with the specified naming convention
+            today = datetime.now().strftime("%Y-%m-%d")
+            s3_key = f"{organization_id}/oig_exclusion/{person_id}/{today}.png"
+            
+            # Upload to S3
+            self.s3_client.upload_file(
+                file_path=temp_local_path,
+                s3_key=s3_key,
+                content_type="image/png",
+                metadata={
+                    "organization_id": organization_id,
+                    "person_id": person_id,
+                    "verification_date": today,
+                    "screenshot_type": filename
+                }
+            )
+            
+            logger.info(f"Screenshot uploaded to S3: {s3_key}")
+            
+            # Generate presigned URL for accessing the screenshot
+            presigned_url = self.s3_client.generate_presigned_url(s3_key, expiration=604800)
+            logger.info(f"Generated presigned URL: {presigned_url}")
+            
+            # Clean up temporary local file
+            try:
+                os.remove(temp_local_path)
+                logger.info(f"Cleaned up temporary file: {temp_local_path}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up temporary file {temp_local_path}: {e}")
+            
+            # Return both S3 key and presigned URL for flexibility
+            return {
+                's3_key': s3_key,
+                'presigned_url': presigned_url,
+                'expires_in': 604800  # 7 days in seconds
+            }
+            
         except Exception as e:
-            logger.error(f"Failed to take screenshot: {e}")
+            logger.error(f"Failed to take and upload screenshot: {e}")
             return None
     
     def search_by_name(self, first_name, last_name):
@@ -218,7 +248,7 @@ class OIGVerifier:
             logger.error(f"Error during SSN verification: {e}")
             return "Error"
     
-    def verify_person(self, first_name, last_name, ssn):
+    def verify_person(self, first_name, last_name, ssn, organization_id, person_id):
         """
         Complete verification process for a person
         
@@ -226,60 +256,35 @@ class OIGVerifier:
             first_name (str): First name
             last_name (str): Last name
             ssn (str): SSN without dashes
+            organization_id (str): Organization ID for S3 upload
+            person_id (str): Person ID for S3 upload
             
         Returns:
             str: "Match", "NoMatch", "NoSearch", or "Error"
         """
         try:
-            # Create initial directory for screenshots
-            timestamp = time.strftime("%Y_%m_%d_%H_%M_%S_%Z")
-            temp_dir_name = f"{first_name}_{last_name}_{ssn}_temp_{timestamp}"
-            self.current_result_dir = os.path.join(self.screenshot_dir, temp_dir_name)
-            
-            # Create the initial directory
-            os.makedirs(self.current_result_dir, exist_ok=True)
-            logger.info(f"Created temporary directory: {self.current_result_dir}")
-            
             # Step 1: Search by name
             search_success = self.search_by_name(first_name, last_name)
             
             if not search_success:
-                # Take final screenshot for NoSearch result
-                self.take_screenshot("nosearch_result")
-                
-                # Rename directory for no search results
-                result = "NoSearch"
-                final_dir_name = f"{first_name}_{last_name}_{ssn}_{result}_{timestamp}"
-                final_dir = os.path.join(self.screenshot_dir, final_dir_name)
-                os.rename(self.current_result_dir, final_dir)
-                self.current_result_dir = final_dir
-                logger.info(f"Renamed directory to: {self.current_result_dir}")
+                # Take final screenshot for NoSearch result and upload to S3
+                screenshot_result = self.take_screenshot("nosearch_result", organization_id, person_id)
+                logger.info(f"No search results found. Screenshot uploaded to S3: {screenshot_result}")
                 return "NoSearch"
             
             # Step 2: Verify SSN
             result = self.verify_ssn(ssn)
             
-            # Take final screenshot based on result
+            # Take final screenshot based on result and upload to S3
+            screenshot_result = None
             if result == "Match":
-                self.take_screenshot("match_result")
+                screenshot_result = self.take_screenshot("match_result", organization_id, person_id)
             elif result == "NoMatch":
-                self.take_screenshot("nomatch_result")
+                screenshot_result = self.take_screenshot("nomatch_result", organization_id, person_id)
             elif result == "Error":
-                self.take_screenshot("error_result")
+                screenshot_result = self.take_screenshot("error_result", organization_id, person_id)
             
-            # Rename directory based on verification result
-            if "NoMatch" in result:
-                result_word = "NoMatch"
-            elif "Match" in result:
-                result_word = "Match"
-            else:
-                result_word = "Error"
-            
-            final_dir_name = f"{first_name}_{last_name}_{ssn}_{result_word}_{timestamp}"
-            final_dir = os.path.join(self.screenshot_dir, final_dir_name)
-            os.rename(self.current_result_dir, final_dir)
-            self.current_result_dir = final_dir
-            logger.info(f"Renamed directory to: {self.current_result_dir}")
+            logger.info(f"Verification result: {result}. Screenshot uploaded to S3: {screenshot_result}")
             
             return result
             
@@ -287,7 +292,8 @@ class OIGVerifier:
             logger.error(f"Error in verification process: {e}")
             # Take error screenshot if possible
             try:
-                self.take_screenshot("error_result")
+                screenshot_result = self.take_screenshot("error_result", organization_id, person_id)
+                logger.info(f"Error screenshot uploaded to S3: {screenshot_result}")
             except:
                 pass
             return "Error"

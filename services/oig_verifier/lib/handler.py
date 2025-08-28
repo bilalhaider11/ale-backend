@@ -87,7 +87,7 @@ def verify_match(match_data, employee_exclusion_match_repo, employee_exclusion_m
             }
         else:
             # Perform OIG verification using the scraping script
-            verification_result = perform_oig_verification(first_name, last_name, ssn)
+            verification_result = perform_oig_verification(first_name, last_name, ssn, employee.organization_id, employee.person_id)
     else:
         logger.warning(f"Verification not implemented for entity type: {matched_entity_type}")
         verification_result = {
@@ -104,7 +104,7 @@ def verify_match(match_data, employee_exclusion_match_repo, employee_exclusion_m
     logger.info(f"Verification completed for match {match_id}: {verification_result}")
     logger.info(f"Screenshots and verification details available for audit")
 
-def perform_oig_verification(first_name, last_name, ssn):
+def perform_oig_verification(first_name, last_name, ssn, organization_id, person_id):
     """
     Perform the actual OIG verification using the scraping script
     
@@ -132,15 +132,11 @@ def perform_oig_verification(first_name, last_name, ssn):
                 'verified_on': datetime.utcnow().isoformat()
             }
 
-        # Create screenshots directory if it doesn't exist
-        screenshot_dir = "/app/screenshots"
-        os.makedirs(screenshot_dir, exist_ok=True)
-        
         # Initialize the OIG verifier
-        verifier = OIGVerifier(screenshot_dir=screenshot_dir)
+        verifier = OIGVerifier()
         
         # Perform verification
-        result = verifier.verify_person(first_name, last_name, clean_ssn)
+        result = verifier.verify_person(first_name, last_name, clean_ssn, organization_id, person_id)
         
         # Parse the result
         if result == "Match":
