@@ -98,7 +98,7 @@ def verify_match(match_data, employee_exclusion_match_repo, employee_exclusion_m
         }
 
     # Skip database update for now - just log the results
-    # update_match_verification_status(match, verification_result, employee_exclusion_match_repo)
+    update_match_verification_status(match, verification_result, employee_exclusion_match_repo)
     
     # Log verification result
     logger.info(f"Verification completed for match {match_id}: {verification_result}")
@@ -136,7 +136,11 @@ def perform_oig_verification(first_name, last_name, ssn, organization_id, person
         verifier = OIGVerifier()
         
         # Perform verification
-        result = verifier.verify_person(first_name, last_name, clean_ssn, organization_id, person_id)
+        verification_response = verifier.verify_person(first_name, last_name, clean_ssn, organization_id, person_id)
+        
+        # Extract result and S3 key from response
+        result = verification_response.get('result', 'Error')
+        s3_key = verification_response.get('s3_key')
         
         # Parse the result
         if result == "Match":
@@ -161,7 +165,8 @@ def perform_oig_verification(first_name, last_name, ssn, organization_id, person
             'result': oig_result,
             'notes': notes,
             'verified_on': datetime.utcnow().isoformat(),
-            'raw_result': result
+            'raw_result': result,
+            's3_key': s3_key
         }
         
         logger.info(f"OIG verification completed for {first_name} {last_name}: {oig_result}")
@@ -201,9 +206,9 @@ def update_match_verification_status(match, verification_result, employee_exclus
             if verification_result['result'] == 'Match':
                 match.status = 'confirmed'
             elif verification_result['result'] == 'NoMatch':
-                match.status = 'cleared'
+                match.status = 'mismatch'
             elif verification_result['result'] == 'NoSearch':
-                match.status = 'cleared'
+                match.status = 'no_search'
         elif verification_result['status'] == 'error':
             match.status = 'error'
         elif verification_result['status'] == 'skipped':
@@ -219,6 +224,10 @@ def update_match_verification_status(match, verification_result, employee_exclus
         
         match.reviewer_name = "OIG Verifier Service"
         match.review_date = datetime.utcnow().date()
+        
+        # Save the S3 key if available
+        if verification_result.get('s3_key'):
+            match.s3_key = verification_result['s3_key']
         
         # Save the updated match
         employee_exclusion_match_repo.save(match)

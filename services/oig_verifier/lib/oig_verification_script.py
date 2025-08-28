@@ -270,7 +270,10 @@ class OIGVerifier:
                 # Take final screenshot for NoSearch result and upload to S3
                 screenshot_result = self.take_screenshot("nosearch_result", organization_id, person_id)
                 logger.info(f"No search results found. Screenshot uploaded to S3: {screenshot_result}")
-                return "NoSearch"
+                return {
+                    'result': 'NoSearch',
+                    's3_key': screenshot_result['s3_key'] if screenshot_result else None
+                }
             
             # Step 2: Verify SSN
             result = self.verify_ssn(ssn)
@@ -286,17 +289,24 @@ class OIGVerifier:
             
             logger.info(f"Verification result: {result}. Screenshot uploaded to S3: {screenshot_result}")
             
-            return result
+            return {
+                'result': result,
+                's3_key': screenshot_result['s3_key'] if screenshot_result else None
+            }
             
         except Exception as e:
             logger.error(f"Error in verification process: {e}")
             # Take error screenshot if possible
+            screenshot_result = None
             try:
                 screenshot_result = self.take_screenshot("error_result", organization_id, person_id)
                 logger.info(f"Error screenshot uploaded to S3: {screenshot_result}")
             except:
                 pass
-            return "Error"
+            return {
+                'result': 'Error',
+                's3_key': screenshot_result['s3_key'] if screenshot_result else None
+            }
     
     def close(self):
         """Close the browser and clean up"""
