@@ -35,6 +35,18 @@ def message_handler(message):
     employee_exclusion_match_service = EmployeeExclusionMatchService(config)
     employee_repo = repository_factory.get_repository(repo_type=RepoType.EMPLOYEE)
 
+    # Mark all matches as in_process before starting verification
+    for match_data in matches_data:
+        try:
+            match_id = match_data.get('entity_id')
+            match = employee_exclusion_match_repo.get_one({"entity_id": match_id})
+            if match:
+                match.verification_result = 'in_process'
+                employee_exclusion_match_repo.save(match)
+                logger.info(f"Marked match {match_id} as in_process")
+        except Exception as e:
+            logger.error(f"Error marking match {match_data.get('entity_id')} as in_process: {str(e)}")
+
     # Process each match
     for match_data in matches_data:
         try:
@@ -201,18 +213,8 @@ def update_match_verification_status(match, verification_result, employee_exclus
         employee_exclusion_match_repo: Repository for employee exclusion matches
     """
     try:
-        # Update match status based on verification result
-        if verification_result['status'] == 'verified':
-            if verification_result['result'] == 'Match':
-                match.status = 'confirmed'
-            elif verification_result['result'] == 'NoMatch':
-                match.status = 'mismatch'
-            elif verification_result['result'] == 'NoSearch':
-                match.status = 'no_search'
-        elif verification_result['status'] == 'error':
-            match.status = 'error'
-        elif verification_result['status'] == 'skipped':
-            match.status = 'pending'
+        # Store the verification result in the verification_result column
+        match.verification_result = verification_result.get('result', 'Unknown')
         
         # Add verification details to reviewer notes
         verification_notes = verification_result.get('notes', '')
@@ -232,7 +234,7 @@ def update_match_verification_status(match, verification_result, employee_exclus
         # Save the updated match
         employee_exclusion_match_repo.save(match)
         
-        logger.info(f"Updated match {match.entity_id} with status: {match.status}")
+        logger.info(f"Updated match {match.entity_id} with verification result: {match.verification_result}")
         
     except Exception as e:
         logger.error(f"Error updating match verification status for {match.entity_id}: {str(e)}")
