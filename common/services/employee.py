@@ -77,7 +77,7 @@ class EmployeeService:
                 first_name=get_first_matching_column_value(row, ['first name', 'first_name']),
                 last_name=get_first_matching_column_value(row, ['last name', 'last_name']),
                 suffix=get_first_matching_column_value(row, ['suffix']),
-                employee_type=get_first_matching_column_value(row, ['employee type', 'employee_type']) or employee_type,
+                employee_type=get_first_matching_column_value(row, ['employee type', 'employee_type']),
                 user_type=get_first_matching_column_value(row, ['user type', 'user_type']),
                 address_1=get_first_matching_column_value(row, ['address 1', 'address_1', 'address']),
                 address_2=get_first_matching_column_value(row, ['address 2', 'address_2']),
