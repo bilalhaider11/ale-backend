@@ -8,6 +8,7 @@ from common.services.employee import EmployeeService
 from common.services.current_employees_file import CurrentEmployeesFileService
 from common.services.employee_exclusion_match import EmployeeExclusionMatchService
 from common.services.oig_employees_exclusion import OigEmployeesExclusionService
+from common.services.s3_client import S3ClientService
 from common.models.person_organization_role import PersonOrganizationRoleEnum
 from common.models.current_employees_file import CurrentEmployeesFileStatusEnum
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body
@@ -114,3 +115,29 @@ class EmployeeExclusionMatchRecordByEmployee(Resource):
         return get_success_response(
             message="Matches updated successfully",
         )
+
+
+@exclusion_match_api.route('/s3-image')
+class ExclusionMatchS3Image(Resource):
+    
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization):
+        """
+        Get a presigned URL for an S3 image associated with exclusion match verification.
+        """
+        s3_key = request.args.get('s3_key')
+        if not s3_key:
+            return get_failure_response("S3 key is required")
+        
+        try:
+            s3_client = S3ClientService()
+            # Generate presigned URL with 1 hour expiration
+            presigned_url = s3_client.generate_presigned_url(s3_key, expiration=3600)
+            
+            return get_success_response(
+                data={"url": presigned_url},
+                message="Presigned URL generated successfully"
+            )
+        except Exception as e:
+            return get_failure_response(f"Failed to generate presigned URL: {str(e)}")
