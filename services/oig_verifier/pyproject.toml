@@ -1,20 +1,21 @@
 [tool.poetry]
-name = "oig-update-check"
-version = "0.0.3"
-description = "OIG LEIE database update check service"
-authors = ["ALE Healthtech Team"]
+name = "oig-verifier"
+version = "0.0.1"
+description = "OIG verification service for exclusion matches"
+authors = ["Axel"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-requests = "^2.28.0"
-beautifulsoup4 = "^4.11.0"
 psycopg2-binary = "^2.9.10"
 rollbar = "0.16.3"
 pydantic-settings = "^2.2.1"
 werkzeug = "^3.0.6"
 pyjwt = "^2.10.1"
+selenium = "4.15.2"
+webdriver-manager = "4.0.1"
+pusher = "^3.3.3"
 
 [build-system]
 requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+build-backend = "poetry.core.masonry.api" 
