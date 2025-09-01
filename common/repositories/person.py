@@ -175,16 +175,16 @@ class PersonRepository(BaseRepository):
 
     def upsert_persons_from_patients(self, patients: List, user_id: str) -> Dict[str, str]:
         """
-        Bulk upsert persons from patient data and return SSN to person_id mapping.
+        Bulk upsert persons from patient data and return MRN to person_id mapping.
         
         Args:
-            patients: List of Patient objects with temporary first_name and last_name attributes
+            patients: List of Patient objects with temporary first_name, last_name, date_of_birth and gender attributes
             user_id: ID of the user making the changes
             
         Returns:
-            Dict mapping SSN to person_id
+            Dict mapping MRN to person_id
         """
-        ssn_to_person_id = {}
+        mrn_to_person_id = {}
         
         for patient in patients:
             if not (hasattr(patient, 'first_name') or hasattr(patient, 'last_name')):
@@ -197,24 +197,28 @@ class PersonRepository(BaseRepository):
                     # Update existing person
                     person.first_name = getattr(patient, 'first_name', person.first_name)
                     person.last_name = getattr(patient, 'last_name', person.last_name)
+                    person.date_of_birth = getattr(patient, 'date_of_birth', person.date_of_birth)
+                    person.gender = getattr(patient, 'gender', person.gender)
                     person.changed_by_id = user_id
                     self.save(person)
-                    if patient.social_security_number:
-                        ssn_to_person_id[patient.social_security_number] = person.entity_id
+                    if patient.medical_record_number:
+                        mrn_to_person_id[patient.medical_record_number] = person.entity_id
                     continue
             
             # Create new person
             person = Person(
                 first_name=getattr(patient, 'first_name', None),
                 last_name=getattr(patient, 'last_name', None),
+                date_of_birth=getattr(patient, 'date_of_birth', None),
+                gender=getattr(patient, 'gender', None),
                 changed_by_id=user_id
             )
             saved_person = self.save(person)
             
-            if patient.social_security_number:
-                ssn_to_person_id[patient.social_security_number] = saved_person.entity_id
+            if patient.medical_record_number:
+                mrn_to_person_id[patient.medical_record_number] = saved_person.entity_id
         
-        return ssn_to_person_id
+        return mrn_to_person_id
 
     def save_multiple(self, persons: list[Person]):
         """

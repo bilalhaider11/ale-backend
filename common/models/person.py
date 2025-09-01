@@ -1,9 +1,12 @@
 from rococo.models import Person as BasePerson
-from typing import ClassVar
+from typing import ClassVar, Optional
+from dataclasses import dataclass
 
-
+@dataclass
 class Person(BasePerson):
     use_type_checking: ClassVar[bool] = True
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
     
     def validate_first_name(self):
         """

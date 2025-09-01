@@ -1,16 +1,13 @@
 from rococo.models import VersionedModel
-from dataclasses import dataclass, field
-from typing import List, Optional
-from datetime import date, datetime
-
-from datetime import date, datetime, time
+from dataclasses import dataclass
+from typing import Optional
+from datetime import date
 
 @dataclass
 class Patient(VersionedModel):
     person_id: Optional[str] = None               
     organization_id: str = None
-    date_of_birth: date = None
-    social_security_number: str = None
+    medical_record_number: str = None
     care_period_start: date = None
     care_period_end: date = None
     weekly_quota: int = None
