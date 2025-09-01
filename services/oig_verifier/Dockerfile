@@ -24,9 +24,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Create screenshots directory
-RUN mkdir -p /app/screenshots
-
 WORKDIR /app
 
 COPY ${SERVICEPATH}/pyproject.toml ${SERVICEPATH}/poetry.lock* ./

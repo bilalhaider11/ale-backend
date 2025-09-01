@@ -5,6 +5,7 @@ from common.app_logger import logger
 from common.app_config import config
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.services.employee_exclusion_match import EmployeeExclusionMatchService
+from common.services.pusher_client import PusherService
 from common.models.employee_exclusion_match import EmployeeExclusionMatch
 from lib.oig_verification_script import OIGVerifier
 
@@ -214,7 +215,7 @@ def update_match_verification_status(match, verification_result, employee_exclus
     """
     try:
         # Store the verification result in the verification_result column
-        match.verification_result = verification_result.get('result', 'Unknown')
+        match.verification_result = verification_result.get('result')
         
         # Add verification details to reviewer notes
         verification_notes = verification_result.get('notes', '')
@@ -233,6 +234,20 @@ def update_match_verification_status(match, verification_result, employee_exclus
         
         # Save the updated match
         employee_exclusion_match_repo.save(match)
+        
+        # Trigger real-time update via Pusher
+        try:
+            pusher_service = PusherService()
+            match_update_data = {
+                'entity_id': match.entity_id,
+                'matched_entity_id': match.matched_entity_id,
+                'verification_result': match.verification_result,
+                's3_key': match.s3_key,
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            pusher_service.trigger_verification_update(match.organization_id, match_update_data)
+        except Exception as pusher_error:
+            logger.warning(f"Failed to send Pusher notification for match {match.entity_id}: {str(pusher_error)}")
         
         logger.info(f"Updated match {match.entity_id} with verification result: {match.verification_result}")
         

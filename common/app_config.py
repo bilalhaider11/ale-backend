@@ -80,6 +80,12 @@ class Config(BaseConfig):
     MICROSOFT_CLIENT_ID: str = Field(default="")
     MICROSOFT_CLIENT_SECRET: str = Field(default="")
 
+    # Pusher configuration
+    PUSHER_APP_ID: str = Field(default="")
+    PUSHER_KEY: str = Field(default="")
+    PUSHER_SECRET: str = Field(default="")
+    PUSHER_CLUSTER: str = Field(default="us2")
+
     @property
     def DEFAULT_USER_PASSWORD(self):
         import random, string
