@@ -35,12 +35,12 @@ class PatientService:
         # Get all existing patients for this organization
         existing_patients = self.patient_repo.get_many({"organization_id": organization_id})
         
-        # Create a map of SSN to patient for quick lookup
+        # Create a map of MRN to patient for quick lookup
         existing_patients_map = {}
         if existing_patients:
             for patient in existing_patients:
-                if patient.social_security_number:
-                    existing_patients_map[patient.social_security_number] = patient
+                if patient.medical_record_number:
+                    existing_patients_map[patient.medical_record_number] = patient
 
         # Temporary structure to hold patient data with names
         patient_data = []
@@ -48,20 +48,22 @@ class PatientService:
             first_name = get_first_matching_column_value(row, ["first name", "first_name"])
             last_name = get_first_matching_column_value(row, ["last name", "last_name"])
             dob_raw = get_first_matching_column_value(row, ["date of birth", "date_of_birth", "dob"])
-            ssn = get_first_matching_column_value(row, ["social security number", "ssn"], match_mode="contains")
+            mrn = get_first_matching_column_value(row, ["medical record number", "mrn"], match_mode="contains")
+            gender = get_first_matching_column_value(row, ["gender"], match_mode="contains")
 
-            if not ssn:
-                logger.warning(f"Skipping row without SSN: {row}")
+            if not mrn:
+                logger.warning(f"Skipping row without MRN: {row}")
                 continue
 
             date_of_birth = parse_date(dob_raw)
 
             patient_data.append({
-                'ssn': ssn,
+                'mrn': mrn,
                 'first_name': first_name,
                 'last_name': last_name,
                 'date_of_birth': date_of_birth,
-                'existing_patient': existing_patients_map.get(ssn)
+                'gender':gender,
+                'existing_patient': existing_patients_map.get(mrn)
             })
 
         # Create temporary patient objects with name data
@@ -69,18 +71,20 @@ class PatientService:
         for data in patient_data:
             patient = Patient(
                 changed_by_id=user_id,
-                date_of_birth=data['date_of_birth'],
-                social_security_number=data['ssn'],
+                medical_record_number=data['mrn'],
                 organization_id=organization_id,
                 person_id=data['existing_patient'].person_id if data['existing_patient'] else None
             )
             # Temporarily store name data on patient object
             patient.first_name = data['first_name']
             patient.last_name = data['last_name']
+            patient.date_of_birth = data['date_of_birth']
+            patient.gender = data['gender']
+
             temp_patients.append(patient)
 
-        # Bulk upsert persons and get SSN to person_id mapping
-        ssn_to_person_id = self.person_repo.upsert_persons_from_patients(temp_patients, user_id)
+        # Bulk upsert persons and get MRN to person_id mapping
+        mrn_to_person_id = self.person_repo.upsert_persons_from_patients(temp_patients, user_id)
 
         # Now create final patient records with person_ids
         records = []
@@ -89,10 +93,9 @@ class PatientService:
             
             record = Patient(
                 changed_by_id=user_id,
-                date_of_birth=data['date_of_birth'],
-                social_security_number=data['ssn'],
+                medical_record_number=data['mrn'],
                 organization_id=organization_id,
-                person_id=ssn_to_person_id.get(data['ssn']) or (existing.person_id if existing else None)
+                person_id=mrn_to_person_id.get(data['mrn']) or (existing.person_id if existing else None)
             )
             
             # If patient exists, preserve the care-related fields
@@ -201,33 +204,33 @@ class PatientService:
         """
         return self.patient_repo.get_patients_for_organization(organization_id)
     
-    def create_single_patient(self, organization_id: str, user_id: str, first_name: str, last_name: str, date_of_birth: str, ssn: str) -> Dict:
+    def create_single_patient(self, organization_id: str, user_id: str, first_name: str, last_name: str, date_of_birth: str, mrn: str, gender: str) -> Dict:
  
         dob = parse_date(date_of_birth)
         if not dob:
             raise ValueError(f"Invalid date format: {date_of_birth}")
 
         if self.patient_repo.get_many(
-            {"organization_id": organization_id, "social_security_number": ssn}
+            {"organization_id": organization_id, "medical_record_number": mrn}
         ):
-            raise ValueError(f"Patient with SSN {ssn} already exists in this organization")
+            raise ValueError(f"Patient with MRN {mrn} already exists in this organization")
 
         temp = Patient(
             changed_by_id=user_id,
-            date_of_birth=dob,
-            social_security_number=ssn,
+            medical_record_number=mrn,
             organization_id=organization_id,
         )
         temp.first_name = first_name
         temp.last_name = last_name
+        temp.date_of_birth = date_of_birth
+        temp.gender = gender
 
-        ssn_to_pid = self.person_repo.upsert_persons_from_patients([temp], user_id)
-        person_id = ssn_to_pid.get(ssn)
+        mrn_to_pid = self.person_repo.upsert_persons_from_patients([temp], user_id)
+        person_id = mrn_to_pid.get(mrn)
 
         patient = Patient(
             changed_by_id=user_id,
-            date_of_birth=dob,
-            social_security_number=ssn,
+            medical_record_number=mrn,
             organization_id=organization_id,
             person_id=person_id,
         )
@@ -238,6 +241,8 @@ class PatientService:
             if person:
                 saved.first_name = person.first_name
                 saved.last_name = person.last_name
+                saved.date_of_birth = person.date_of_birth
+                saved.gender = person.gender
 
         logger.info("Successfully created patient with ID: %s", saved.entity_id)
         return saved

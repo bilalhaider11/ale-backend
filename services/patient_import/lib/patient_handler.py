@@ -30,6 +30,7 @@ class PatientHandler:
             "first name",
             "last name",
             ("date of birth", "date_of_birth", "dob"),
+            ("medical record number", "medical_record_number", "mrn")
         ]
 
         workbook = load_workbook(file_path, data_only=True)
