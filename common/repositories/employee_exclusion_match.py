@@ -202,45 +202,37 @@ class EmployeeExclusionMatchRepository(BaseRepository):
         return matches
 
 
-    def upsert_matches(self, records: List[EmployeeExclusionMatch], organization_id=None) -> dict:
+    def upsert_matches(self, records: List[EmployeeExclusionMatch], organization_id=None) -> List[EmployeeExclusionMatch]:
         """
-        Upsert a list of employee exclusion match records based on first_name, last_name, 
-        date_of_birth, exclusion_type, exclusion_date, employee_id, and organization_id attributes.
+        Upsert a list of employee exclusion match records using efficient targeted queries.
+        Since there's no unique constraint for ON CONFLICT, we use a more efficient
+        approach than loading all records into memory.
         
         Args:
             records: List of EmployeeExclusionMatch instances to upsert
             
         Returns:
-            dict: Dictionary with 'inserted' and 'updated' counts
+            List[EmployeeExclusionMatch]: List of all processed EmployeeExclusionMatch records
         """
         if not records:
-            return {'inserted': 0, 'updated': 0}
+            return []
         
         logger.info(f"Upserting {len(records)} employee exclusion match records...")
-
-        # Get all existing employee exclusion matches
-        existing_matches = self.get_all(organization_id=organization_id)
-
-        # Convert existing results to a dictionary keyed by the match attributes
-        existing_matches_dict = {}
-        for match in existing_matches:
-            key = (
-                match.first_name,
-                match.last_name,
-                match.exclusion_type,
-                match.exclusion_date,
-                match.matched_entity_type,
-                match.matched_entity_id,
-                match.organization_id
-            )
-            existing_matches_dict[key] = match
         
-        inserted_count = 0
-        updated_count = 0
+        processed_records = []
         
-        # Process each record to determine if it should be inserted or updated
-        logger.info(f"Saving {len(records)} employee exclusion match records...")
+        # Check if records exist using a single query to get all existing matches
+        existing_matches = self._get_existing_matches_for_records(records, organization_id)
+        
+        # Process each record
         for record in records:
+            # Set default values for new records
+            if not record.status:
+                record.status = 'pending'
+            if record.reviewer_notes is None:
+                record.reviewer_notes = None
+            
+            # Create the key to check against existing matches
             key = (
                 record.first_name,
                 record.last_name,
@@ -251,29 +243,97 @@ class EmployeeExclusionMatchRepository(BaseRepository):
                 record.organization_id
             )
             
-            if key in existing_matches_dict:
-                # Record exists, update it (excluding status and reviewer_notes)
-                existing_match = existing_matches_dict[key]
+            if key in existing_matches:
+                # Record exists, update it while preserving system fields
+                existing_data = existing_matches[key]
                 
-                # Update fields except status and reviewer_notes
-                for field_name, field_value in record.__dict__.items():
-                    if (field_value is not None and 
-                        field_name not in ['entity_id', 'version', 'previous_version', 
-                                         'active', 'changed_by_id', 'changed_on',
-                                         'status', 'reviewer_notes']):
-                        setattr(existing_match, field_name, field_value)
+                # Create updated record preserving system fields
+                updated_record = EmployeeExclusionMatch(
+                    entity_id=existing_data['entity_id'],
+                    version=existing_data['version'],
+                    previous_version=existing_data['previous_version'],
+                    active=existing_data['active'],
+                    changed_by_id=existing_data['changed_by_id'],
+                    changed_on=existing_data['changed_on'],
+                    first_name=record.first_name,
+                    last_name=record.last_name,
+                    date_of_birth=record.date_of_birth,
+                    exclusion_type=record.exclusion_type,
+                    exclusion_date=record.exclusion_date,
+                    matched_entity_type=record.matched_entity_type,
+                    matched_entity_id=record.matched_entity_id,
+                    oig_exclusion_id=record.oig_exclusion_id,
+                    match_type=record.match_type,
+                    status=existing_data['status'],  # Preserve existing status
+                    reviewer_notes=existing_data['reviewer_notes'],  # Preserve existing notes
+                    organization_id=record.organization_id
+                )
                 
-                self.save(existing_match)
-                updated_count += 1
+                self.save(updated_record)
+                processed_records.append(updated_record)
             else:
-                # Record doesn't exist, insert new record with default values
-                if not record.status:
-                    record.status = 'pending'
-                if record.reviewer_notes is None:
-                    record.reviewer_notes = None
-                
+                # Record doesn't exist, insert new record
                 self.save(record)
-                inserted_count += 1
+                processed_records.append(record)
         
-        logger.info(f"Upsert completed: {inserted_count} inserted, {updated_count} updated.")
-        return {'inserted': inserted_count, 'updated': updated_count}
+        logger.info(f"Upsert completed: {len(processed_records)} records processed.")
+        return processed_records
+    
+    def _get_existing_matches_for_records(self, records: List[EmployeeExclusionMatch], organization_id=None) -> dict:
+        """
+        Get existing matches for the given records using a single query.
+        Returns a dictionary keyed by the business key fields.
+        """
+        if not records:
+            return {}
+        
+        # Build a query to get all existing matches for the given records
+        placeholders = []
+        params = []
+        
+        for record in records:
+            placeholders.append("(%s, %s, %s, %s, %s, %s, %s)")
+            params.extend([
+                record.first_name,
+                record.last_name,
+                record.exclusion_type,
+                record.exclusion_date,
+                record.matched_entity_type,
+                record.matched_entity_id,
+                record.organization_id
+            ])
+        
+        existing_query = f"""
+            SELECT entity_id, status, reviewer_notes, version, previous_version,
+                   active, changed_by_id, changed_on,
+                   first_name, last_name, exclusion_type, exclusion_date,
+                   matched_entity_type, matched_entity_id, organization_id
+            FROM employee_exclusion_match 
+            WHERE (first_name, last_name, exclusion_type, exclusion_date, 
+                   matched_entity_type, matched_entity_id, organization_id) 
+                  IN ({','.join(placeholders)})
+        """
+        
+        if organization_id:
+            existing_query += " AND organization_id = %s"
+            params.append(organization_id)
+        
+        with self.adapter:
+            existing_results = self.adapter.execute_query(existing_query, params)
+        
+        # Convert results to a dictionary keyed by the business key
+        existing_matches = {}
+        if existing_results:
+            for row in existing_results:
+                key = (
+                    row['first_name'],
+                    row['last_name'],
+                    row['exclusion_type'],
+                    row['exclusion_date'],
+                    row['matched_entity_type'],
+                    row['matched_entity_id'],
+                    row['organization_id']
+                )
+                existing_matches[key] = row
+        
+        return existing_matches
