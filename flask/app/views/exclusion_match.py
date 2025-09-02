@@ -113,7 +113,7 @@ class EmployeeExclusionMatchRecordByEmployee(Resource):
         )
 
         return get_success_response(
-            message="Matches updated successfully",
+            message="Match status updated successfully!",
         )
 
 
