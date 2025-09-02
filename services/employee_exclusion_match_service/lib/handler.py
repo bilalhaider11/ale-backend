@@ -38,7 +38,7 @@ def message_handler(message):
         logger.info("Found %d exclusion matches", len(matches))
 
         # Update the matches in the database
-        employee_exclusion_match_repo.upsert_matches(matches)
+        matches = employee_exclusion_match_repo.upsert_matches(matches)
         logger.info("Successfully updated employee exclusion matches")
 
         # Send matches to OIG verifier service if matches found
@@ -65,7 +65,7 @@ def message_handler(message):
         logger.info("Found %d exclusion matches for employee: %s", len(matches), employee_id)
 
         # Update the matches in the database
-        employee_exclusion_match_repo.upsert_matches(matches)
+        matches = employee_exclusion_match_repo.upsert_matches(matches)
         logger.info("Successfully updated employee exclusion matches for employee: %s", employee_id)
 
         # Send matches to OIG verifier service if matches found
@@ -74,6 +74,7 @@ def message_handler(message):
 
 
 def trigger_oig_verifier(matches):
+    logger.info("------------Triggering OIG verifier service for matches: %s", matches)
     """
     Send matches to the OIG verifier service for processing
     
