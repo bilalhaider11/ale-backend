@@ -43,8 +43,9 @@ def message_handler(message):
             match = employee_exclusion_match_repo.get_one({"entity_id": match_id})
             if match:
                 match.verification_result = 'in_process'
+                match.s3_key = None  # Clear verification screenshot when setting to in_process
                 employee_exclusion_match_repo.save(match)
-                logger.info(f"Marked match {match_id} as in_process")
+                logger.info(f"Marked match {match_id} as in_process and cleared verification screenshot")
         except Exception as e:
             logger.error(f"Error marking match {match_data.get('entity_id')} as in_process: {str(e)}")
 
