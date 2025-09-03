@@ -208,7 +208,26 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-
+        
+  alert_service:
+    image: ale_alert_service
+    container_name: ale_alert_service
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/alert_service/Dockerfile
+    networks:
+      - backnet
+    volumes:
+      - ./common:/src/common
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
   oig_verifier:
     image: ale_oig_verifier
     container_name: ale_oig_verifier
