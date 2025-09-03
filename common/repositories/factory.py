@@ -77,6 +77,8 @@ class RepoType(Enum):
     FORM_DATA = auto()
     FAX_TEMPLATE = auto()
     PHONE_NUMBER = auto()
+    ALERT = auto()
+    ALERT_PERSON = auto()
 
 class RepositoryFactory:
 
@@ -106,6 +108,8 @@ class RepositoryFactory:
         RepoType.FORM_DATA: FormDataRepository,
         RepoType.FAX_TEMPLATE: FaxTemplateRepository,
         RepoType.PHONE_NUMBER: PhoneNumberRepository,
+        RepoType.ALERT: AlertRepository,
+        RepoType.ALERT_PERSON: AlertPersonRepository,
     }
 
     def get_db_connection(self):

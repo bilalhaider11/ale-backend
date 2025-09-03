@@ -56,6 +56,7 @@ class Config(BaseConfig):
     EMPLOYEE_EXCLUSION_MATCH_PROCESSOR_QUEUE_NAME: str = Field(alias='EmployeeExclusionMatchProcessor_QUEUE_NAME', default='employee-exclusion-match-processor')
     OIG_VERIFIER_PROCESSOR_QUEUE_NAME: str = Field(alias='OigVerifierProcessor_QUEUE_NAME', default='oig-verifier')
     PATIENT_IMPORT_PROCESSOR_QUEUE_NAME: str = Field(alias='PatientImportProcessor_QUEUE_NAME', default='patient-import')
+    ALERT_PROCESSOR_QUEUE_NAME: str = Field(alias='AlertProcessor_QUEUE_NAME', default='alert-processor')
 
     BASE_DOMAIN: str = Field(default=None)
     ROUTE53_HOSTED_ZONE_ID: str = Field(default=None)
@@ -135,6 +136,12 @@ class Config(BaseConfig):
         if self.QUEUE_NAME_PREFIX:
             return f"{self.QUEUE_NAME_PREFIX}{self.PATIENT_IMPORT_PROCESSOR_QUEUE_NAME}"
         return self.PATIENT_IMPORT_PROCESSOR_QUEUE_NAME
+        
+    @property
+    def PREFIXED_ALERT_PROCESSOR_QUEUE_NAME(self):
+        if self.QUEUE_NAME_PREFIX:
+            return f"{self.QUEUE_NAME_PREFIX}{self.ALERT_PROCESSOR_QUEUE_NAME}"
+        return self.ALERT_PROCESSOR_QUEUE_NAME
 
 def get_config() -> Config:
     conf = Config()
