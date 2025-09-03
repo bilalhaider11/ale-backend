@@ -20,3 +20,5 @@ from .care_visit import CareVisitRepository
 from .form_data import FormDataRepository
 from .fax_template import FaxTemplateRepository
 from .phone_number import PhoneNumberRepository
+from .alert import AlertRepository
+from .alert_person import AlertPersonRepository
