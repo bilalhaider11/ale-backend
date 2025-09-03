@@ -251,7 +251,9 @@ class EmployeeRepository(BaseRepository):
                        WHEN COUNT(CASE WHEN eem.status = 'pending' THEN 1 END) > 0 
                        THEN 'pending'
                        ELSE 'handled'
-                   END as status
+                   END as status,
+                   MAX(eem.verification_result) as verification_result,
+                   MAX(eem.s3_key) as s3_key
             FROM employee e
                 INNER JOIN employee_exclusion_match eem ON e.entity_id = eem.matched_entity_id
                 WHERE e.organization_id = %s AND eem.matched_entity_type = 'employee'
@@ -276,7 +278,9 @@ class EmployeeRepository(BaseRepository):
                     WHEN COUNT(CASE WHEN eem.status = 'pending' THEN 1 END) > 0
                     THEN 'pending'
                     ELSE 'handled'
-                END AS status
+                END AS status,
+                MAX(eem.verification_result) as verification_result,
+                MAX(eem.s3_key) as s3_key
             FROM physician p
             INNER JOIN person per ON p.person_id = per.entity_id
             INNER JOIN employee_exclusion_match eem ON p.entity_id = eem.matched_entity_id
@@ -293,19 +297,23 @@ class EmployeeRepository(BaseRepository):
         # Process employee results
         if employee_results:
             for row in employee_results:
-                # Extract match_type and match_count from the row
+                # Extract match_type, match_count, verification_result, and s3_key from the row
                 match_type = row.pop('match_type')
                 match_count = row.pop('match_count')
                 match_status = row.pop('status')
+                verification_result = row.pop('verification_result')
+                s3_key = row.pop('s3_key')
 
                 # Create Employee instance
                 employee = Employee(**row)
 
-                # Add match_type and match_count as attributes
+                # Add match_type, match_count, verification_result, and s3_key as attributes
                 employee_dict = employee.as_dict()
                 employee_dict['match_type'] = match_type
                 employee_dict['match_count'] = match_count
                 employee_dict['status'] = match_status
+                employee_dict['verification_result'] = verification_result
+                employee_dict['s3_key'] = s3_key
                 employee_dict['entity_type'] = 'employee'
 
                 results.append(employee_dict)
@@ -313,10 +321,12 @@ class EmployeeRepository(BaseRepository):
         # Process physician results
         if physician_results:
             for row in physician_results:
-                # Extract match_type, match_count, and names from the row
+                # Extract match_type, match_count, verification_result, s3_key, and names from the row
                 match_type = row.pop('match_type')
                 match_count = row.pop('match_count')
                 match_status = row.pop('status')
+                verification_result = row.pop('verification_result')
+                s3_key = row.pop('s3_key')
                 first_name = row.pop('first_name', None)
                 last_name = row.pop('last_name', None)
 
@@ -325,6 +335,8 @@ class EmployeeRepository(BaseRepository):
                 physician_dict['match_type'] = match_type
                 physician_dict['match_count'] = match_count
                 physician_dict['status'] = match_status
+                physician_dict['verification_result'] = verification_result
+                physician_dict['s3_key'] = s3_key
                 physician_dict['entity_type'] = 'physician'
                 
                 # Add names from person record if available

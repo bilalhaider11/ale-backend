@@ -101,7 +101,8 @@ class PatientResource(Resource):
             'first_name',
             'last_name',
             'date_of_birth',
-            'social_security_number',
+            'medical_record_number',
+            'gender',
             'care_period_start',
             'care_period_end',
             'weekly_quota',
@@ -111,7 +112,8 @@ class PatientResource(Resource):
         first_name = parsed_body.pop('first_name', None)
         last_name = parsed_body.pop('last_name', None)
         date_of_birth = parsed_body.pop('date_of_birth', None)
-        social_security_number = parsed_body.pop('social_security_number', None)
+        gender = parsed_body.pop('gender', None)
+        medical_record_number = parsed_body.pop('medical_record_number', None)
         care_period_start = parsed_body.pop('care_period_start', None)
         care_period_end = parsed_body.pop('care_period_end', None)
         weekly_quota = parsed_body.pop('weekly_quota', None)
@@ -123,22 +125,30 @@ class PatientResource(Resource):
             if not patient:
                 return get_failure_response("Patient not found", status_code=404)
             
-            patient.date_of_birth = date_of_birth
-            patient.social_security_number = social_security_number
+            patient.medical_record_number = medical_record_number
             patient.care_period_start = care_period_start
             patient.care_period_end = care_period_end
             patient.weekly_quota = weekly_quota
 
             if patient.person_id:
                 person_obj = person_service.get_person_by_id(patient.person_id)
-                if person_obj and (person_obj.first_name != first_name or person_obj.last_name != last_name):
+                if person_obj and (
+                    person_obj.first_name != first_name 
+                    or person_obj.last_name != last_name
+                    or person_obj.date_of_birth != date_of_birth
+                    or person_obj.gender != gender
+                ):
                     person_obj.first_name = first_name
                     person_obj.last_name = last_name
+                    person_obj.date_of_birth = date_of_birth
+                    person_obj.gender = gender
                     person_service.save_person(person_obj)
             else:
                 person_obj = Person(
                     first_name=first_name,
                     last_name=last_name,
+                    date_of_birth=date_of_birth,
+                    gender=gender
                 )
                 person_obj = person_service.save_person(person_obj)
                 patient.person_id = person_obj.entity_id
@@ -149,13 +159,14 @@ class PatientResource(Resource):
         else:
             person_obj = Person(
                 first_name=first_name,
-                last_name=last_name
+                last_name=last_name,
+                date_of_birth=date_of_birth,
+                gender=gender
             )
             person_obj = person_service.save_person(person_obj)
             
             patient = Patient(
-                date_of_birth=date_of_birth,
-                social_security_number=social_security_number,
+                medical_record_number=medical_record_number,
                 care_period_start=care_period_start,
                 care_period_end=care_period_end,
                 weekly_quota=weekly_quota,

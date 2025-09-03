@@ -24,7 +24,9 @@ class PatientRepository(BaseRepository):
             SELECT 
                 p.*,
                 per.first_name,
-                per.last_name
+                per.last_name,
+                per.date_of_birth,
+                per.gender
             FROM patient p
             INNER JOIN person per ON p.person_id = per.entity_id
             WHERE p.organization_id = %s AND p.active = true
@@ -39,6 +41,8 @@ class PatientRepository(BaseRepository):
                 # Extract person fields
                 first_name = row.pop('first_name', None)
                 last_name = row.pop('last_name', None)
+                date_of_birth = row.pop('date_of_birth', None)
+                gender = row.pop('gender', None)
                 
                 # Create Patient instance
                 patient = Patient(**row)
@@ -46,6 +50,8 @@ class PatientRepository(BaseRepository):
                 
                 data["first_name"] = first_name
                 data["last_name"] = last_name
+                data["date_of_birth"] = date_of_birth
+                data["gender"] = gender
                 
                 patients.append(data)
             
@@ -56,7 +62,7 @@ class PatientRepository(BaseRepository):
 
     def upsert_patients(self, records: list[Patient], organization_id: str) -> list[Patient]:
         """
-        Upsert a list of patient records based on social_security_number
+        Upsert a list of patient records based on medical_record_number
         and organization_id attributes.
 
         Args:
@@ -71,12 +77,12 @@ class PatientRepository(BaseRepository):
 
         existing_patients = self.get_many({"organization_id": organization_id})
 
-        # Convert existing results to a dictionary keyed by SSN
+        # Convert existing results to a dictionary keyed by MRN
         existing_patients_map = {}
         if existing_patients:
             for patient in existing_patients:
-                if patient.social_security_number:
-                    key = patient.social_security_number
+                if patient.medical_record_number:
+                    key = patient.medical_record_number
                     existing_patients_map[key] = patient
 
         records_to_insert = []
@@ -88,7 +94,7 @@ class PatientRepository(BaseRepository):
             if not record.organization_id:
                 record.organization_id = organization_id
 
-            key = record.social_security_number
+            key = record.medical_record_number
 
             if key and key in existing_patients_map:
                 # Record exists, prepare for update
