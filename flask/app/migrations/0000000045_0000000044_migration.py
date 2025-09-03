@@ -1,5 +1,5 @@
 revision = "0000000045"
-down_revision = "0000000046"
+down_revision = "0000000044"
 
 def upgrade(migration):
     # Move date_of_birth from patient to person table
