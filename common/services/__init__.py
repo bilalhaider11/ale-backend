@@ -18,3 +18,5 @@ from .patient_care_slot import PatientCareSlotService
 from .form_data import FormDataService
 from .fax_template import FaxTemplateService
 from .phone_number import PhoneNumberService
+from .alert import AlertService
+from .alert_person import AlertPerson
