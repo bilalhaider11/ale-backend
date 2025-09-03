@@ -248,7 +248,7 @@ class EmployeeService:
             List[Employee]: List of Employee objects belonging to the organization.
         """
         return self.employee_repo.get_employees_with_invitation_status(organization_ids, employee_type=employee_type)
-    
+
     def get_employee_by_person_id(self, person_id: str, organization_id: str) -> Employee:
         """
         Get employee for a specific person.
