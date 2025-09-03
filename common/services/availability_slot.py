@@ -46,11 +46,15 @@ class AvailabilitySlotService:
         # Delete all slots_to_delete from the database
         for slot in slots_to_delete:
             self.availability_slot_repo.delete(slot)
-        
+
         # Save all slots_to_add to the database
+        added_slots = []
         for slot in slots_to_add:
             slot.employee_id = employee_id  # Ensure employee_id is set
-            self.availability_slot_repo.save(slot)
+            added_slot = self.availability_slot_repo.save(slot)
+            added_slots.append(added_slot)
+
+        return added_slots
 
     def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, 
                                   visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:
