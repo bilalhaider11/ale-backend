@@ -222,7 +222,7 @@ class AuthService:
 
         login_method = self.login_method_service.get_login_method_by_email_id(email_obj.entity_id)
         if not login_method:
-            raise InputValidationError("No login method found for this email.")
+            raise APIException("Login method does not exist.")
 
         if not check_password_hash(login_method.password, password):
             raise InputValidationError('Incorrect email or password.')
