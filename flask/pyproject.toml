@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ALE Homecare Solutions"
-version = "0.1.58"
+version = "0.1.59"
 description = "Flask-based API for the ALE Homecare Solutions backend"
 authors = ["Jay Grieves <jaygrieves@gmail.com>"]
 readme = "README.md"
