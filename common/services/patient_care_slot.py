@@ -187,12 +187,10 @@ class PatientCareSlotService:
 
         return [
             {
-                "patient_social_security_number": row.pop("patient_social_security_number"),
                 "patient_name": row.pop("patient_name"),
-                "patient_date_of_birth": row.pop("patient_date_of_birth"),
                 "offset": row.pop("offset"),
                 "match_type": row.pop("match_type"),
-                **PatientCareSlot(**row).as_dict()
+                **PatientCareSlot(**{k: v for k, v in row.items() if k in PatientCareSlot.__annotations__}).as_dict()
             } for row in sorted_results
         ]
     
