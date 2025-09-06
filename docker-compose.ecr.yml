@@ -188,6 +188,61 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  alert_service:
+    image: ${ECR_START_URL}/alert-service:${TAG}
+    container_name: ale_alert_service
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/alert_service/Dockerfile
+    networks:
+      - backnet
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  oig_verifier:
+    image: ${ECR_START_URL}/oig-verifier:${TAG}
+    container_name: ale_oig_verifier
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./services/oig_verifier/Dockerfile
+    networks:
+      - backnet
+    env_file:
+      - ./.env.secrets
+      - ./${APP_ENV}.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  selenium:
+    image: selenium/standalone-chrome:111.0-chromedriver-111.0-20250505
+    container_name: selenium-chrome
+    ports:
+      - "4444:4444"
+      - "7900:7900"  # VNC port for debugging
+    environment:
+      - SE_NODE_MAX_SESSIONS=4
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=true
+    volumes:
+      - /dev/shm:/dev/shm
+    shm_size: 2gb
+    networks:
+      - backnet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   ale-backend-postgres-data:

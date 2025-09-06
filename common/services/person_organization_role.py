@@ -20,6 +20,10 @@ class PersonOrganizationRoleService:
     def get_roles_by_person_id(self, person_id: str):
         person_organization_roles = self.person_organization_role_repo.get_many({"person_id": person_id})
         return person_organization_roles
+    
+    def get_roles_by_orgnization_id(self, organization_id: str):
+        person_organization_roles = self.person_organization_role_repo.get_many({"organization_id": organization_id})
+        return person_organization_roles
         
     def get_role_of_person_in_organization(self, person_id: str, organization_id: str):
         person_organization_role = self.person_organization_role_repo.get_one({

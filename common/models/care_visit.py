@@ -33,6 +33,10 @@ class CareVisit(VersionedModel):
     scheduled_end_time: Optional[datetime] = None
     clock_in_time: Optional[datetime] = None
     clock_out_time: Optional[datetime] = None
+    clock_in_longitude: Optional[float] = None
+    clock_in_latitude: Optional[float] = None
+    clock_out_longitude: Optional[float] = None
+    clock_out_latitude: Optional[float] = None
     scheduled_by_id: str = ""
     availability_slot_key: str = ""
     patient_care_slot_key: str = ""

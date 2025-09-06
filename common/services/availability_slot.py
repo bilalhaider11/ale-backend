@@ -3,6 +3,7 @@ from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.availability_slot import AvailabilitySlot
 from datetime import time, date
 
+
 class AvailabilitySlotService:
 
     def __init__(self, config):
@@ -21,6 +22,10 @@ class AvailabilitySlotService:
 
     def get_availability_slots_by_employee_id(self, employee_id: str):
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
+        return availability_slots
+
+    def get_availability_slots_for_organization(self, organization_id: str):
+        availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
         return availability_slots
 
     def upsert_availability_slots(self, employee_id: str, slots: List[AvailabilitySlot]):
@@ -46,11 +51,15 @@ class AvailabilitySlotService:
         # Delete all slots_to_delete from the database
         for slot in slots_to_delete:
             self.availability_slot_repo.delete(slot)
-        
+
         # Save all slots_to_add to the database
+        added_slots = []
         for slot in slots_to_add:
             slot.employee_id = employee_id  # Ensure employee_id is set
-            self.availability_slot_repo.save(slot)
+            added_slot = self.availability_slot_repo.save(slot)
+            added_slots.append(added_slot)
+
+        return added_slots
 
     def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, 
                                   visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:

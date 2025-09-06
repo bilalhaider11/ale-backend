@@ -37,8 +37,6 @@ class PatientCareSlotRepository(BaseRepository):
         query = """
             SELECT 
                 pcs.patient_id AS patient_id,
-                p.social_security_number AS patient_social_security_number,
-                p.date_of_birth AS patient_date_of_birth,
                 ps.first_name || ' ' || ps.last_name AS patient_name,
                 pcs.*
             FROM patient_care_slot pcs

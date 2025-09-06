@@ -122,3 +122,41 @@ class AvailabilitySlotRepository(BaseRepository):
             result = self.adapter.execute_query(query, params)
 
         return result
+
+    def get_employee_availability_slots(self, organization_ids: list[str], employee_type: str = None):
+        """
+        Fetch all availability slots of employees in the given organizations,
+        including employee details (entity_id, first_name, last_name).
+
+        Args:
+            organization_ids (list[str]): The organization IDs to filter by
+            employee_type (str, optional): Optional employee type to filter by
+
+        Returns:
+            List[dict]: List of slots with employee details
+        """
+        query = """
+            SELECT 
+                e.entity_id AS employee_id,
+                e.first_name,
+                e.last_name,
+                s.entity_id AS slot_id,
+                s.start_time,
+                s.end_time,
+                s.day_of_week,
+                s.logical_key
+            FROM employee e
+            JOIN availability_slot s 
+                ON e.entity_id = s.employee_id
+            WHERE e.organization_id IN %s
+        """
+        params = [tuple(organization_ids)]
+
+        if employee_type:
+            query += " AND e.employee_type = %s"
+            params.append(employee_type)
+
+        with self.adapter:
+            result = self.adapter.execute_query(query, tuple(params))
+
+        return result or []

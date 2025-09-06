@@ -21,3 +21,7 @@ from .care_visit import CareVisit, CareVisitStatusEnum
 from .form_data import FormData
 from .fax_template import FaxTemplate
 from .phone_number import PhoneNumber
+from .alert import Alert
+from .alert import AlertLevelEnum
+from .alert import AlertStatusEnum
+from .alert_person import AlertPerson

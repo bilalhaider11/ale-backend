@@ -181,12 +181,20 @@ class ClockIn(Resource):
         employee_service = EmployeeService(config)
         care_visit_service = CareVisitService(config)
 
-        required_fields = ['clock_in_time']
+        required_fields = ['clock_in_time', 'clock_in_latitude', 'clock_in_longitude']
         data = parse_request_body(request, required_fields)
         validate_required_fields(data)
 
         clock_in_time = datetime.fromisoformat(data['clock_in_time'].replace('Z', ''))
+        clock_in_latitude = data.get('clock_in_latitude')
+        clock_in_longitude = data.get('clock_in_longitude')
         
+        # Validate longitude and latitude if provided
+        if clock_in_longitude is not None and not (-180 <= float(clock_in_longitude) <= 180):
+            return get_failure_response(message="Invalid longitude value. Must be between -180 and 180.", status_code=400)
+        if clock_in_latitude is not None and not (-90 <= float(clock_in_latitude) <= 90):
+            return get_failure_response(message="Invalid latitude value. Must be between -90 and 90.", status_code=400)
+
         employee = employee_service.get_employee_by_person_id(person.entity_id, organization.entity_id)
         if not employee:
             return get_failure_response(message="Employee record not found.", status_code=404)
@@ -207,7 +215,9 @@ class ClockIn(Resource):
         
         care_visit.status = CareVisitStatusEnum.CLOCKED_IN
         care_visit.clock_in_time = clock_in_time
-        
+        care_visit.clock_in_longitude = clock_in_longitude
+        care_visit.clock_in_latitude = clock_in_latitude
+
         updated_visit = care_visit_service.save_care_visit(care_visit)
         
         return get_success_response(
@@ -224,11 +234,19 @@ class ClockOut(Resource):
         employee_service = EmployeeService(config)
         care_visit_service = CareVisitService(config)
 
-        required_fields = ['clock_out_time']
+        required_fields = ['clock_out_time', 'clock_out_longitude', 'clock_out_latitude']
         data = parse_request_body(request, required_fields)
         validate_required_fields(data)
         
         clock_out_time = datetime.fromisoformat(data['clock_out_time'].replace('Z', ''))
+        clock_out_longitude = data.get('clock_out_longitude')
+        clock_out_latitude = data.get('clock_out_latitude')
+        
+        # Validate longitude and latitude if provided
+        if clock_out_longitude is not None and not (-180 <= float(clock_out_longitude) <= 180):
+            return get_failure_response(message="Invalid longitude value. Must be between -180 and 180.", status_code=400)
+        if clock_out_latitude is not None and not (-90 <= float(clock_out_latitude) <= 90):
+            return get_failure_response(message="Invalid latitude value. Must be between -90 and 90.", status_code=400)
 
         employee = employee_service.get_employee_by_person_id(person.entity_id, organization.entity_id)
         if not employee:
@@ -249,6 +267,8 @@ class ClockOut(Resource):
         
         care_visit.status = CareVisitStatusEnum.COMPLETED
         care_visit.clock_out_time = clock_out_time
+        care_visit.clock_out_longitude = clock_out_longitude
+        care_visit.clock_out_latitude = clock_out_latitude
         
         updated_visit = care_visit_service.save_care_visit(care_visit)
         
