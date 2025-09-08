@@ -10,6 +10,7 @@ from common.helpers.csv_utils import get_first_matching_column_value
 
 logger = get_logger(__name__)
 
+
 class PhysicianService:
     
     def __init__(self, config):
@@ -20,14 +21,14 @@ class PhysicianService:
         self.current_employees_file_service = CurrentEmployeesFileService(config)
         self.person_service = PersonService(config)
 
-    def bulk_import_physicians(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> bool:
+    def bulk_import_physicians(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> tuple[int, List[Dict[str, str]]]:
         """Import CSV data into physician table using batch processing"""
         record_count = len(rows)
         logger.info(f"Processing {record_count} physician records...")
 
         # Get all existing physicians for this organization
         existing_physicians = self.physician_repo.get_many({"organization_id": organization_id})
-        
+
         # Create a map of NPI to physician for quick lookup
         existing_physicians_map = {}
         if existing_physicians:
@@ -37,12 +38,16 @@ class PhysicianService:
 
         # Temporary structure to hold physician data with names
         physician_data = []
+        skipped_entries = []
+
         for row in rows:
-            npi = get_first_matching_column_value(row, ['npi', 'national provider identifier', 'national_provider_identifier'])
+            npi = get_first_matching_column_value(row, ['npi', 'national provider identifier',
+                                                        'national_provider_identifier'])
             if not npi:
-                logger.warning(f"Skipping row without NPI: {row}")
+                logger.info(f"Skipping row without NPI: {row}")
+                skipped_entries.append(row)
                 continue
-            
+
             physician_data.append({
                 'npi': npi,
                 'first_name': get_first_matching_column_value(row, ['first name', 'first_name', 'firstname']),
@@ -77,17 +82,14 @@ class PhysicianService:
                 national_provider_identifier=data['npi'],
                 date_of_birth=data['date_of_birth'],
                 organization_id=organization_id,
-                person_id=npi_to_person_id.get(data['npi']) or (data['existing_physician'].person_id if data['existing_physician'] else None)
+                person_id=npi_to_person_id.get(data['npi']) or (
+                    data['existing_physician'].person_id if data['existing_physician'] else None)
             )
             records.append(record)
 
         count = len(records)
         self.physician_repo.upsert_physicians(records, organization_id)
 
-        logger.info(f"Successfully imported {count} physician data")
-        return count
-
-
-
-
-    
+        logger.info(
+            f"Successfully imported {count} physician records. Skipped {len(skipped_entries)} entries without NPI.")
+        return count, skipped_entries
