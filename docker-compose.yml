@@ -250,6 +250,7 @@ services:
 
   selenium:
     image: selenium/standalone-chrome:111.0-chromedriver-111.0-20250505
+    platform: linux/amd64
     container_name: selenium-chrome
     ports:
       - "4444:4444"
