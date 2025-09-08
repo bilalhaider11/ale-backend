@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
@@ -21,7 +21,7 @@ class PhysicianService:
         self.current_employees_file_service = CurrentEmployeesFileService(config)
         self.person_service = PersonService(config)
 
-    def bulk_import_physicians(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> tuple[int, List[Dict[str, str]]]:
+    def bulk_import_physicians(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> tuple[int, list[dict[str, Any]]]:
         """Import CSV data into physician table using batch processing"""
         record_count = len(rows)
         logger.info(f"Processing {record_count} physician records...")

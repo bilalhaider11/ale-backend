@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 from datetime import datetime
 import os
 import uuid
@@ -28,7 +28,7 @@ class EmployeeService:
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
         self.physicians_prefix = f"{config.AWS_S3_KEY_PREFIX}physicians-list/"
 
-    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> tuple[int, List[Dict[str, str]]]:
+    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> tuple[int, list[dict[str, Any]]]:
         """Import CSV data into employee table using batch processing"""
         record_count = len(rows)
         logger.info(f"Processing {record_count} employee records...")
