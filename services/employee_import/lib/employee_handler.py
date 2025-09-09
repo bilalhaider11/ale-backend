@@ -196,12 +196,11 @@ class EmployeeHandler:
             if file_category == "physician":
                 from common.services.physician import PhysicianService
                 physician_service = PhysicianService(self.config)
-                import_count = physician_service.bulk_import_physicians(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
+                import_count, skipped_entries = physician_service.bulk_import_physicians(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
             else:
-                import_count = self.employee_service.bulk_import_employees(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
+                import_count, skipped_entries = self.employee_service.bulk_import_employees(rows, organization_id=organization_id, user_id=employees_file.uploaded_by)
             employees_file.record_count = import_count
             self.employees_file_service.update_status(employees_file, CurrentEmployeesFileStatusEnum.IMPORTED)
-
             return True
 
         finally:

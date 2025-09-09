@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 from datetime import datetime
 import os
 import uuid
@@ -28,7 +28,7 @@ class EmployeeService:
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
         self.physicians_prefix = f"{config.AWS_S3_KEY_PREFIX}physicians-list/"
 
-    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> bool:
+    def bulk_import_employees(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> tuple[int, list[dict[str, Any]]]:
         """Import CSV data into employee table using batch processing"""
         record_count = len(rows)
         logger.info(f"Processing {record_count} employee records...")
@@ -50,6 +50,8 @@ class EmployeeService:
                 return None
 
         records = []
+        skipped_entries = []
+
         for row in rows:
             employee_type = None
 
@@ -58,11 +60,13 @@ class EmployeeService:
             if get_first_matching_column_value(row, ['employee id', 'employee_id']):
                 employee_type = "employee"
 
-            if get_first_matching_column_value(row, ['employee id', 'employee_id']) and get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
-                logger.warning(f"Row has both employee and caregiver ID, using employee ID.")
+            if get_first_matching_column_value(row, ['employee id', 'employee_id']) and get_first_matching_column_value(
+                    row, ['caregiver id', 'caregiver_id']):
+                logger.info(f"Row has both employee and caregiver ID, using employee ID.")
 
             if employee_type is None:
-                logger.warning(f"Skipping row with neither employee nor caregiver ID: {row}")
+                logger.info(f"Skipping row with neither employee nor caregiver ID: {row}")
+                skipped_entries.append(row)
                 continue
 
             # Parse dates
@@ -73,7 +77,8 @@ class EmployeeService:
             record = Employee(
                 changed_by_id=user_id,
                 primary_branch=get_first_matching_column_value(row, ['primary branch', 'primary_branch']),
-                employee_id=get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id']),
+                employee_id=get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id',
+                                                                  'caregiver_id']),
                 first_name=get_first_matching_column_value(row, ['first name', 'first_name']),
                 last_name=get_first_matching_column_value(row, ['last name', 'last_name']),
                 suffix=get_first_matching_column_value(row, ['suffix']),
@@ -91,7 +96,8 @@ class EmployeeService:
                 hire_date=parsed_hire_date,
                 date_of_birth=parsed_date_of_birth,
                 caregiver_tags=get_first_matching_column_value(row, ['caregiver tags', 'tags']),
-                social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
+                social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'],
+                                                                       match_mode='contains'),
                 organization_id=organization_id
             )
 
@@ -100,9 +106,9 @@ class EmployeeService:
         count = len(records)
         self.employee_repo.upsert_employees(records, organization_id)
 
-        logger.info(f"Successfully imported {count} employee data")
-        return count
-
+        logger.info(
+            f"Successfully imported {count} employee records. Skipped {len(skipped_entries)} entries without employee or caregiver ID.")
+        return count, skipped_entries
 
     def upload_list_file(self, organization_id, person_id, file_path, file_category, file_id=None, original_filename=None):
         """
