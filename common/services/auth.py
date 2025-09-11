@@ -254,7 +254,7 @@ class AuthService:
             exp_time = decoded_token['exp']
             if time.time() <= exp_time:
                 return decoded_token
-        except jwt.ExpiredSignatureError:
+        except (jwt.ExpiredSignatureError, jwt.InvalidSignatureError):
             return
 
     @staticmethod
