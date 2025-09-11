@@ -64,33 +64,42 @@ class EmployeeExclusionMatch(Resource):
             message="Exclusion match data retrieved successfully"
         )
 
-@exclusion_match_api.route('/employee/<string:employee_id>')
-class EmployeeExclusionMatchRecordByEmployee(Resource):
+@exclusion_match_api.route('/<string:entity_type>/<string:entity_id>')
+class ExclusionMatchRecordByEntity(Resource):
     
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def get(self, person, organization, employee_id):
+    def get(self, person, organization, entity_type, entity_id):
         """
-        Get exclusion match records for a specific employee.
+        Get exclusion match records for a specific entity (employee or physician).
         """
         
+        # Validate entity type
+        if entity_type not in ['employee', 'physician']:
+            return get_failure_response("Invalid entity type. Must be 'employee' or 'physician'.")
+        
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
-        matches = employee_exclusion_match_service.get_matches_by_employee_id(
+        matches = employee_exclusion_match_service.get_matches_by_entity(
             organization_id=organization.entity_id,
-            employee_id=employee_id
+            entity_id=entity_id,
+            entity_type=entity_type
         )
 
         return get_success_response(
-            data=matches,
+            data=[match.as_dict() for match in matches],
             message="Exclusion match records retrieved successfully"
         )
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def put(self, person, organization, employee_id):
+    def put(self, person, organization, entity_type, entity_id):
         """
-        Update an exclusion match object with reviewer_notes or status by employee_id.
+        Update an exclusion match object with reviewer_notes or status by entity_id and entity_type.
         """
+
+        # Validate entity type
+        if entity_type not in ['employee', 'physician']:
+            return get_failure_response("Invalid entity type. Must be 'employee' or 'physician'.")
 
         parsed_body = parse_request_body(request, ['reviewer_notes', 'status'])
 
@@ -104,8 +113,8 @@ class EmployeeExclusionMatchRecordByEmployee(Resource):
 
         employee_exclusion_match_service = EmployeeExclusionMatchService(config)
         employee_exclusion_match_service.update_exclusion_match(
-            matched_entity_type="employee",
-            matched_entity_id=employee_id,
+            matched_entity_type=entity_type,
+            matched_entity_id=entity_id,
             organization_id=organization.entity_id,
             reviewer_notes=reviewer_notes,
             reviewer=person,
