@@ -367,7 +367,6 @@ class OrganizationPartners(Resource):
 
     @login_required()
     @organization_required()
-
     def get(self, person, organization):
         organization_service = OrganizationService(config)
         organization_partners = organization_service.get_organization_partners(organization.entity_id)
