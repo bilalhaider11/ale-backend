@@ -362,14 +362,16 @@ class EmployeeRepository(BaseRepository):
             List[Employee]: List of Employee instances with invitation status
         """
         query = """
-            SELECT e.*, 
-                   CASE 
+            SELECT e.*,
+                   o.name as organization_name,
+                   CASE
                        WHEN pir.status = 'accepted' THEN 'accepted'
                        WHEN pir.status = 'pending' THEN 'pending'
                        ELSE NULL
                    END as invitation_status
             FROM employee e
                 LEFT JOIN person_organization_invitation pir ON e.person_id = pir.invitee_id AND pir.organization_id = e.organization_id
+                LEFT JOIN organization o ON e.organization_id = o.entity_id
                 WHERE e.organization_id IN %s
         """
         
@@ -385,15 +387,17 @@ class EmployeeRepository(BaseRepository):
         if result:
             employees = []
             for row in result:
-                # Extract invitation_status from the row
+                # Extract invitation_status and organization_name from the row
                 invitation_status = row.pop('invitation_status')
+                organization_name = row.pop('organization_name')
 
                 # Create Employee instance
                 employee = Employee(**row)
 
-                # Add invitation_status as an attribute
+                # Add invitation_status and organization_name as attributes
                 employee = employee.as_dict()
                 employee['invitation_status'] = invitation_status
+                employee['organization_name'] = organization_name
 
                 employees.append(employee)
 
