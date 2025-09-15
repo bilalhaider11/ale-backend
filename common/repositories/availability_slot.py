@@ -149,6 +149,7 @@ class AvailabilitySlotRepository(BaseRepository):
             JOIN availability_slot s 
                 ON e.entity_id = s.employee_id
             WHERE e.organization_id IN %s
+                AND s.active = true
         """
         params = [tuple(organization_ids)]
 
