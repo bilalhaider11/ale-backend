@@ -26,7 +26,6 @@ class AvailabilitySlotResource(Resource):
         if role.role == PersonOrganizationRoleEnum.EMPLOYEE:
             employee_service = EmployeeService(config)
             employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
-        
             if employee.person_id != person.entity_id:
                 return get_failure_response(message="Unable to perform this action on this employee_id.")
 
@@ -44,7 +43,6 @@ class AvailabilitySlotResource(Resource):
         if role.role == PersonOrganizationRoleEnum.EMPLOYEE:
             employee_service = EmployeeService(config)
             employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
-        
             if employee.person_id != person.entity_id:
                 return get_failure_response(message="Unable to perform this action on this employee_id.")
 
