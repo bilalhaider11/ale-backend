@@ -57,6 +57,7 @@ def message_handler(message):
             logger.error(f"Error verifying match {match_data.get('entity_id')}: {str(e)}")
             logger.exception(e)
 
+
 def verify_match(match_data, employee_exclusion_match_repo, employee_exclusion_match_service, employee_repo):
     """
     Verify a single exclusion match using the OIG verification script
@@ -92,7 +93,7 @@ def verify_match(match_data, employee_exclusion_match_repo, employee_exclusion_m
         
         ssn = employee.social_security_number
         if not ssn:
-            logger.warning(f"No SSN found for employee {matched_entity_id}, skipping OIG verification")
+            logger.info(f"No SSN found for employee {matched_entity_id}, skipping OIG verification")
             verification_result = {
                 'status': 'skipped',
                 'result': 'No SSN',
@@ -103,7 +104,7 @@ def verify_match(match_data, employee_exclusion_match_repo, employee_exclusion_m
             # Perform OIG verification using the scraping script
             verification_result = perform_oig_verification(first_name, last_name, ssn, employee.organization_id, employee.person_id)
     else:
-        logger.warning(f"Verification not implemented for entity type: {matched_entity_type}")
+        logger.info(f"Verification not implemented for entity type: {matched_entity_type}")
         verification_result = {
             'status': 'skipped',
             'result': 'Not Implemented',
@@ -117,6 +118,7 @@ def verify_match(match_data, employee_exclusion_match_repo, employee_exclusion_m
     # Log verification result
     logger.info(f"Verification completed for match {match_id}: {verification_result}")
     logger.info(f"Screenshots and verification details available for audit")
+
 
 def perform_oig_verification(first_name, last_name, ssn, organization_id, person_id):
     """
@@ -204,6 +206,7 @@ def perform_oig_verification(first_name, last_name, ssn, organization_id, person
                 verifier.close()
             except Exception as cleanup_error:
                 logger.warning(f"Error closing verifier: {cleanup_error}")
+
 
 def update_match_verification_status(match, verification_result, employee_exclusion_match_repo):
     """

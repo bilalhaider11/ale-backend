@@ -89,17 +89,18 @@ def organization_required(with_roles=None):
             organization = organization_service.get_organization_by_id(organization_id)
             if not organization:
                 return get_failure_response(message='Organization ID is invalid', status_code=403)
-            
-            person_organization_role = person_organization_role_service.get_role_of_person_in_organization(
+
+            person_organization_role = person_organization_role_service.get_roles_of_person_in_organization(
                 person_id=person.entity_id,
                 organization_id=organization.entity_id
             )
+
             if not person_organization_role:
                 return get_failure_response(message="User is not authorized to use this organization.", status_code=401)
 
-            # If with_roles is specified, verify the user's role is allowed.
             if with_roles is not None:
-                if person_organization_role.role not in with_roles:
+                allowed_roles = [role.value if hasattr(role, 'value') else str(role) for role in with_roles]
+                if not any(role in allowed_roles for role in person_organization_role):
                     return get_failure_response(
                         message="Unauthorized to perform this action on the organization.", 
                         status_code=403
