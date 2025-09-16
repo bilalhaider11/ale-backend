@@ -20,7 +20,7 @@ class PatientCareSlotResource(Resource):
     @organization_required(with_roles=[
         PersonOrganizationRoleEnum.ADMIN
     ])
-    def get(self, person: Person, role: PersonOrganizationRole, organization: Organization, patient_id: str):
+    def get(self, person: Person, roles: list, organization: Organization, patient_id: str):
         patient_care_slot_service = PatientCareSlotService(config)
         patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_patient_id(patient_id)
         return get_success_response(data=patient_care_slots)

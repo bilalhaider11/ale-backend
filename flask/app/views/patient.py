@@ -218,6 +218,7 @@ class PatientCareSlots(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person, organization, patient_id):
+        print('called', flush=True)
         """Update care slots for a patient for a specific week"""
         patient_service = PatientService(config)
         patient_care_slot_service = PatientCareSlotService(config)
@@ -269,7 +270,9 @@ class PatientCareSlots(Resource):
             
             if start_time >= end_time:
                 raise InputValidationError("start_time must be before end_time")
-            
+
+            print(day_of_week, start_time, end_time, week_start_date, week_end_date, flush=True)
+
             # Create slot object
             slot = PatientCareSlot(
                 day_of_week=day_of_week,
@@ -278,6 +281,8 @@ class PatientCareSlots(Resource):
                 week_start_date=week_start_date,
                 week_end_date=week_end_date,
             )
+
+            print(slot, flush=True)
             slots.append(slot)
         
         total_hours = patient_care_slot_service.check_weekly_quota(slots)
