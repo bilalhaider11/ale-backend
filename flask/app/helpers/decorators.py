@@ -90,30 +90,30 @@ def organization_required(with_roles=None):
             if not organization:
                 return get_failure_response(message='Organization ID is invalid', status_code=403)
 
-            person_organization_role = person_organization_role_service.get_roles_of_person_in_organization(
+            person_organization_roles = person_organization_role_service.get_roles_of_person_in_organization(
                 person_id=person.entity_id,
                 organization_id=organization.entity_id
             )
 
-            if not person_organization_role:
+            if not person_organization_roles:
                 return get_failure_response(message="User is not authorized to use this organization.", status_code=401)
 
             if with_roles is not None:
                 allowed_roles = [role.value if hasattr(role, 'value') else str(role) for role in with_roles]
-                if not any(role in allowed_roles for role in person_organization_role):
+                if not any(role in allowed_roles for role in person_organization_roles):
                     return get_failure_response(
                         message="Unauthorized to perform this action on the organization.", 
                         status_code=403
                     )
 
-            g.role = person_organization_role
+            g.roles = person_organization_roles
             g.organization = organization
 
             # handle arguments based on the function parameters
             func_params = signature(func).parameters
             extra_args = {}
-            if 'role' in func_params:
-                extra_args['role'] = person_organization_role
+            if 'roles' in func_params:
+                extra_args['roles'] = person_organization_roles
 
             if 'organization' in func_params:
                 extra_args['organization'] = organization
