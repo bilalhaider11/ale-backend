@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oig-verifier"
-version = "0.0.1"
+version = "0.0.2"
 description = "OIG verification service for exclusion matches"
 authors = ["Axel"]
 readme = "README.md"

@@ -21,6 +21,8 @@ from common.services import (
     EmployeeService,
     PatientService
 )
+
+from common.models import Organization
 from common.models import PersonOrganizationRoleEnum, Person, CareVisitStatusEnum
 from app.helpers.decorators import (login_required,
                                     organization_required,
@@ -97,7 +99,7 @@ class PatientCareVisits(Resource):
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def get(self, person, organization, role, patient_id):
+    def get(self, person: Person, roles: list, organization: Organization, patient_id):
         care_visit_service = CareVisitService(config)
         patient_service = PatientService(config)
 
@@ -114,7 +116,7 @@ class PatientCareVisits(Resource):
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def post(self, person, organization, role, patient_id):
+    def post(self, person: Person, roles: list, organization: Organization, patient_id):
         
         # Validate required fields
         required_fields = [

@@ -140,7 +140,7 @@ def perform_oig_verification(first_name, last_name, ssn, organization_id, person
         clean_ssn = ssn.replace('-', '').replace(' ', '') if ssn else None
         
         if not clean_ssn or len(clean_ssn) != 9:
-            logger.error(f"Invalid SSN format for {first_name} {last_name}")
+            logger.info(f"Invalid SSN format for {first_name} {last_name}")
             return {
                 'status': 'error',
                 'result': 'Invalid SSN',

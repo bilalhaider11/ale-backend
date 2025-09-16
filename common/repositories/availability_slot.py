@@ -126,14 +126,31 @@ class AvailabilitySlotRepository(BaseRepository):
     def get_employee_availability_slots(self, organization_ids: list[str], employee_type: str = None):
         """
         Fetch all availability slots of employees in the given organizations,
-        including employee details (entity_id, first_name, last_name).
+        including employee details and their care visits (with patient first/last name).
 
-        Args:
-            organization_ids (list[str]): The organization IDs to filter by
-            employee_type (str, optional): Optional employee type to filter by
-
-        Returns:
-            List[dict]: List of slots with employee details
+        Returns nested structure:
+        [
+            {
+                "employee_id": "...",
+                "first_name": "...",
+                "last_name": "...",
+                "slot_id": "...",
+                "start_time": "...",
+                "end_time": "...",
+                "day_of_week": 1,
+                "logical_key": "...",
+                "care_visits": [
+                    {
+                        "visit_date": "...",
+                        "patient_id": "...",
+                        "patient_first_name": "...",
+                        "patient_last_name": "..."
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
         """
         query = """
             SELECT 
@@ -144,11 +161,25 @@ class AvailabilitySlotRepository(BaseRepository):
                 s.start_time,
                 s.end_time,
                 s.day_of_week,
-                s.logical_key
+                s.logical_key,
+                cv.visit_date,
+                cv.patient_id,
+                cv.availability_slot_key,
+                cv.status,
+                per.first_name AS patient_first_name,
+                per.last_name AS patient_last_name
             FROM employee e
             JOIN availability_slot s 
                 ON e.entity_id = s.employee_id
+            LEFT JOIN care_visit cv 
+                ON s.logical_key = cv.availability_slot_key
+                AND cv.active = true
+            LEFT JOIN patient p
+                ON cv.patient_id = p.entity_id
+            LEFT JOIN person per
+                ON p.person_id = per.entity_id
             WHERE e.organization_id IN %s
+              AND s.active = true
         """
         params = [tuple(organization_ids)]
 
@@ -157,6 +188,39 @@ class AvailabilitySlotRepository(BaseRepository):
             params.append(employee_type)
 
         with self.adapter:
-            result = self.adapter.execute_query(query, tuple(params))
+            rows = self.adapter.execute_query(query, tuple(params))
 
-        return result or []
+        if not rows:
+            return []
+
+        # --- Post-process into nested structure ---
+        slots_map = {}
+        for row in rows:
+            slot_id = row["slot_id"]
+            if slot_id not in slots_map:
+                slots_map[slot_id] = {
+                    "employee_id": row["employee_id"],
+                    "first_name": row["first_name"],
+                    "last_name": row["last_name"],
+                    "slot_id": row["slot_id"],
+                    "start_time": row["start_time"],
+                    "end_time": row["end_time"],
+                    "day_of_week": row["day_of_week"],
+                    "logical_key": row["logical_key"],
+                    "care_visits": []
+                }
+
+            if row.get("visit_date"):  # add only if care visit exists
+                slots_map[slot_id]["care_visits"].append({
+                    "visit_date": row["visit_date"],
+                    "patient_id": row["patient_id"],
+                    "patient_first_name": row["patient_first_name"],
+                    "patient_last_name": row["patient_last_name"],
+                    "availability_slot_key": row['availability_slot_key'],
+                    "status": row['status']
+                })
+
+        return list(slots_map.values())
+
+
+

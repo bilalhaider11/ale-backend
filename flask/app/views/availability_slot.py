@@ -21,12 +21,11 @@ class AvailabilitySlotResource(Resource):
         PersonOrganizationRoleEnum.EMPLOYEE,
         PersonOrganizationRoleEnum.ADMIN
     ])
-    def get(self, person: Person, role: PersonOrganizationRole, organization: Organization, employee_id: str):
+    def get(self, person: Person, roles: list, organization: Organization, employee_id: str):
 
-        if role.role == PersonOrganizationRoleEnum.EMPLOYEE:
+        if PersonOrganizationRoleEnum.EMPLOYEE in roles:
             employee_service = EmployeeService(config)
             employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
-        
             if employee.person_id != person.entity_id:
                 return get_failure_response(message="Unable to perform this action on this employee_id.")
 
@@ -39,12 +38,11 @@ class AvailabilitySlotResource(Resource):
         PersonOrganizationRoleEnum.EMPLOYEE,
         PersonOrganizationRoleEnum.ADMIN
     ])
-    def post(self, person: Person, role: PersonOrganizationRole, organization: Organization, employee_id: str):
+    def post(self, person: Person, roles: list, organization: Organization, employee_id: str):
 
-        if role.role == PersonOrganizationRoleEnum.EMPLOYEE:
+        if PersonOrganizationRoleEnum.EMPLOYEE in roles:
             employee_service = EmployeeService(config)
             employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
-        
             if employee.person_id != person.entity_id:
                 return get_failure_response(message="Unable to perform this action on this employee_id.")
 
@@ -83,13 +81,9 @@ class AvailabilitySlotResource(Resource):
 
 @availability_slot_api.route('')
 class MultipleAvailabilitySlotResource(Resource):
-
     @login_required()
-    @organization_required(with_roles=[
-        PersonOrganizationRoleEnum.EMPLOYEE,
-        PersonOrganizationRoleEnum.ADMIN
-    ])
-    def get(self, person: Person, role: PersonOrganizationRole, organization: Organization):
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, organization: Organization):
         availability_slot_service = AvailabilitySlotService(config)
         availability_slots = availability_slot_service.get_availability_slots_for_organization(organization.entity_id)
         return get_success_response(data=availability_slots)
