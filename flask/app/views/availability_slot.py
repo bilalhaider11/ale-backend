@@ -81,13 +81,9 @@ class AvailabilitySlotResource(Resource):
 
 @availability_slot_api.route('')
 class MultipleAvailabilitySlotResource(Resource):
-
     @login_required()
-    @organization_required(with_roles=[
-        PersonOrganizationRoleEnum.EMPLOYEE,
-        PersonOrganizationRoleEnum.ADMIN
-    ])
-    def get(self, person: Person, role: PersonOrganizationRole, organization: Organization):
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, organization: Organization):
         availability_slot_service = AvailabilitySlotService(config)
         availability_slots = availability_slot_service.get_availability_slots_for_organization(organization.entity_id)
         return get_success_response(data=availability_slots)
