@@ -21,9 +21,9 @@ class AvailabilitySlotResource(Resource):
         PersonOrganizationRoleEnum.EMPLOYEE,
         PersonOrganizationRoleEnum.ADMIN
     ])
-    def get(self, person: Person, role: PersonOrganizationRole, organization: Organization, employee_id: str):
+    def get(self, person: Person, roles: list, organization: Organization, employee_id: str):
 
-        if role.role == PersonOrganizationRoleEnum.EMPLOYEE:
+        if PersonOrganizationRoleEnum.EMPLOYEE in roles:
             employee_service = EmployeeService(config)
             employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
             if employee.person_id != person.entity_id:
@@ -38,9 +38,9 @@ class AvailabilitySlotResource(Resource):
         PersonOrganizationRoleEnum.EMPLOYEE,
         PersonOrganizationRoleEnum.ADMIN
     ])
-    def post(self, person: Person, role: PersonOrganizationRole, organization: Organization, employee_id: str):
+    def post(self, person: Person, roles: list, organization: Organization, employee_id: str):
 
-        if role.role == PersonOrganizationRoleEnum.EMPLOYEE:
+        if PersonOrganizationRoleEnum.EMPLOYEE in roles:
             employee_service = EmployeeService(config)
             employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
             if employee.person_id != person.entity_id:
