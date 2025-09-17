@@ -127,30 +127,6 @@ class AvailabilitySlotRepository(BaseRepository):
         """
         Fetch all availability slots of employees in the given organizations,
         including employee details and their care visits (with patient first/last name).
-
-        Returns nested structure:
-        [
-            {
-                "employee_id": "...",
-                "first_name": "...",
-                "last_name": "...",
-                "slot_id": "...",
-                "start_time": "...",
-                "end_time": "...",
-                "day_of_week": 1,
-                "logical_key": "...",
-                "care_visits": [
-                    {
-                        "visit_date": "...",
-                        "patient_id": "...",
-                        "patient_first_name": "...",
-                        "patient_last_name": "..."
-                    },
-                    ...
-                ]
-            },
-            ...
-        ]
         """
         query = """
             SELECT 
@@ -193,7 +169,6 @@ class AvailabilitySlotRepository(BaseRepository):
         if not rows:
             return []
 
-        # --- Post-process into nested structure ---
         slots_map = {}
         for row in rows:
             slot_id = row["slot_id"]
