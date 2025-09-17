@@ -202,3 +202,6 @@ class PatientCareSlotService:
                 end_minutes = slot.end_time.hour * 60 + slot.end_time.minute
                 total_hours += (end_minutes - start_minutes) / 60
         return total_hours
+
+    def get_patient_care_slots_for_organization(self, organization_id: str):
+        return self.patient_care_slot_repo.get_patient_care_slots_by_organization(organization_id)
