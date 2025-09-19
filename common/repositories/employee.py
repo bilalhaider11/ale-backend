@@ -365,7 +365,7 @@ class EmployeeRepository(BaseRepository):
             SELECT e.*,
                    o.name as organization_name,
                    CASE
-                       WHEN pir.status = 'accepted' THEN 'accepted'
+                       WHEN pir.status = 'active' THEN 'active'
                        WHEN pir.status = 'pending' THEN 'pending'
                        ELSE NULL
                    END as invitation_status
