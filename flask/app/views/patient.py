@@ -371,3 +371,55 @@ class PatientsBySlot(Resource):
             slots=patient_care_slots,
             count=len(patient_care_slots)
         )
+    
+    def _create_slot_from_data(self, slot_data: dict, week_start_date: date, week_end_date: date, 
+                              patient_care_slot_service) -> PatientCareSlot:
+        """Create and validate a PatientCareSlot from request data."""
+        if not isinstance(slot_data, dict):
+            raise InputValidationError("Each slot must be an object")
+        
+        # Validate required fields
+        required_fields = ["day_of_week", "start_time", "end_time"]
+        missing_fields = [field for field in required_fields if field not in slot_data]
+        if missing_fields:
+            raise InputValidationError(f"Missing required fields: {', '.join(missing_fields)}")
+        
+        # Validate and parse day_of_week
+        day_of_week = slot_data['day_of_week']
+        if not isinstance(day_of_week, int) or not (0 <= day_of_week <= 6):
+            raise InputValidationError("day_of_week must be an integer between 0 and 6")
+        
+        # Handle day range fields with defaults
+        start_day_of_week = slot_data.get('start_day_of_week', day_of_week)
+        end_day_of_week = slot_data.get('end_day_of_week', day_of_week)
+        
+        # Validate day range fields
+        for field_name, value in [('start_day_of_week', start_day_of_week), ('end_day_of_week', end_day_of_week)]:
+            if not isinstance(value, int) or not (0 <= value <= 6):
+                raise InputValidationError(f"{field_name} must be an integer between 0 and 6")
+        
+        # Validate day range order
+        if start_day_of_week > end_day_of_week:
+            raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
+        
+        # Parse and validate time fields
+        try:
+            start_time = datetime.strptime(slot_data['start_time'], '%H:%M').time()
+            end_time = datetime.strptime(slot_data['end_time'], '%H:%M').time()
+        except ValueError:
+            raise InputValidationError("start_time and end_time must be in 'HH:MM' format")
+        
+        # Validate time range using service method
+        if not patient_care_slot_service._is_valid_time_range(start_time, end_time):
+            raise InputValidationError(f"Invalid time range: start_time {start_time} to end_time {end_time}")
+        
+        # Create slot object
+        return PatientCareSlot(
+            day_of_week=day_of_week,
+            start_day_of_week=start_day_of_week,
+            end_day_of_week=end_day_of_week,
+            start_time=start_time,
+            end_time=end_time,
+            week_start_date=week_start_date,
+            week_end_date=week_end_date,
+        )
