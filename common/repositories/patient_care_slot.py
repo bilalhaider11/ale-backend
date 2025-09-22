@@ -42,7 +42,8 @@ class PatientCareSlotRepository(BaseRepository):
             FROM patient_care_slot pcs
             JOIN patient p ON pcs.patient_id = p.entity_id
             JOIN person ps ON p.person_id = ps.entity_id
-            WHERE pcs.day_of_week = %s
+            WHERE (pcs.day_of_week = %s 
+                   OR (pcs.start_day_of_week <= %s AND pcs.end_day_of_week >= %s))
             AND pcs.end_time > %s
             AND pcs.start_time < %s
             AND p.organization_id IN %s
@@ -69,7 +70,9 @@ class PatientCareSlotRepository(BaseRepository):
             );
         """
         params = (
-            visit_date.weekday(), 
+            visit_date.weekday(),  # day_of_week = %s
+            visit_date.weekday(),  # start_day_of_week <= %s
+            visit_date.weekday(),  # end_day_of_week >= %s
             start_time, 
             end_time, 
             tuple(organization_ids), 
@@ -104,6 +107,8 @@ class PatientCareSlotRepository(BaseRepository):
                 pcs.start_time,
                 pcs.end_time,
                 pcs.day_of_week,
+                pcs.start_day_of_week,
+                pcs.end_day_of_week,
                 pcs.logical_key,
                 cv.visit_date,
                 cv.employee_id,
@@ -146,6 +151,8 @@ class PatientCareSlotRepository(BaseRepository):
                     "start_time": row["start_time"],
                     "end_time": row["end_time"],
                     "day_of_week": row["day_of_week"],
+                    "start_day_of_week": row["start_day_of_week"],
+                    "end_day_of_week": row["end_day_of_week"],
                     "logical_key": row["logical_key"],
                     "care_visits": []
                 }
