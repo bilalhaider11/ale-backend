@@ -13,6 +13,16 @@ from common.helpers.exceptions import InputValidationError
 patient_care_slot_api = Namespace('patient_care_slot', description="Patient care slot APIs")
 
 
+@patient_care_slot_api.route('')
+class MultipleAvailabilitySlotResource(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, organization: Organization):
+        patient_care_slot_service = PatientCareSlotService(config)
+        patient_care_slots = patient_care_slot_service.get_patient_care_slots_for_organization(organization.entity_id)
+        return get_success_response(data=patient_care_slots)
+
+
 @patient_care_slot_api.route('/<string:patient_id>')
 class PatientCareSlotResource(Resource):
 

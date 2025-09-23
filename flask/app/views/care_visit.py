@@ -33,17 +33,18 @@ from common.helpers.exceptions import APIException
 # Create the care visits blueprint
 care_visit_api = Namespace('care_visit', description="Care Visit-related APIs")
 
+
 @care_visit_api.route('/employee/<employee_id>')
 class EmployeeCareVisits(Resource):
 
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN, PersonOrganizationRoleEnum.EMPLOYEE])
-    def get(self, person, organization, role, employee_id):
+    def get(self, person: Person, roles: list, organization: Organization, employee_id: str):
         care_visit_service = CareVisitService(config)
         employee_service = EmployeeService(config)
         
         # If role is employee, check if the employee_id matches the person's employee record
-        if role == PersonOrganizationRoleEnum.EMPLOYEE:
+        if PersonOrganizationRoleEnum.EMPLOYEE in roles:
             employee = employee_service.get_employee_by_person_id(person.entity_id, organization.entity_id)
             if employee.entity_id != employee_id:
                 return get_failure_response("Access denied: You can only view your own care visits", status_code=403)
@@ -93,6 +94,7 @@ class EmployeeCareVisits(Resource):
         )
         
         return get_success_response(care_visit=care_visit)
+
 
 @care_visit_api.route('/patient/<patient_id>')
 class PatientCareVisits(Resource):
@@ -150,7 +152,6 @@ class PatientCareVisits(Resource):
         return get_success_response(care_visit=care_visit)
 
 
-
 @care_visit_api.route('/<string:care_visit_id>')
 class CareVisit(Resource):
 
@@ -173,6 +174,7 @@ class CareVisit(Resource):
         care_visit_repo.delete(care_visit)
         
         return get_success_response(message="Care visit cancelled successfully")
+
 
 @care_visit_api.route('/employee/clock_in/<string:care_visit_id>')
 class ClockIn(Resource):
@@ -227,6 +229,7 @@ class ClockIn(Resource):
             care_visit=updated_visit.as_dict()
         )
 
+
 @care_visit_api.route('/employee/clock_out/<string:care_visit_id>')
 class ClockOut(Resource):
     
@@ -279,12 +282,13 @@ class ClockOut(Resource):
             care_visit=updated_visit.as_dict()
         )
 
+
 @care_visit_api.route('/employee/process_missed_visits')
 class ProcessMissedVisits(Resource):
     
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.EMPLOYEE])
-    def post(self, person, organization, role):
+    def post(self, person: Person, roles: list, organization: Organization,):
         employee_service = EmployeeService(config)
         
         required_fields = ['employee_id','current_datetime']
@@ -294,7 +298,7 @@ class ProcessMissedVisits(Resource):
         employee_id = data.get('employee_id')
 
         # If role is employee, check if the employee_id matches the person's employee record
-        if role == PersonOrganizationRoleEnum.EMPLOYEE:
+        if PersonOrganizationRoleEnum.EMPLOYEE in roles:
             employee = employee_service.get_employee_by_person_id(person.entity_id, organization.entity_id)
             if employee.entity_id != employee_id:
                 return get_failure_response("Access denied: You can only view your own care visits", status_code=403)
