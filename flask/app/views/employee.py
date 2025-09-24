@@ -144,6 +144,25 @@ class EmployeeAdmin(Resource):
             data=employees
         )
 
+@employee_api.route('/admin/<string:entity_id>')
+class Employee(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization, entity_id):
+        """
+        Get a single employee by their entity_id.
+        """
+        employee_service = EmployeeService(config)
+        employee = employee_service.get_employee_by_id(entity_id, organization.entity_id)
+
+        if not employee:
+            return get_failure_response("Employee not found", status_code=404)
+
+        return get_success_response(
+            message="Employee retrieved successfully",
+            data=employee
+        )
+
 @employee_api.route('')
 class EmployeeResource(Resource):
 
