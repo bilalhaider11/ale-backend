@@ -36,6 +36,22 @@ class PatientList(Resource):
             count=len(patients)
         )
 
+@patient_api.route('/admin/<string:entity_id>')
+class Patient(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def get(self, person, organization, entity_id):
+        """Get a single patient by their entity_id."""
+        patient_service = PatientService(config)
+        patient = patient_service.get_patient_by_id(entity_id, organization.entity_id)
+
+        if not patient:
+            return get_failure_response("Patient not found", status_code=404)
+
+        return get_success_response(
+            message="Patient retrieved successfully",
+            data=patient.as_dict()
+        )
 
 @patient_api.route('/upload')
 class PatientFileUpload(Resource):
