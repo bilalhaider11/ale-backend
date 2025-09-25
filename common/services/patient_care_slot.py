@@ -51,17 +51,27 @@ class PatientCareSlotService:
         
         # Delete all slots_to_delete from the database
         for slot in slots_to_delete:
-            self.patient_care_slot_repo.delete(slot)
+            try:
+                logger.info(f"Deleting patient care slot {slot.entity_id} for patient {patient_id}")
+                self.patient_care_slot_repo.delete(slot)
+            except Exception as e:
+                logger.error(f"Error deleting patient care slot {slot.entity_id}: {str(e)}")
+                raise
         
         # Save all slots_to_add to the database
         for slot in slots_to_add:
-            slot.patient_id = patient_id
-            slot.week_start_date = week_start_date
-            slot.week_end_date = week_end_date
-            
-            # Validate and save slot
-            self._validate_slot(slot)
-            self.patient_care_slot_repo.save(slot)
+            try:
+                slot.patient_id = patient_id
+                slot.week_start_date = week_start_date
+                slot.week_end_date = week_end_date
+                
+                # Validate and save slot
+                self._validate_slot(slot)
+                logger.info(f"Saving new patient care slot for patient {patient_id}")
+                self.patient_care_slot_repo.save(slot)
+            except Exception as e:
+                logger.error(f"Error saving patient care slot for patient {patient_id}: {str(e)}")
+                raise
         
         # Return the weekly duration for the patient
         return self.get_patient_care_slots_by_week(patient_id, week_start_date)
