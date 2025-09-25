@@ -1,6 +1,9 @@
 from datetime import datetime
+from typing import List, Union, Dict, Any
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.care_visit import CareVisit, CareVisitStatusEnum
+
+
 class CareVisitService:
 
     def __init__(self, config):
@@ -26,9 +29,10 @@ class CareVisitService:
     def save_care_visit(self, care_visit: CareVisit):
         return self.care_visit_repo.save(care_visit)
 
-    def schedule_care_visit(self, patient_id: str, employee_id: str, visit_date: datetime, 
-                           scheduled_start_time: datetime, scheduled_end_time: datetime, 
-                           scheduled_by_id: str, availability_slot_key: str, patient_care_slot_key: str, organization_id: str):
+    def schedule_care_visit(self, patient_id: str, employee_id: str, visit_date: datetime,
+                            scheduled_start_time: datetime, scheduled_end_time: datetime,
+                            scheduled_by_id: str, availability_slot_key: str, patient_care_slot_key: str,
+                            organization_id: str):
 
         care_visit = CareVisit(
             status=CareVisitStatusEnum.SCHEDULED,
@@ -44,6 +48,34 @@ class CareVisitService:
         )
         return self.save_care_visit(care_visit)
 
+    def schedule_multiple_care_visits(self, visits_data: List[Dict[str, Any]], scheduled_by_id: str,
+                                      organization_id: str) -> List[CareVisit]:
+        """
+        Schedule multiple care visits from a list of visit data.
+        """
+        scheduled_visits = []
+
+        for visit_data in visits_data:
+            # Parse datetime fields
+            visit_date = datetime.fromisoformat(visit_data['visit_date'].replace('Z', ''))
+            scheduled_start_time = datetime.fromisoformat(visit_data['scheduled_start_time'].replace('Z', ''))
+            scheduled_end_time = datetime.fromisoformat(visit_data['scheduled_end_time'].replace('Z', ''))
+
+            care_visit = self.schedule_care_visit(
+                patient_id=visit_data['patient_id'],
+                employee_id=visit_data['employee_id'],
+                visit_date=visit_date,
+                scheduled_start_time=scheduled_start_time,
+                scheduled_end_time=scheduled_end_time,
+                scheduled_by_id=scheduled_by_id,
+                availability_slot_key=visit_data['availability_slot_key'],
+                patient_care_slot_key=visit_data['patient_care_slot_key'],
+                organization_id=organization_id
+            )
+            scheduled_visits.append(care_visit)
+
+        return scheduled_visits
+
     def get_care_visit_by_id(self, care_visit_id: str) -> CareVisit:
         return self.care_visit_repo.get_one({"entity_id": care_visit_id})
 
@@ -51,17 +83,17 @@ class CareVisitService:
         care_visits = self.care_visit_repo.get_care_visits(
             employee_id=employee_id
         )
-        
+
         count = 0
         for visit_data in care_visits:
-            if (visit_data.get('status') == CareVisitStatusEnum.SCHEDULED and 
-                visit_data.get('scheduled_end_time') and 
-                visit_data['scheduled_end_time'] < current_datetime):
-                
+            if (visit_data.get('status') == CareVisitStatusEnum.SCHEDULED and
+                    visit_data.get('scheduled_end_time') and
+                    visit_data['scheduled_end_time'] < current_datetime):
+
                 care_visit = self.get_care_visit_by_id(visit_data['entity_id'])
                 if care_visit:
                     care_visit.status = CareVisitStatusEnum.MISSED
                     self.save_care_visit(care_visit)
                     count += 1
-                
+
         return count
