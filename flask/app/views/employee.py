@@ -145,7 +145,7 @@ class EmployeeAdmin(Resource):
         )
 
 @employee_api.route('/admin/<string:entity_id>')
-class Employee(Resource):
+class EmployeeDetails(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def get(self, person, organization, entity_id):
