@@ -37,7 +37,7 @@ class PatientList(Resource):
         )
 
 @patient_api.route('/admin/<string:entity_id>')
-class Patient(Resource):
+class PatientDetails(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def get(self, person, organization, entity_id):
