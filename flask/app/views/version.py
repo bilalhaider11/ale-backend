@@ -23,9 +23,13 @@ class Version(Resource):
         repo_factory = RepositoryFactory(config)
         connection = repo_factory.get_db_connection()
 
-        with connection:
-            query = "SELECT * FROM db_version"
-            results = connection.execute_query(query)
-            db_version = results[0].get('version')
+        try:
+            with connection:
+                query = "SELECT * FROM db_version"
+                results = connection.execute_query(query)
+                db_version = results[0].get('version') if results else "Unknown"
+        except Exception as e:
+            # If database query fails, return version without db_version
+            return get_success_response(version=VERSION, db_version=f"Database error: {str(e)}")
 
         return get_success_response(version=VERSION, db_version=db_version)
