@@ -194,14 +194,14 @@ class EmployeeResource(Resource):
             'employee_id',
             'date_of_birth',
             'email_address',
-            'social_security_number',
+            'phone_1',
             'employee_type'
         ])
 
         entity_id = parsed_body.pop('entity_id', None)
         date_of_birth = parsed_body.pop('date_of_birth', None)
         email_address = parsed_body.pop('email_address', None)
-        social_security_number = parsed_body.pop('social_security_number', None)
+        phone_1 = parsed_body.pop('phone_1', None)
 
         validate_required_fields(parsed_body)
         
@@ -216,7 +216,7 @@ class EmployeeResource(Resource):
             employee.employee_id = parsed_body['employee_id']
             employee.date_of_birth = date_of_birth
             employee.email_address = email_address
-            employee.social_security_number = social_security_number
+            employee.phone_1 = phone_1
 
             if employee.person_id:
                 person = person_service.get_person_by_id(employee.person_id)
@@ -247,7 +247,7 @@ class EmployeeResource(Resource):
                 employee_id=parsed_body['employee_id'],
                 date_of_birth=date_of_birth,
                 email_address=email_address,
-                social_security_number=social_security_number,
+                phone_1=phone_1,
                 organization_id=organization.entity_id,
                 person_id=person.entity_id,
                 employee_type=parsed_body['employee_type']
