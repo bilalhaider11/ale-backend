@@ -16,6 +16,8 @@ class PatientCareSlot(VersionedModel):
     week_start_date: date = None
     week_end_date: date = None
     logical_key: str = ""
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
     def validate_logical_key(self):
         # Ensure logical key is set and consistent.

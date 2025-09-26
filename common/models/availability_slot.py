@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from datetime import time
-from typing import ClassVar
+from datetime import time, date
+from typing import ClassVar, Optional
 from rococo.models import VersionedModel
 
 
@@ -13,6 +13,8 @@ class AvailabilitySlot(VersionedModel):
     end_time: time = None
     employee_id: str = None
     logical_key: str = ""
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
     def validate_day_of_week(self):
         if not isinstance(self.day_of_week, int) or self.day_of_week < 0 or self.day_of_week > 6:

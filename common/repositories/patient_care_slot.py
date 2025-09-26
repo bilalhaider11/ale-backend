@@ -110,6 +110,8 @@ class PatientCareSlotRepository(BaseRepository):
                 pcs.start_day_of_week,
                 pcs.end_day_of_week,
                 pcs.logical_key,
+                pcs.start_date,
+                pcs.end_date,
                 cv.visit_date,
                 cv.employee_id,
                 cv.status,
@@ -150,9 +152,10 @@ class PatientCareSlotRepository(BaseRepository):
                     "slot_id": slot_id,
                     "start_time": row["start_time"],
                     "end_time": row["end_time"],
+                    "start_date": row["start_date"],
+                    "end_date": row["end_date"],
                     "day_of_week": row["day_of_week"],
                     "start_day_of_week": row["start_day_of_week"],
-                    "end_day_of_week": row["end_day_of_week"],
                     "logical_key": row["logical_key"],
                     "care_visits": []
                 }
