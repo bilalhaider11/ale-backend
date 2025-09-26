@@ -67,10 +67,24 @@ class AvailabilitySlotResource(Resource):
             except (ValueError, TypeError):                                                                                                              
                 raise InputValidationError("start_time and end_time must be in 'hh:mm' format")
 
+            start_date = (
+                datetime.strptime(slot['start_date'], "%Y-%m-%d").date()
+                if slot.get('start_date')
+                else None
+            )
+
+            end_date = (
+                datetime.strptime(slot['end_date'], "%Y-%m-%d").date()
+                if slot.get('end_date')
+                else None
+            )
+
             slot = AvailabilitySlot(
                 day_of_week=slot['day_of_week'],
                 start_time=start_time,
-                end_time=end_time
+                end_time=end_time,
+                start_date=start_date,
+                end_date=end_date
             )
             slots.append(slot)
 
