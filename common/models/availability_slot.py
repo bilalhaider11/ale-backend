@@ -9,6 +9,8 @@ class AvailabilitySlot(VersionedModel):
     use_type_checking: ClassVar[bool] = True
 
     day_of_week: int = None
+    start_day_of_week: int = None
+    end_day_of_week: int = None
     start_time: time = None
     end_time: time = None
     employee_id: str = None
@@ -25,11 +27,25 @@ class AvailabilitySlot(VersionedModel):
         self.logical_key = self.generate_logical_key(
             employee_id=self.employee_id,
             day_of_week=self.day_of_week,
+            start_day_of_week=self.start_day_of_week,
+            end_day_of_week=self.end_day_of_week,
             start_time=self.start_time,
             end_time=self.end_time
         )
 
     @classmethod
-    def generate_logical_key(cls, employee_id: str, day_of_week: int, start_time: time, end_time: time) -> str:
+    def generate_logical_key(cls, employee_id: str, day_of_week: int, start_day_of_week: int = None,
+                             end_day_of_week: int = None, start_time: time = None, end_time: time = None) -> str:
         """Generates a logical key for the availability slot."""
-        return f"{employee_id}-{day_of_week}-{start_time.strftime('%H:%M:%S')}-{end_time.strftime('%H:%M:%S')}"
+        # Use day range if both start and end day are provided, otherwise use single day
+        if start_day_of_week is not None and end_day_of_week is not None:
+            day_part = f"{start_day_of_week}-{end_day_of_week}"
+        else:
+            day_part = str(day_of_week)
+
+        # Include time information if provided
+        time_part = ""
+        if start_time and end_time:
+            time_part = f"-{start_time.strftime('%H:%M:%S')}-{end_time.strftime('%H:%M:%S')}"
+
+        return f"{employee_id}-{day_part}{time_part}"

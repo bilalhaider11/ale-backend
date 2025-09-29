@@ -156,6 +156,7 @@ class PatientCareSlotRepository(BaseRepository):
                     "end_date": row["end_date"],
                     "day_of_week": row["day_of_week"],
                     "start_day_of_week": row["start_day_of_week"],
+                    "end_day_of_week": row["end_day_of_week"],
                     "logical_key": row["logical_key"],
                     "care_visits": []
                 }

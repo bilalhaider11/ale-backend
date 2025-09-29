@@ -59,7 +59,25 @@ class AvailabilitySlotResource(Resource):
             required_fields = ["day_of_week", "start_time", "end_time"]
             if not all(field in slot for field in required_fields):
                 raise InputValidationError("day_of_week, start_time or end_time not found in the slot")
-            
+
+            # Validate and parse day_of_week
+            day_of_week = slot['day_of_week']
+            if not isinstance(day_of_week, int) or not (0 <= day_of_week <= 6):
+                raise InputValidationError("day_of_week must be an integer between 0 and 6")
+
+            # Handle day range fields with defaults
+            start_day_of_week = slot.get('start_day_of_week', day_of_week)
+            end_day_of_week = slot.get('end_day_of_week', day_of_week)
+
+            # Validate day range fields
+            for field_name, value in [('start_day_of_week', start_day_of_week), ('end_day_of_week', end_day_of_week)]:
+                if not isinstance(value, int) or not (0 <= value <= 6):
+                    raise InputValidationError(f"{field_name} must be an integer between 0 and 6")
+
+            # Validate day range order
+            if start_day_of_week > end_day_of_week:
+                raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
+
             # Parse time strings from "hh:mm" format to datetime.time
             try:                                                                                                                                         
                 start_time = datetime.strptime(slot['start_time'], '%H:%M').time()                                                                       
@@ -81,6 +99,8 @@ class AvailabilitySlotResource(Resource):
 
             slot = AvailabilitySlot(
                 day_of_week=slot['day_of_week'],
+                start_day_of_week=start_day_of_week,
+                end_day_of_week=end_day_of_week,
                 start_time=start_time,
                 end_time=end_time,
                 start_date=start_date,
