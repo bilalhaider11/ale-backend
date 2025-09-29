@@ -33,13 +33,13 @@ class AvailabilitySlotService:
         existing_slots = self.get_availability_slots_by_employee_id(employee_id)
         
         # Create sets of keys for comparison using (day_of_week, start_time, end_time)
-        existing_keys = {(slot.day_of_week, slot.start_time, slot.end_time) for slot in existing_slots}
-        new_keys = {(slot.day_of_week, slot.start_time, slot.end_time) for slot in slots}
+        existing_keys = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time) for slot in existing_slots}
+        new_keys = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time) for slot in slots}
         
         # Create mappings from keys to slots for easy lookup
-        existing_slots_map = {(slot.day_of_week, slot.start_time, slot.end_time): slot for slot in existing_slots}
-        new_slots_map = {(slot.day_of_week, slot.start_time, slot.end_time): slot for slot in slots}
-        
+        existing_slots_map = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time): slot for slot in existing_slots}
+        new_slots_map = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time): slot for slot in slots}
+
         # Compute slots_to_delete: existing slots not in new slots
         keys_to_delete = existing_keys - new_keys
         slots_to_delete = [existing_slots_map[key] for key in keys_to_delete]
@@ -61,8 +61,7 @@ class AvailabilitySlotService:
 
         return added_slots
 
-    def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, 
-                                  visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:
+    def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:
         """
         Get availability slots for a specific time slot and employee.
 

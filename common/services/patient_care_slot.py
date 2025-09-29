@@ -234,7 +234,7 @@ class PatientCareSlotService:
         # Validate time range
         if not self._is_valid_time_range(slot.start_time, slot.end_time):
             raise ValueError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
-    
+        #
     def _calculate_slot_duration_minutes(self, start_time: time, end_time: time) -> int:
         """Calculate slot duration in minutes, handling overnight slots."""
         start_minutes = start_time.hour * 60 + start_time.minute
