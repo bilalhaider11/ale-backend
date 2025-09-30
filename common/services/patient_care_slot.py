@@ -3,6 +3,7 @@ from datetime import date, time, timedelta
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.patient_care_slot import PatientCareSlot
 from common.app_logger import get_logger
+from flask import abort
 
 logger = get_logger(__name__)
 
@@ -82,7 +83,7 @@ class PatientCareSlotService:
         patient_slots = self.patient_care_slot_repo.get_many({
             "patient_id": patient_id
         })
-        
+
         # Then filter for the specific week in Python
         return [slot for slot in patient_slots if slot.week_start_date == week_start_date]
 
@@ -274,3 +275,10 @@ class PatientCareSlotService:
         else:
             # Regular same-day slot - start must be before end
             return start_minutes < end_minutes
+
+    def delete_patient_care_slot(self, patient_id: str, slot_id: str) -> PatientCareSlot:
+        slot = self.patient_care_slot_repo.get_one({"entity_id": slot_id, "patient_id": patient_id})
+        if not slot:
+            abort(404, description=f"Patient care slot with id '{slot_id}' not found for patient '{patient_id}'")
+        slot.active = False
+        return self.patient_care_slot_repo.save(slot)

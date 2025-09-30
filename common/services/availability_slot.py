@@ -2,6 +2,7 @@ from typing import List
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.availability_slot import AvailabilitySlot
 from datetime import time, date
+from flask import abort
 
 
 class AvailabilitySlotService:
@@ -127,3 +128,10 @@ class AvailabilitySlotService:
                 **AvailabilitySlot(**row).as_dict()
             } for row in sorted_results
         ]
+
+    def delete_employee_availability_slot(self, employee_id: str, slot_id: str) -> AvailabilitySlot:
+        slot = self.availability_slot_repo.get_one({"entity_id": slot_id, "employee_id": employee_id})
+        if not slot:
+            abort(404, description=f"Availability slot with id '{slot_id}' not found for employee '{employee_id}'")
+        slot.active = False
+        return self.availability_slot_repo.save(slot)
