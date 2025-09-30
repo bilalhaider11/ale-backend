@@ -339,7 +339,19 @@ class PatientCareSlots(Resource):
         # Validate time range using service method
         if not patient_care_slot_service._is_valid_time_range(start_time, end_time):
             raise InputValidationError(f"Invalid time range: start_time {start_time} to end_time {end_time}")
-        
+
+        start_date = (
+            datetime.strptime(slot_data['start_date'], "%Y-%m-%d").date()
+            if slot_data.get('start_date')
+            else None
+        )
+
+        end_date = (
+            datetime.strptime(slot_data['end_date'], "%Y-%m-%d").date()
+            if slot_data.get('end_date')
+            else None
+        )
+
         # Create slot object
         return PatientCareSlot(
             day_of_week=day_of_week,
@@ -349,6 +361,8 @@ class PatientCareSlots(Resource):
             end_time=end_time,
             week_start_date=week_start_date,
             week_end_date=week_end_date,
+            start_date=start_date,
+            end_date=end_date
         )
 
 @patient_api.route('/by/slot')

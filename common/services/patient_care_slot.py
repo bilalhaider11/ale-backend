@@ -234,7 +234,7 @@ class PatientCareSlotService:
         # Validate time range
         if not self._is_valid_time_range(slot.start_time, slot.end_time):
             raise ValueError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
-    
+        #
     def _calculate_slot_duration_minutes(self, start_time: time, end_time: time) -> int:
         """Calculate slot duration in minutes, handling overnight slots."""
         start_minutes = start_time.hour * 60 + start_time.minute
@@ -246,35 +246,31 @@ class PatientCareSlotService:
         else:
             # Overnight slot - calculate duration across midnight
             return (24 * 60 - start_minutes) + end_minutes
-    
+
     def _is_valid_time_range(self, start_time: time, end_time: time) -> bool:
         """
         Validate if a time range is valid, including overnight slots.
-        
+
         Args:
             start_time: Start time of the slot
             end_time: End time of the slot
-            
+
         Returns:
             True if the time range is valid, False otherwise
         """
         if not start_time or not end_time:
             return False
-            
+
         # Convert times to minutes for easier comparison
         start_minutes = start_time.hour * 60 + start_time.minute
         end_minutes = end_time.hour * 60 + end_time.minute
-        
+
         # Handle overnight slots (e.g., 23:00 to 03:00)
         if start_minutes > end_minutes:
+            # Calculate duration for overnight slots
             duration_minutes = (24 * 60 - start_minutes) + end_minutes
-            # Check if it's a reasonable overnight slot
-            # Start should be late evening (8 PM or later) and end should be early morning (8 AM or earlier)
-            is_reasonable_overnight = (
-                (start_time.hour >= 17 or start_time.hour <= 7) and  # Start between 5 PM and 7 AM
-                end_time.hour <= 8  # End at 8 AM or earlier
-            )
-            return 0 < duration_minutes <= 24 * 60 and is_reasonable_overnight
+            # Allow any overnight slot with positive duration
+            return duration_minutes > 0
         else:
             # Regular same-day slot - start must be before end
             return start_minutes < end_minutes

@@ -137,6 +137,10 @@ class AvailabilitySlotRepository(BaseRepository):
                 s.start_time,
                 s.end_time,
                 s.day_of_week,
+                s.start_day_of_week,
+                s.end_day_of_week,
+                s.start_date,
+                s.end_date,
                 s.logical_key,
                 cv.visit_date,
                 cv.patient_id,
@@ -181,6 +185,10 @@ class AvailabilitySlotRepository(BaseRepository):
                     "start_time": row["start_time"],
                     "end_time": row["end_time"],
                     "day_of_week": row["day_of_week"],
+                    "start_date": row["start_date"],
+                    "end_date": row["end_date"],
+                    "start_day_of_week": row["start_day_of_week"],
+                    "end_day_of_week": row["end_day_of_week"],
                     "logical_key": row["logical_key"],
                     "care_visits": []
                 }
