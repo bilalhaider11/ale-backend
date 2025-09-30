@@ -34,3 +34,13 @@ class PatientCareSlotResource(Resource):
         patient_care_slot_service = PatientCareSlotService(config)
         patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_patient_id(patient_id)
         return get_success_response(data=patient_care_slots)
+
+
+@patient_care_slot_api.route('/<string:patient_id>/<string:slot_id>')
+class DeletePatientCareSlotResource(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def delete(self, person, organization, patient_id: str, slot_id: str):
+        patient_care_slot_service = PatientCareSlotService(config)
+        care_slot = patient_care_slot_service.delete_patient_care_slot(patient_id=patient_id, slot_id=slot_id)
+        return get_success_response(data=care_slot)

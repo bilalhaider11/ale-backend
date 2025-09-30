@@ -121,3 +121,16 @@ class MultipleAvailabilitySlotResource(Resource):
         availability_slot_service = AvailabilitySlotService(config)
         availability_slots = availability_slot_service.get_availability_slots_for_organization(organization.entity_id)
         return get_success_response(data=availability_slots)
+
+
+@availability_slot_api.route('/<string:employee_id>/<string:slot_id>')
+class DeleteEmployeeSlotResource(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def delete(self, person, organization, employee_id: str, slot_id: str):
+        availability_slot_service = AvailabilitySlotService(config)
+        availability_slot = availability_slot_service.delete_employee_availability_slot(
+            employee_id=employee_id,
+            slot_id=slot_id
+        )
+        return get_success_response(data=availability_slot)
