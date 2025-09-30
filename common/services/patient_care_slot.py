@@ -14,8 +14,6 @@ class PatientCareSlotService:
         self.config = config
         self.repository_factory = RepositoryFactory(config)
         self.patient_care_slot_repo = self.repository_factory.get_repository(RepoType.PATIENT_CARE_SLOT)
-        self.patient_repo = self.repository_factory.get_repository(RepoType.PATIENT)
-        self.person_repo = self.repository_factory.get_repository(RepoType.PERSON)
         
         # Constants for validation
         self.MIN_DAY_OF_WEEK = 0
