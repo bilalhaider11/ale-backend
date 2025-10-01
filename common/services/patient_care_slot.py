@@ -254,54 +254,36 @@ class PatientCareSlotService:
             if start_day > end_day:
                 raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
     
-    def create_patient_care_slot(self, patient_id: str, slot_data: dict, patient_weekly_quota: Optional[float] = None) -> PatientCareSlot:
-        """
-        Create a new patient care slot.
-        
-        Args:
-            patient_id: The patient's entity_id
-            slot_data: Dictionary containing slot information
-            patient_weekly_quota: Optional patient weekly quota for validation
-            
-        Returns:
-            The created PatientCareSlot
-        """
+    def _parse_slot_data(self, slot_data: dict) -> PatientCareSlot:
+        """Parse and validate slot data into a PatientCareSlot object (DRY helper)."""
         # Validate required fields
         required_fields = ["day_of_week", "start_day_of_week", "end_day_of_week", "start_time", "end_time"]
         missing_fields = [field for field in required_fields if field not in slot_data]
         if missing_fields:
             raise InputValidationError(f"Missing required fields: {', '.join(missing_fields)}")
         
-        # Parse and validate all fields using helper methods
+        # Parse and validate all fields
         day_of_week = self._validate_and_parse_day_of_week(slot_data.get('day_of_week'), "day_of_week")
         start_day_of_week = self._validate_and_parse_day_of_week(slot_data.get('start_day_of_week'), "start_day_of_week")
         end_day_of_week = self._validate_and_parse_day_of_week(slot_data.get('end_day_of_week'), "end_day_of_week")
-
-        # Validate day range
+        
         self._validate_day_range(start_day_of_week, end_day_of_week)
         
-        # Parse time fields
         start_time = self._parse_time_field(slot_data['start_time'], "start_time")
         end_time = self._parse_time_field(slot_data['end_time'], "end_time")
         
-        # Validate time range
         if not self._is_valid_time_range(start_time, end_time):
             raise InputValidationError(f"Invalid time range: start_time {start_time} to end_time {end_time}")
         
-        # Parse optional date fields
         week_start_date = self._parse_date_field(slot_data.get('week_start_date'), "week_start_date", allow_none=False)
         week_start_date = self._validate_week_start_date(week_start_date)
         week_end_date = week_start_date + timedelta(days=6) if week_start_date else None
-
+        
         start_date = self._parse_date_field(slot_data.get('start_date'), "start_date")
         end_date = self._parse_date_field(slot_data.get('end_date'), "end_date")
-
-        if patient_weekly_quota is None or patient_weekly_quota == 0:
-            raise InputValidationError("Please set a weekly quota before adding care slots.")
-
-        # Create slot object
-        slot = PatientCareSlot(
-            patient_id=patient_id,
+        
+        return PatientCareSlot(
+            patient_id="",  # Will be set by caller
             day_of_week=day_of_week,
             start_day_of_week=start_day_of_week,
             end_day_of_week=end_day_of_week,
@@ -312,13 +294,58 @@ class PatientCareSlotService:
             start_date=start_date,
             end_date=end_date
         )
+    
+    def create_patient_care_slots(self, patient_id: str, slots_data: List[dict], patient_weekly_quota: Optional[float] = None) -> List[PatientCareSlot]:
+        """
+        Create multiple patient care slots with optimized quota validation.
         
-        # Validate weekly quota if provided
-        existing_slots = self.get_patient_care_slots_by_week(patient_id, week_start_date) if week_start_date else []
-        self._validate_weekly_quota(patient_weekly_quota, slot, existing_slots)
-
-        logger.info(f"Creating new patient care slot for patient {patient_id}")
-        return self.patient_care_slot_repo.save(slot)
+        Args:
+            patient_id: The patient's entity_id
+            slots_data: List of slot data dictionaries
+            patient_weekly_quota: Optional patient weekly quota for validation
+            
+        Returns:
+            List of created PatientCareSlot objects
+        """
+        if not slots_data:
+            raise InputValidationError("At least one slot must be provided")
+            
+        if patient_weekly_quota is None or patient_weekly_quota == 0:
+            raise InputValidationError("Please set a weekly quota before adding care slots.")
+        
+        # Parse all slots using DRY helper
+        parsed_slots = []
+        for slot_data in slots_data:
+            if not isinstance(slot_data, dict):
+                raise InputValidationError("Each slot must be a JSON object")
+            
+            slot = self._parse_slot_data(slot_data)
+            slot.patient_id = patient_id
+            parsed_slots.append(slot)
+        
+        # Validate quota for each week separately
+        # Group slots by week for proper quota validation
+        slots_by_week = {}
+        for slot in parsed_slots:
+            week_start = slot.week_start_date
+            if week_start not in slots_by_week:
+                slots_by_week[week_start] = []
+            slots_by_week[week_start].append(slot)
+        
+        # Validate quota for each week using existing helper method
+        for week_start, week_slots in slots_by_week.items():
+            # Get existing slots for this week
+            existing_slots = self.get_patient_care_slots_by_week(patient_id, week_start)
+            
+            # Validate each slot in this week using the existing helper
+            for slot in week_slots:
+                self._validate_weekly_quota(patient_weekly_quota, slot, existing_slots)
+        
+        # Save all slots
+        saved_slots = [self.patient_care_slot_repo.save(slot) for slot in parsed_slots]
+        
+        logger.info(f"Created {len(saved_slots)} patient care slots for patient {patient_id}")
+        return saved_slots
     
     def update_patient_care_slot(self, patient_id: str, slot_id: str, slot_data: dict, patient_weekly_quota: Optional[float] = None) -> PatientCareSlot:
         """

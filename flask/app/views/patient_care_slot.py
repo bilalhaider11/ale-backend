@@ -60,7 +60,7 @@ class PatientCareSlotResource(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person: Person, organization: Organization, patient_id: str):
-        """Create a new patient care slot"""
+        """Create one or multiple patient care slots"""
         patient_service = PatientService(config)
         patient_care_slot_service = PatientCareSlotService(config)
         
@@ -70,24 +70,39 @@ class PatientCareSlotResource(Resource):
             return get_failure_response("Patient not found in this organization", status_code=404)
         
         # Get and validate request data
-        slot_data = request.get_json(force=True)
-        if not isinstance(slot_data, dict):
-            raise InputValidationError("Request body must be a JSON object")
+        request_data = request.get_json(force=True)
+        if not isinstance(request_data, (dict, list)):
+            raise InputValidationError("Request body must be a JSON object or array")
+        
+        # Normalize to list format (KISS principle)
+        slots_data = request_data if isinstance(request_data, list) else [request_data]
+        
+        if not slots_data:
+            raise InputValidationError("At least one slot must be provided")
         
         try:
-            # Create the slot with quota validation
-            created_slot = patient_care_slot_service.create_patient_care_slot(
-                patient_id, slot_data, patient.weekly_quota
+            created_slots_objects = patient_care_slot_service.create_patient_care_slots(
+                patient_id, slots_data, patient.weekly_quota
             )
+            created_slots = [slot.as_dict() for slot in created_slots_objects]
             
-            return get_success_response(
-                message="Patient care slot created successfully",
-                data=created_slot.as_dict()
-            )
+            # Return appropriate response based on count
+            if len(created_slots) == 1:
+                return get_success_response(
+                    message="Patient care slot created successfully",
+                    data=created_slots[0]
+                )
+            else:
+                return get_success_response(
+                    message=f"{len(created_slots)} patient care slots created successfully",
+                    data=created_slots,
+                    count=len(created_slots)
+                )
+                
         except InputValidationError as e:
             return get_failure_response(str(e), status_code=400)
         except Exception as e:
-            return get_failure_response(f"Error creating patient care slot: {str(e)}", status_code=500)
+            return get_failure_response(f"Error creating patient care slot(s): {str(e)}", status_code=500)
     
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
