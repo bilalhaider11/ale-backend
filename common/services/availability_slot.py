@@ -29,39 +29,6 @@ class AvailabilitySlotService:
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
         return availability_slots
 
-    def upsert_availability_slots(self, employee_id: str, slots: List[AvailabilitySlot]):
-        # Fetch all existing availability slots for the given employee_id
-        existing_slots = self.get_availability_slots_by_employee_id(employee_id)
-        
-        # Create sets of keys for comparison using (day_of_week, start_time, end_time)
-        existing_keys = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time) for slot in existing_slots}
-        new_keys = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time) for slot in slots}
-        
-        # Create mappings from keys to slots for easy lookup
-        existing_slots_map = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time): slot for slot in existing_slots}
-        new_slots_map = {(slot.day_of_week, slot.start_day_of_week, slot.end_day_of_week, slot.start_time, slot.end_time): slot for slot in slots}
-
-        # Compute slots_to_delete: existing slots not in new slots
-        keys_to_delete = existing_keys - new_keys
-        slots_to_delete = [existing_slots_map[key] for key in keys_to_delete]
-        
-        # Compute slots_to_add: new slots not in existing slots
-        keys_to_add = new_keys - existing_keys
-        slots_to_add = [new_slots_map[key] for key in keys_to_add]
-        
-        # Delete all slots_to_delete from the database
-        for slot in slots_to_delete:
-            self.availability_slot_repo.delete(slot)
-
-        # Save all slots_to_add to the database
-        added_slots = []
-        for slot in slots_to_add:
-            slot.employee_id = employee_id  # Ensure employee_id is set
-            added_slot = self.availability_slot_repo.save(slot)
-            added_slots.append(added_slot)
-
-        return added_slots
-
     def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:
         """
         Get availability slots for a specific time slot and employee.
