@@ -27,13 +27,119 @@ class MultipleAvailabilitySlotResource(Resource):
 class PatientCareSlotResource(Resource):
 
     @login_required()
-    @organization_required(with_roles=[
-        PersonOrganizationRoleEnum.ADMIN
-    ])
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def get(self, person: Person, roles: list, organization: Organization, patient_id: str):
+        """Get patient care slots for a specific patient, optionally filtered by week"""
+        patient_service = PatientService(config)
         patient_care_slot_service = PatientCareSlotService(config)
-        patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_patient_id(patient_id)
+        
+        # Verify patient belongs to organization
+        patient = patient_service.get_patient_by_id(patient_id, organization.entity_id)
+        if not patient:
+            return get_failure_response("Patient not found in this organization", status_code=404)
+        
+        # Check if filtering by week
+        week_start_date = request.args.get('week_start_date')
+
+        if week_start_date:
+            try:
+                week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
+                if week_start_date.weekday() != 0:
+                    return get_failure_response("week_start_date must be a Monday", status_code=400)
+            except ValueError:
+                return get_failure_response("Invalid week_start_date format. Use YYYY-MM-DD", status_code=400)
+            
+            # Get slots for specific week
+            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, week_start_date)
+        else:
+            # Get all slots for patient
+            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_patient_id(patient_id)
+        
         return get_success_response(data=patient_care_slots)
+    
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person: Person, organization: Organization, patient_id: str):
+        """Create one or multiple patient care slots"""
+        patient_service = PatientService(config)
+        patient_care_slot_service = PatientCareSlotService(config)
+        
+        # Get patient and verify it belongs to organization
+        patient = patient_service.get_patient_by_id(patient_id, organization.entity_id)
+        if not patient:
+            return get_failure_response("Patient not found in this organization", status_code=404)
+        
+        # Get and validate request data
+        request_data = request.get_json(force=True)
+        if not isinstance(request_data, (dict, list)):
+            raise InputValidationError("Request body must be a JSON object or array")
+        
+        # Normalize to list format (KISS principle)
+        slots_data = request_data if isinstance(request_data, list) else [request_data]
+        
+        if not slots_data:
+            raise InputValidationError("At least one slot must be provided")
+        
+        try:
+            created_slots_objects = patient_care_slot_service.create_patient_care_slots(
+                patient_id, slots_data, patient.weekly_quota
+            )
+            created_slots = [slot.as_dict() for slot in created_slots_objects]
+            
+            # Return appropriate response based on count
+            if len(created_slots) == 1:
+                return get_success_response(
+                    message="Patient care slot created successfully",
+                    data=created_slots[0]
+                )
+            else:
+                return get_success_response(
+                    message=f"{len(created_slots)} patient care slots created successfully",
+                    data=created_slots,
+                    count=len(created_slots)
+                )
+                
+        except InputValidationError as e:
+            return get_failure_response(str(e), status_code=400)
+        except Exception as e:
+            return get_failure_response(f"Error creating patient care slot(s): {str(e)}", status_code=500)
+    
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def put(self, person: Person, organization: Organization, patient_id: str):
+        """Update an existing patient care slot"""
+        patient_service = PatientService(config)
+        patient_care_slot_service = PatientCareSlotService(config)
+        
+        # Get patient and verify it belongs to organization
+        patient = patient_service.get_patient_by_id(patient_id, organization.entity_id)
+        if not patient:
+            return get_failure_response("Patient not found in this organization", status_code=404)
+        
+        # Get and validate request data
+        slot_data = request.get_json(force=True)
+        if not isinstance(slot_data, dict):
+            raise InputValidationError("Request body must be a JSON object")
+        
+        # Validate entity_id is present
+        slot_id = slot_data.get('entity_id')
+        if not slot_id:
+            return get_failure_response("entity_id is required for updating a slot", status_code=400)
+        
+        try:
+            # Update the slot with quota validation
+            updated_slot = patient_care_slot_service.update_patient_care_slot(
+                patient_id, slot_id, slot_data, patient.weekly_quota
+            )
+            
+            return get_success_response(
+                message="Patient care slot updated successfully",
+                data=updated_slot.as_dict()
+            )
+        except InputValidationError as e:
+            return get_failure_response(str(e), status_code=400)
+        except Exception as e:
+            return get_failure_response(f"Error updating patient care slot: {str(e)}", status_code=500)
 
 
 @patient_care_slot_api.route('/<string:patient_id>/<string:slot_id>')
