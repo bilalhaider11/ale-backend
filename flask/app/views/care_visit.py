@@ -338,6 +338,51 @@ class ClockOut(Resource):
         )
 
 
+@care_visit_api.route('/assign-employee')
+class AssignEmployeeToCareSlot(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person: Person, organization: Organization):
+        """Assign an employee to a patient care slot by creating a care visit"""
+        try:
+            request_data = request.get_json(force=True)
+            
+            # Validate required fields
+            required_fields = ['patient_id', 'employee_id', 'visit_date', 'scheduled_start_time', 'scheduled_end_time']
+            missing_fields = [field for field in required_fields if field not in request_data]
+            if missing_fields:
+                return get_failure_response(f"Missing required fields: {', '.join(missing_fields)}", status_code=400)
+            
+            # Create care visit data
+            visit_data = {
+                'patient_id': request_data['patient_id'],
+                'employee_id': request_data['employee_id'],
+                'visit_date': request_data['visit_date'],
+                'scheduled_start_time': request_data['scheduled_start_time'],
+                'scheduled_end_time': request_data['scheduled_end_time'],
+                'care_slot_logical_key': request_data.get('care_slot_logical_key', ''),
+                'employee_logical_key': request_data.get('employee_logical_key', ''),
+                'employee_name': request_data.get('employee_name', ''),
+                'scheduled_by_id': person.entity_id,
+                'organization_id': organization.entity_id
+            }
+            
+            care_visit_service = CareVisitService(config)
+            
+            # Create the care visit
+            care_visit = care_visit_service.create_care_visit_from_assignment(visit_data)
+            
+            return get_success_response(
+                message="Employee assigned to care slot successfully",
+                data=care_visit.as_dict()
+            )
+            
+        except ValueError as e:
+            return get_failure_response(str(e), status_code=400)
+        except Exception as e:
+            return get_failure_response(f"Error assigning employee: {str(e)}", status_code=500)
+
+
 @care_visit_api.route('/employee/process_missed_visits')
 class ProcessMissedVisits(Resource):
 

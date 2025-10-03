@@ -81,21 +81,86 @@ class PatientCareSlotResource(Resource):
             raise InputValidationError("At least one slot must be provided")
         
         try:
+            # Check if employee assignment is included (from first slot)
+            assigned_employee_id = slots_data[0].get('assigned_employee_id') if slots_data else None
+            visit_date = slots_data[0].get('visit_date') if slots_data else None
+            
+            # Clean the slots data by removing assignment fields
+            clean_slots_data = []
+            for slot_data in slots_data:
+                clean_slot = {k: v for k, v in slot_data.items() if k not in ['assigned_employee_id', 'visit_date']}
+                clean_slots_data.append(clean_slot)
+            
             created_slots_objects = patient_care_slot_service.create_patient_care_slots(
-                patient_id, slots_data, patient.weekly_quota
+                patient_id, clean_slots_data, patient.weekly_quota
             )
             created_slots = [slot.as_dict() for slot in created_slots_objects]
             
+            # Handle employee assignment if provided
+            care_visits = []
+            if assigned_employee_id and created_slots_objects:
+                from common.services import CareVisitService
+                from datetime import datetime, timedelta
+                care_visit_service = CareVisitService(config)
+                
+                # Get duration from the first slot to determine how many weeks to create visits for
+                first_slot = created_slots_objects[0]
+                duration_weeks = 1  # Default to 1 week
+                
+                # Calculate duration from start_date to end_date
+                if first_slot.start_date and first_slot.end_date:
+                    start_date = datetime.strptime(str(first_slot.start_date), '%Y-%m-%d').date()
+                    end_date = datetime.strptime(str(first_slot.end_date), '%Y-%m-%d').date()
+                    duration_weeks = ((end_date - start_date).days // 7) + 1
+                
+                # Create care visits for each slot across all weeks
+                for slot in created_slots_objects:
+                    # Get the base date for this slot (start of the week)
+                    base_date = slot.start_date or visit_date
+                    if isinstance(base_date, str):
+                        base_date = datetime.strptime(base_date, '%Y-%m-%d').date()
+                    
+                    # Create visits for each week in the duration
+                    for week in range(duration_weeks):
+                        # Calculate the date for this week
+                        week_date = base_date + timedelta(weeks=week)
+                        
+                        visit_data = {
+                            'patient_id': patient_id,
+                            'employee_id': assigned_employee_id,
+                            'visit_date': week_date.strftime('%Y-%m-%d'),
+                            'scheduled_start_time': slot.start_time.strftime('%H:%M'),
+                            'scheduled_end_time': slot.end_time.strftime('%H:%M'),
+                            'care_slot_logical_key': slot.logical_key,
+                            'employee_logical_key': '',
+                            'scheduled_by_id': person.entity_id,
+                            'organization_id': organization.entity_id
+                        }
+                        
+                        care_visit = care_visit_service.create_care_visit_from_assignment(visit_data)
+                        care_visits.append(care_visit.as_dict())
+            
             # Return appropriate response based on count
+            response_data = {
+                'slots': created_slots,
+                'care_visits': care_visits if care_visits else None
+            }
+            
             if len(created_slots) == 1:
+                message = "Patient care slot created successfully"
+                if care_visits:
+                    message += " and employee assigned"
                 return get_success_response(
-                    message="Patient care slot created successfully",
-                    data=created_slots[0]
+                    message=message,
+                    data=response_data
                 )
             else:
+                message = f"{len(created_slots)} patient care slots created successfully"
+                if care_visits:
+                    message += f" and {len(care_visits)} employee assignments made"
                 return get_success_response(
-                    message=f"{len(created_slots)} patient care slots created successfully",
-                    data=created_slots,
+                    message=message,
+                    data=response_data,
                     count=len(created_slots)
                 )
                 
