@@ -7,7 +7,7 @@ from common.models.person_organization_role import PersonOrganizationRoleEnum
 from common.services import EmployeeService, PersonService, AvailabilitySlotService
 from common.models import Person, PersonOrganizationRole, Organization, AvailabilitySlot
 from common.app_config import config
-from common.helpers.exceptions import InputValidationError
+from common.helpers.exceptions import InputValidationError, NotFoundError
 
 # Create the organization blueprint
 availability_slot_api = Namespace('availability_slot', description="Person-related APIs")
@@ -155,9 +155,14 @@ class DeleteEmployeeSlotResource(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def delete(self, person, organization, employee_id: str, slot_id: str):
-        availability_slot_service = AvailabilitySlotService(config)
-        availability_slot = availability_slot_service.delete_employee_availability_slot(
-            employee_id=employee_id,
-            slot_id=slot_id
-        )
-        return get_success_response(data=availability_slot)
+        try:
+            availability_slot_service = AvailabilitySlotService(config)
+            availability_slot = availability_slot_service.delete_employee_availability_slot(
+                employee_id=employee_id,
+                slot_id=slot_id
+            )
+            return get_success_response(data=availability_slot)
+        except NotFoundError as e:
+            return get_failure_response(str(e), status_code=404)
+        except Exception as e:
+            return get_failure_response(f"Error deleting employee availability slot: {str(e)}", status_code=500)

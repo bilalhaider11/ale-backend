@@ -3,8 +3,7 @@ from datetime import date, time, timedelta, datetime
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.patient_care_slot import PatientCareSlot
 from common.app_logger import get_logger
-from common.helpers.exceptions import InputValidationError
-from flask import abort
+from common.helpers.exceptions import InputValidationError, NotFoundError
 
 logger = get_logger(__name__)
 
@@ -193,7 +192,7 @@ class PatientCareSlotService:
     def delete_patient_care_slot(self, patient_id: str, slot_id: str) -> PatientCareSlot:
         slot = self.patient_care_slot_repo.get_one({"entity_id": slot_id, "patient_id": patient_id})
         if not slot:
-            abort(404, description=f"Patient care slot with id '{slot_id}' not found for patient '{patient_id}'")
+            raise NotFoundError(f"Patient care slot with id '{slot_id}' not found for patient '{patient_id}'")
         slot.active = False
         return self.patient_care_slot_repo.save(slot)
     

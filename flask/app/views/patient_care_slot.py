@@ -7,7 +7,7 @@ from common.models.person_organization_role import PersonOrganizationRoleEnum
 from common.services import EmployeeService, PersonService, AvailabilitySlotService, PatientService, PatientCareSlotService
 from common.models import Person, PersonOrganizationRole, Organization, AvailabilitySlot
 from common.app_config import config
-from common.helpers.exceptions import InputValidationError
+from common.helpers.exceptions import InputValidationError, NotFoundError
 
 # Create the patient care slot blueprint
 patient_care_slot_api = Namespace('patient_care_slot', description="Patient care slot APIs")
@@ -147,6 +147,11 @@ class DeletePatientCareSlotResource(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def delete(self, person, organization, patient_id: str, slot_id: str):
-        patient_care_slot_service = PatientCareSlotService(config)
-        care_slot = patient_care_slot_service.delete_patient_care_slot(patient_id=patient_id, slot_id=slot_id)
-        return get_success_response(data=care_slot)
+        try:
+            patient_care_slot_service = PatientCareSlotService(config)
+            care_slot = patient_care_slot_service.delete_patient_care_slot(patient_id=patient_id, slot_id=slot_id)
+            return get_success_response(data=care_slot)
+        except NotFoundError as e:
+            return get_failure_response(str(e), status_code=404)
+        except Exception as e:
+            return get_failure_response(f"Error deleting patient care slot: {str(e)}", status_code=500)
