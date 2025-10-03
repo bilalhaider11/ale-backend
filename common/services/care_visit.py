@@ -97,3 +97,39 @@ class CareVisitService:
                     count += 1
 
         return count
+
+    def create_care_visit_from_assignment(self, visit_data: Dict[str, Any]) -> CareVisit:
+        """
+        Create a care visit from employee assignment data.
+        """
+        from datetime import datetime, date, time
+        
+        # Parse date and time fields
+        visit_date = datetime.strptime(visit_data['visit_date'], '%Y-%m-%d').date()
+        
+        # Parse time strings (format: HH:MM)
+        start_time_str = visit_data['scheduled_start_time']
+        end_time_str = visit_data['scheduled_end_time']
+        
+        # Convert time strings to datetime objects for the visit date
+        start_time = datetime.strptime(f"{visit_date} {start_time_str}", '%Y-%m-%d %H:%M')
+        end_time = datetime.strptime(f"{visit_date} {end_time_str}", '%Y-%m-%d %H:%M')
+        
+        # Convert visit_date to datetime (start of day) since the model expects datetime
+        visit_datetime = datetime.combine(visit_date, datetime.min.time())
+        
+        # Create the care visit
+        care_visit = CareVisit(
+            status=CareVisitStatusEnum.SCHEDULED,
+            patient_id=visit_data['patient_id'],
+            employee_id=visit_data['employee_id'],
+            visit_date=visit_datetime,  # Use datetime instead of date
+            scheduled_start_time=start_time,
+            scheduled_end_time=end_time,
+            scheduled_by_id=visit_data['scheduled_by_id'],
+            availability_slot_key=visit_data.get('employee_logical_key', ''),
+            patient_care_slot_key=visit_data.get('care_slot_logical_key', ''),
+            organization_id=visit_data['organization_id']
+        )
+        
+        return self.save_care_visit(care_visit)
