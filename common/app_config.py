@@ -20,7 +20,7 @@ class Config(BaseConfig):
     LOG_LEVEL: str = Field(default='INFO')
     ROLLBAR_LEVEL: str = Field(default='WARN')
 
-    ACCESS_TOKEN_EXPIRE: int = Field(default=3600)
+    ACCESS_TOKEN_EXPIRE: int = Field(default=518400)
     RESET_TOKEN_EXPIRE: int = Field(default=60*60*24*3)  # 3 days
     INVITATION_TOKEN_EXPIRE: int = Field(default=60*60*24*3)
 

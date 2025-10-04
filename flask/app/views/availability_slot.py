@@ -1,13 +1,13 @@
 from flask_restx import Namespace, Resource
 from flask import request
 from datetime import time, datetime
-from app.helpers.response import get_success_response, get_failure_response
+from app.helpers.response import get_success_response, get_failure_response, parse_request_body
 from app.helpers.decorators import login_required, organization_required
 from common.models.person_organization_role import PersonOrganizationRoleEnum
 from common.services import EmployeeService, PersonService, AvailabilitySlotService
 from common.models import Person, PersonOrganizationRole, Organization, AvailabilitySlot
 from common.app_config import config
-from common.helpers.exceptions import InputValidationError
+from common.helpers.exceptions import InputValidationError, NotFoundError
 
 # Create the organization blueprint
 availability_slot_api = Namespace('availability_slot', description="Person-related APIs")
@@ -39,79 +39,106 @@ class AvailabilitySlotResource(Resource):
         PersonOrganizationRoleEnum.ADMIN
     ])
     def post(self, person: Person, roles: list, organization: Organization, employee_id: str):
-
+        """Update or create an availability slot"""
         if PersonOrganizationRoleEnum.EMPLOYEE in roles:
             employee_service = EmployeeService(config)
             employee = employee_service.get_employee_by_id(employee_id, organization.entity_id)
             if employee.person_id != person.entity_id:
                 return get_failure_response(message="Unable to perform this action on this employee_id.")
 
-        request_json = request.get_json(force=True)
-        if type(request_json) is not list:
-            raise InputValidationError("A list of slots is required")
+        availability_slot_service = AvailabilitySlotService(config)
         
-        slots = []
-        for slot in request_json:
-            if type(slot) is not dict:
-                raise InputValidationError("A list of slot objects is required.")
+        parsed_body = parse_request_body(request, [
+            'entity_id',
+            'day_of_week',
+            'start_time',
+            'end_time',
+            'start_day_of_week',
+            'end_day_of_week',
+            'start_date',
+            'end_date'
+        ])
+
+        # Extract fields
+        entity_id = parsed_body.pop('entity_id', None)
+        day_of_week = parsed_body.pop('day_of_week', None)
+        start_time = parsed_body.pop('start_time', None)
+        end_time = parsed_body.pop('end_time', None)
+        start_date = parsed_body.pop('start_date', None)
+        end_date = parsed_body.pop('end_date', None)
+
+        # Validate required fields
+        if day_of_week is None or not start_time or not end_time:
+            raise InputValidationError("day_of_week, start_time or end_time not found in the slot")
+
+        if not isinstance(day_of_week, int) or not (0 <= day_of_week <= 6):
+            raise InputValidationError("day_of_week must be an integer between 0 and 6")
+        
+        # Handle day range fields with defaults
+        start_day_of_week = parsed_body.pop('start_day_of_week', day_of_week)
+        end_day_of_week = parsed_body.pop('end_day_of_week', day_of_week)
+
+        # Validate day range fields
+        for field_name, value in [('start_day_of_week', start_day_of_week), ('end_day_of_week', end_day_of_week)]:
+            if not isinstance(value, int) or not (0 <= value <= 6):
+                raise InputValidationError(f"{field_name} must be an integer between 0 and 6")
+        
+        # Validate day range order
+        if start_day_of_week > end_day_of_week:
+            raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
+  
+        # Parse time strings from "hh:mm" format to datetime.time
+        try:                                                                                                                                   
+            start_time = datetime.strptime(start_time, '%H:%M').time()                                                                  
+            end_time = datetime.strptime(end_time, '%H:%M').time()                                                                           
+        except (ValueError, TypeError):                                                                                                              
+            raise InputValidationError("start_time and end_time must be in 'hh:mm' format")
+    
+        start_date = (
+            datetime.strptime(start_date, "%Y-%m-%d").date()
+            if start_date
+            else None
+        )
+
+        end_date = (
+            datetime.strptime(end_date, "%Y-%m-%d").date()
+            if end_date
+            else None
+        )
+        
+        if entity_id:
+            slot = availability_slot_service.get_availability_slot_by_id(entity_id)
             
-            # validate slots
-            required_fields = ["day_of_week", "start_time", "end_time"]
-            if not all(field in slot for field in required_fields):
-                raise InputValidationError("day_of_week, start_time or end_time not found in the slot")
-
-            # Validate and parse day_of_week
-            day_of_week = slot['day_of_week']
-            if not isinstance(day_of_week, int) or not (0 <= day_of_week <= 6):
-                raise InputValidationError("day_of_week must be an integer between 0 and 6")
-
-            # Handle day range fields with defaults
-            start_day_of_week = slot.get('start_day_of_week', day_of_week)
-            end_day_of_week = slot.get('end_day_of_week', day_of_week)
-
-            # Validate day range fields
-            for field_name, value in [('start_day_of_week', start_day_of_week), ('end_day_of_week', end_day_of_week)]:
-                if not isinstance(value, int) or not (0 <= value <= 6):
-                    raise InputValidationError(f"{field_name} must be an integer between 0 and 6")
-
-            # Validate day range order
-            if start_day_of_week > end_day_of_week:
-                raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
-
-            # Parse time strings from "hh:mm" format to datetime.time
-            try:                                                                                                                                         
-                start_time = datetime.strptime(slot['start_time'], '%H:%M').time()                                                                       
-                end_time = datetime.strptime(slot['end_time'], '%H:%M').time()                                                                           
-            except (ValueError, TypeError):                                                                                                              
-                raise InputValidationError("start_time and end_time must be in 'hh:mm' format")
-
-            start_date = (
-                datetime.strptime(slot['start_date'], "%Y-%m-%d").date()
-                if slot.get('start_date')
-                else None
-            )
-
-            end_date = (
-                datetime.strptime(slot['end_date'], "%Y-%m-%d").date()
-                if slot.get('end_date')
-                else None
-            )
-
+            if not slot:
+                return get_failure_response("Availability slot not found", status_code=404)
+                
+            slot.day_of_week = day_of_week
+            slot.start_day_of_week = start_day_of_week
+            slot.end_day_of_week = end_day_of_week
+            slot.start_time = start_time
+            slot.end_time = end_time
+            slot.employee_id = employee_id
+            slot.start_date = start_date
+            slot.end_date = end_date
+    
+            slot = availability_slot_service.save_availability_slot(slot)
+            message = "Availability slot updated successfully"
+        else:
             slot = AvailabilitySlot(
-                day_of_week=slot['day_of_week'],
+                day_of_week=day_of_week,
                 start_day_of_week=start_day_of_week,
                 end_day_of_week=end_day_of_week,
                 start_time=start_time,
                 end_time=end_time,
+                employee_id=employee_id,
                 start_date=start_date,
                 end_date=end_date
             )
-            slots.append(slot)
 
-        availability_slot_service = AvailabilitySlotService(config)
-        availability_slots = availability_slot_service.upsert_availability_slots(employee_id, slots)
-        return get_success_response(data=availability_slots)
-
+            availability_slot_service.save_availability_slot(slot)
+            message = "Availability slot created successfully"
+            
+        return get_success_response(data=slot, message=message)
 
 @availability_slot_api.route('')
 class MultipleAvailabilitySlotResource(Resource):
@@ -121,3 +148,21 @@ class MultipleAvailabilitySlotResource(Resource):
         availability_slot_service = AvailabilitySlotService(config)
         availability_slots = availability_slot_service.get_availability_slots_for_organization(organization.entity_id)
         return get_success_response(data=availability_slots)
+
+
+@availability_slot_api.route('/<string:employee_id>/<string:slot_id>')
+class DeleteEmployeeSlotResource(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def delete(self, person, organization, employee_id: str, slot_id: str):
+        try:
+            availability_slot_service = AvailabilitySlotService(config)
+            availability_slot = availability_slot_service.delete_employee_availability_slot(
+                employee_id=employee_id,
+                slot_id=slot_id
+            )
+            return get_success_response(data=availability_slot)
+        except NotFoundError as e:
+            return get_failure_response(str(e), status_code=404)
+        except Exception as e:
+            return get_failure_response(f"Error deleting employee availability slot: {str(e)}", status_code=500)

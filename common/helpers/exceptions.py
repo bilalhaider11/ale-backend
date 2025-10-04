@@ -5,3 +5,7 @@ class InputValidationError(Exception):
 
 class APIException(Exception):
     pass
+
+
+class NotFoundError(Exception):
+    pass
