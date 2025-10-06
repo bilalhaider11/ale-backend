@@ -140,6 +140,7 @@ class AvailabilitySlotResource(Resource):
             
         return get_success_response(data=slot, message=message)
 
+
 @availability_slot_api.route('')
 class MultipleAvailabilitySlotResource(Resource):
     @login_required()
@@ -166,3 +167,22 @@ class DeleteEmployeeSlotResource(Resource):
             return get_failure_response(str(e), status_code=404)
         except Exception as e:
             return get_failure_response(f"Error deleting employee availability slot: {str(e)}", status_code=500)
+
+
+@availability_slot_api.route('/create/<string:employee_id>')
+class CreateEmployeeSlots(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person, organization, employee_id: str):
+        try:
+            request_data = request.get_json(force=True)
+            availability_slot_service = AvailabilitySlotService(config)
+            created_slots = availability_slot_service.expand_and_save_slots(request_data, employee_id)
+            return get_success_response(
+                count=len(created_slots),
+                message='Successfully created the slots for employees.',
+            )
+        except NotFoundError as e:
+            return get_failure_response(str(e), status_code=404)
+        except Exception as e:
+            return get_failure_response(f"Error creating employee care slots: {str(e)}", status_code=500)

@@ -3,7 +3,7 @@ from common.helpers.exceptions import NotFoundError
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.availability_slot import AvailabilitySlot
 from datetime import time, date
-
+from common.utils.slot import expand_slots
 
 class AvailabilitySlotService:
 
@@ -102,3 +102,16 @@ class AvailabilitySlotService:
             raise NotFoundError(f"Availability slot with id '{slot_id}' not found for employee '{employee_id}'")
         slot.active = False
         return self.availability_slot_repo.save(slot)
+
+    def expand_and_save_slots(self, payload, employee_id):
+        expanded_slots = expand_slots(
+            payload=payload,
+            start_date=payload.get('start_date'),
+            entity_id=employee_id,
+            entity_type='employee'
+        )
+        saved_slots = []
+        for slot in expanded_slots:
+            saved_slot = self.availability_slot_repo.save(slot)
+            saved_slots.append(saved_slot)
+        return saved_slots
