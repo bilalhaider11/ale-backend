@@ -141,6 +141,7 @@ class AvailabilitySlotRepository(BaseRepository):
                 s.end_day_of_week,
                 s.start_date,
                 s.end_date,
+                s.series_id,
                 s.logical_key,
                 cv.visit_date,
                 cv.patient_id,
@@ -179,6 +180,7 @@ class AvailabilitySlotRepository(BaseRepository):
             if slot_id not in slots_map:
                 slots_map[slot_id] = {
                     "employee_id": row["employee_id"],
+                    "series_id": row["series_id"],
                     "first_name": row["first_name"],
                     "last_name": row["last_name"],
                     "slot_id": row["slot_id"],
@@ -205,5 +207,22 @@ class AvailabilitySlotRepository(BaseRepository):
 
         return list(slots_map.values())
 
+    def delete_future_availability_slots(self, employee_id: str, series_id: str, from_date: str) -> int:
+        """
+        Soft delete all employee slots from this date forward within the same series.
+        """
+        query = """
+            UPDATE availability_slot
+            SET active = false
+            WHERE employee_id = %s
+              AND series_id = %s
+              AND start_date >= %s
+              AND active = true
+        """
+        params = (employee_id, series_id, from_date)
 
+        with self.adapter:
+            rows = self.adapter.execute_query(query, params) or []
+
+        return len(rows)
 
