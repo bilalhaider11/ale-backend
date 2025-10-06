@@ -133,3 +133,40 @@ class CareVisitService:
         )
         
         return self.save_care_visit(care_visit)
+
+    def assign_employee_to_recurring_pattern(self, visit_data: Dict[str, Any]) -> List[CareVisit]:
+        """
+        Assign an employee to ALL slots in a recurring pattern using logical_key.
+        """
+        from common.services import PatientCareSlotService
+        
+        care_slot_logical_key = visit_data.get('care_slot_logical_key')
+        patient_id = visit_data.get('patient_id')
+        
+        if not care_slot_logical_key or not patient_id:
+            raise ValueError("care_slot_logical_key and patient_id are required for recurring assignment")
+        
+        # Find all patient care slots with this logical_key
+        patient_care_slot_service = PatientCareSlotService(self.config)
+        all_slots = patient_care_slot_service.get_slots_by_logical_key(
+            care_slot_logical_key, 
+            patient_id
+        )
+        
+        if not all_slots:
+            raise ValueError(f"No active slots found for logical_key: {care_slot_logical_key}")
+        
+        created_visits = []
+        for slot in all_slots:
+            # Create care visit for each slot in the pattern
+            slot_visit_data = {
+                **visit_data,
+                'visit_date': slot.start_date.strftime('%Y-%m-%d'),
+                'scheduled_start_time': slot.start_time.strftime('%H:%M'),
+                'scheduled_end_time': slot.end_time.strftime('%H:%M'),
+                'care_slot_logical_key': slot.logical_key
+            }
+            care_visit = self.create_care_visit_from_assignment(slot_visit_data)
+            created_visits.append(care_visit)
+        
+        return created_visits

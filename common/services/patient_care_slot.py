@@ -423,6 +423,14 @@ class PatientCareSlotService:
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")
         return self.patient_care_slot_repo.save(slot)
 
+    def get_slots_by_logical_key(self, logical_key: str, patient_id: str) -> List[PatientCareSlot]:
+        """Get all slots with the same logical_key for a patient."""
+        return self.patient_care_slot_repo.get_many({
+            "logical_key": logical_key,
+            "patient_id": patient_id,
+            "active": True
+        })
+
     def expand_and_save_slots(self, payload, patient_id):
         expanded_slots = expand_slots(
             payload=payload,
