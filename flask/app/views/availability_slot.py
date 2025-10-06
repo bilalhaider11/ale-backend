@@ -120,6 +120,19 @@ class AvailabilitySlotResource(Resource):
             if end_date
             else None
         )
+
+        # Parse week dates from strings to date objects
+        week_start_date = (
+            datetime.strptime(week_start_date, "%Y-%m-%d").date()
+            if week_start_date
+            else None
+        )
+
+        week_end_date = (
+            datetime.strptime(week_end_date, "%Y-%m-%d").date()
+            if week_end_date
+            else None
+        )
         
         if entity_id:
             slot = availability_slot_service.get_availability_slot_by_id(entity_id)
@@ -135,9 +148,11 @@ class AvailabilitySlotResource(Resource):
             slot.employee_id = employee_id
             slot.start_date = start_date
             slot.end_date = end_date
-            slot.week_start_date = week_start_date
-            slot.week_end_date = week_end_date
-    
+            if week_start_date:
+                slot.week_start_date = week_start_date
+            if week_end_date:
+                slot.week_end_date = week_end_date
+
             slot = availability_slot_service.save_availability_slot(slot)
             message = "Availability slot updated successfully"
         else:
