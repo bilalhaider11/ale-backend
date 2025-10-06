@@ -102,7 +102,7 @@ class AvailabilitySlotService:
             } for row in sorted_results
         ]
 
-    def delete_employee_availability_slot(self, employee_id: str, slot_id: str, series_id, from_date) -> AvailabilitySlot:
+    def delete_employee_availability_slot(self, employee_id: str, slot_id: str, series_id: Optional[str] = None, from_date: Optional[str] = None) -> AvailabilitySlot:
         if series_id and from_date:
             deleted_slots = self.availability_slot_repo.delete_future_patient_care_slots(
                 employee_id=employee_id,
