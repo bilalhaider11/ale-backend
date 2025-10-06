@@ -178,7 +178,7 @@ class MultipleAvailabilitySlotResource(Resource):
         return get_success_response(data=availability_slots)
 
 
-@availability_slot_api.route('/<string:employee_id>/', defaults={'slot_id': None})
+@availability_slot_api.route('/<string:employee_id>', defaults={'slot_id': None})
 @availability_slot_api.route('/<string:employee_id>/<string:slot_id>')
 class DeleteEmployeeSlotResource(Resource):
     @login_required()

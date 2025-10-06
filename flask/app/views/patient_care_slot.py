@@ -207,7 +207,7 @@ class PatientCareSlotResource(Resource):
             return get_failure_response(f"Error updating patient care slot: {str(e)}", status_code=500)
 
 
-@patient_care_slot_api.route('/<string:patient_id>/', defaults={'slot_id': None})
+@patient_care_slot_api.route('/<string:patient_id>', defaults={'slot_id': None})
 @patient_care_slot_api.route('/<string:patient_id>/<string:slot_id>')
 class DeletePatientCareSlotResource(Resource):
     @login_required()
