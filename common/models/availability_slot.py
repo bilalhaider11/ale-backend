@@ -14,6 +14,7 @@ class AvailabilitySlot(VersionedModel):
     start_time: time = None
     end_time: time = None
     employee_id: str = None
+    series_id: str = None
     week_start_date: date = None
     week_end_date: date = None
     logical_key: str = ""

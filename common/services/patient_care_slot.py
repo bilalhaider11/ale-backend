@@ -4,6 +4,7 @@ from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.patient_care_slot import PatientCareSlot
 from common.app_logger import get_logger
 from common.helpers.exceptions import InputValidationError, NotFoundError
+from common.utils.slot import expand_slots
 
 logger = get_logger(__name__)
 
@@ -189,15 +190,20 @@ class PatientCareSlotService:
             # Regular same-day slot - start must be before end
             return start_minutes < end_minutes
 
-    def delete_patient_care_slot(self, patient_id: str, slot_id: str) -> PatientCareSlot:
+    def delete_patient_care_slot(self, patient_id: str, slot_id: str, series_id: str, from_date: str) -> PatientCareSlot:
+        if series_id and from_date:
+            deleted_slots = self.patient_care_slot_repo.delete_future_patient_care_slots(
+                patient_id=patient_id,
+                series_id=series_id,
+                from_date=from_date
+            )
+            return deleted_slots
         slot = self.patient_care_slot_repo.get_one({"entity_id": slot_id, "patient_id": patient_id})
         if not slot:
             raise NotFoundError(f"Patient care slot with id '{slot_id}' not found for patient '{patient_id}'")
         slot.active = False
         return self.patient_care_slot_repo.save(slot)
-    
-    # Helper methods for validation and parsing (DRY principle)
-    
+
     def _validate_and_parse_day_of_week(self, value: Any, field_name: str = "day_of_week", allow_none: bool = False) -> Optional[int]:
         """Validate and return day of week value."""
         if value is None:
@@ -416,3 +422,16 @@ class PatientCareSlotService:
         
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")
         return self.patient_care_slot_repo.save(slot)
+
+    def expand_and_save_slots(self, payload, patient_id):
+        expanded_slots = expand_slots(
+            payload=payload,
+            start_date=payload.get('start_date'),
+            entity_id=patient_id,
+            entity_type='patient'
+        )
+        saved_slots = []
+        for slot in expanded_slots:
+            saved_slot = self.patient_care_slot_repo.save(slot)
+            saved_slots.append(saved_slot)
+        return saved_slots
