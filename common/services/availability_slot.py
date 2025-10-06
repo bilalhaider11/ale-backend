@@ -102,7 +102,14 @@ class AvailabilitySlotService:
             } for row in sorted_results
         ]
 
-    def delete_employee_availability_slot(self, employee_id: str, slot_id: str) -> AvailabilitySlot:
+    def delete_employee_availability_slot(self, employee_id: str, slot_id: str, series_id: str, from_date: str) -> AvailabilitySlot:
+        if series_id and from_date:
+            deleted_slots = self.availability_slot_repo.delete_future_patient_care_slots(
+                employee_id=employee_id,
+                series_id=series_id,
+                from_date=from_date
+            )
+            return deleted_slots
         slot = self.availability_slot_repo.get_one({"entity_id": slot_id, "employee_id": employee_id})
         if not slot:
             raise NotFoundError(f"Availability slot with id '{slot_id}' not found for employee '{employee_id}'")

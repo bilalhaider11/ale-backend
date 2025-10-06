@@ -61,6 +61,8 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
                             day_of_week=day_of_week,
                             start_day_of_week=day_of_week,
                             end_day_of_week=end_dow,
+                            week_start_date=week_start,
+                            week_end_date=week_end,
                             start_time=start_t,
                             end_time=end_t,
                             start_date=slot_date,

@@ -178,18 +178,25 @@ class MultipleAvailabilitySlotResource(Resource):
         return get_success_response(data=availability_slots)
 
 
+@availability_slot_api.route('/<string:employee_id>/', defaults={'slot_id': None})
 @availability_slot_api.route('/<string:employee_id>/<string:slot_id>')
 class DeleteEmployeeSlotResource(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def delete(self, person, organization, employee_id: str, slot_id: str):
         try:
+            series_id = request.args.get("series_id")
+            from_date = request.args.get("from_date")
+
             availability_slot_service = AvailabilitySlotService(config)
-            availability_slot = availability_slot_service.delete_employee_availability_slot(
+
+            result = availability_slot_service.delete_employee_availability_slot(
                 employee_id=employee_id,
-                slot_id=slot_id
+                slot_id=slot_id,
+                series_id=series_id,
+                from_date=from_date
             )
-            return get_success_response(data=availability_slot)
+            return get_success_response(data=result)
         except NotFoundError as e:
             return get_failure_response(str(e), status_code=404)
         except Exception as e:
