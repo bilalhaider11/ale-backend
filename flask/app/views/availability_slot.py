@@ -1,6 +1,6 @@
 from flask_restx import Namespace, Resource
 from flask import request
-from datetime import time, datetime
+from datetime import time, datetime, date, timedelta
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body
 from app.helpers.decorators import login_required, organization_required
 from common.models.person_organization_role import PersonOrganizationRoleEnum
@@ -30,7 +30,18 @@ class AvailabilitySlotResource(Resource):
                 return get_failure_response(message="Unable to perform this action on this employee_id.")
 
         availability_slot_service = AvailabilitySlotService(config)
-        availability_slots = availability_slot_service.get_availability_slots_by_employee_id(employee_id)
+
+        week_start_date = request.args.get('week_start_date')
+        if week_start_date:
+            try:
+                week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
+                if week_start_date.weekday() != 0:
+                    return get_failure_response("week_start_date must be a Monday", status_code=400)
+            except ValueError:
+                return get_failure_response("Invalid week_start_date format. Use YYYY-MM-DD", status_code=400)
+            availability_slots = availability_slot_service.get_availability_slots_by_week(employee_id, week_start_date)
+        else:
+            availability_slots = availability_slot_service.get_availability_slots_by_employee_id(employee_id)
         return get_success_response(data=availability_slots)
 
     @login_required()
@@ -56,7 +67,9 @@ class AvailabilitySlotResource(Resource):
             'start_day_of_week',
             'end_day_of_week',
             'start_date',
-            'end_date'
+            'end_date',
+            'week_start_date',
+            'week_end_date'
         ])
 
         # Extract fields
@@ -66,6 +79,8 @@ class AvailabilitySlotResource(Resource):
         end_time = parsed_body.pop('end_time', None)
         start_date = parsed_body.pop('start_date', None)
         end_date = parsed_body.pop('end_date', None)
+        week_start_date = parsed_body.pop('week_start_date', None)
+        week_end_date = parsed_body.pop('week_end_date', None)
 
         # Validate required fields
         if day_of_week is None or not start_time or not end_time:
@@ -120,10 +135,20 @@ class AvailabilitySlotResource(Resource):
             slot.employee_id = employee_id
             slot.start_date = start_date
             slot.end_date = end_date
+            slot.week_start_date = week_start_date
+            slot.week_end_date = week_end_date
     
             slot = availability_slot_service.save_availability_slot(slot)
             message = "Availability slot updated successfully"
         else:
+            if week_start_date is None:
+                today = datetime.now().date()
+                week_start_date = today - timedelta(days=today.weekday())
+                if week_start_date.weekday() != 0:
+                    raise InputValidationError("week_start_date must be a Monday")
+
+            week_end_date = week_start_date + timedelta(days=6)
+            
             slot = AvailabilitySlot(
                 day_of_week=day_of_week,
                 start_day_of_week=start_day_of_week,
@@ -132,7 +157,9 @@ class AvailabilitySlotResource(Resource):
                 end_time=end_time,
                 employee_id=employee_id,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
+                week_start_date=week_start_date,
+                week_end_date=week_end_date
             )
 
             availability_slot_service.save_availability_slot(slot)
