@@ -190,7 +190,7 @@ class PatientCareSlotService:
             # Regular same-day slot - start must be before end
             return start_minutes < end_minutes
 
-    def delete_patient_care_slot(self, patient_id: str, slot_id: str, series_id: str, from_date: str) -> PatientCareSlot:
+    def delete_patient_care_slot(self, patient_id: str, slot_id: str, series_id: Optional[str] = None, from_date: Optional[str] = None) -> PatientCareSlot:
         if series_id and from_date:
             deleted_slots = self.patient_care_slot_repo.delete_future_patient_care_slots(
                 patient_id=patient_id,
