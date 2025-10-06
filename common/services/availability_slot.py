@@ -2,8 +2,9 @@ from typing import List
 from common.helpers.exceptions import NotFoundError
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.availability_slot import AvailabilitySlot
-from datetime import time, date
 from common.utils.slot import expand_slots
+from datetime import time, date
+
 
 class AvailabilitySlotService:
 
@@ -24,6 +25,11 @@ class AvailabilitySlotService:
     def get_availability_slots_by_employee_id(self, employee_id: str):
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
         return availability_slots
+
+    def get_availability_slots_by_week(self, employee_id: str, week_start_date: date):
+        availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
+
+        return [slot for slot in availability_slots if slot.week_start_date == week_start_date]
 
     def get_availability_slots_for_organization(self, organization_id: str):
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
