@@ -185,8 +185,8 @@ class DeleteEmployeeSlotResource(Resource):
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def delete(self, person, organization, employee_id: str, slot_id: str):
         try:
-            series_id = request.args.get("series_id")
-            from_date = request.args.get("from_date")
+            series_id = request.args.get("series_id", '')
+            from_date = request.args.get("from_date", '')
 
             availability_slot_service = AvailabilitySlotService(config)
 
