@@ -203,6 +203,8 @@ class PatientCareSlotResource(Resource):
             )
         except InputValidationError as e:
             return get_failure_response(str(e), status_code=400)
+        except NotFoundError as e:
+            return get_failure_response(str(e), status_code=404)
         except Exception as e:
             return get_failure_response(f"Error updating patient care slot: {str(e)}", status_code=500)
 

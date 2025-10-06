@@ -256,7 +256,7 @@ class PatientCareSlotService:
     def _validate_day_range(self, start_day: Optional[int], end_day: Optional[int]) -> None:
         """Validate that day range is valid."""
         if start_day is not None and end_day is not None:
-            if start_day > end_day:
+            if start_day > end_day and not (start_day == 6 and end_day == 0):
                 raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
     
     def _parse_slot_data(self, slot_data: dict) -> PatientCareSlot:
@@ -368,7 +368,7 @@ class PatientCareSlotService:
         # Fetch existing slot
         slot = self.patient_care_slot_repo.get_one({"entity_id": slot_id, "patient_id": patient_id})
         if not slot:
-            abort(404, description=f"Patient care slot with id '{slot_id}' not found for patient '{patient_id}'")
+            raise NotFoundError(f"Patient care slot with id '{slot_id}' not found for patient '{patient_id}'")
         
         # Update day of week fields if provided
         if 'day_of_week' in slot_data:

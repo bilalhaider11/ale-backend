@@ -99,7 +99,8 @@ class AvailabilitySlotResource(Resource):
                 raise InputValidationError(f"{field_name} must be an integer between 0 and 6")
         
         # Validate day range order
-        if start_day_of_week > end_day_of_week:
+        # Allow day 0 after day 6 for week-spanning slots (Sunday to Monday)
+        if start_day_of_week > end_day_of_week and not (start_day_of_week == 6 and end_day_of_week == 0):
             raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
   
         # Parse time strings from "hh:mm" format to datetime.time
