@@ -22,9 +22,7 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
     elif isinstance(start_date, datetime):
         start_date = start_date.date()
 
-    series_id = uuid.uuid4().hex
     slots = []
-
     start_weekday = start_date.weekday()
 
     for week in range(payload["duration_weeks"]):
@@ -53,37 +51,56 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
                     slot_end_date = slot_date
                     end_dow = day_of_week
 
-                if entity_type == "employee":
-                    slots.append(
-                        AvailabilitySlot(
-                            employee_id=entity_id,
-                            series_id=series_id,
-                            day_of_week=day_of_week,
-                            start_day_of_week=day_of_week,
-                            end_day_of_week=end_dow,
-                            week_start_date=week_start,
-                            week_end_date=week_end,
-                            start_time=start_t,
-                            end_time=end_t,
-                            start_date=slot_date,
-                            end_date=slot_end_date
-                        )
-                    )
-                else:  # patient
-                    slots.append(
-                        PatientCareSlot(
-                            patient_id=entity_id,
-                            series_id=series_id,
-                            day_of_week=day_of_week,
-                            start_day_of_week=day_of_week,
-                            end_day_of_week=end_dow,
-                            start_time=start_t,
-                            end_time=end_t,
-                            week_start_date=week_start,
-                            week_end_date=week_end,
-                            start_date=slot_date,
-                            end_date=slot_end_date
-                        )
-                    )
+                slots.append({
+                    'entity_id': entity_id,
+                    'day_of_week': day_of_week,
+                    'start_day_of_week': day_of_week,
+                    'end_day_of_week': end_dow,
+                    'week_start_date': week_start,
+                    'week_end_date': week_end,
+                    'start_time': start_t,
+                    'end_time': end_t,
+                    'start_date': slot_date,
+                    'end_date': slot_end_date
+                })
 
-    return slots
+    # Only assign series_id if there's more than one slot
+    series_id = uuid.uuid4().hex if len(slots) > 1 else None
+
+    # Convert dicts to actual slot objects
+    result = []
+    for slot_data in slots:
+        if entity_type == "employee":
+            result.append(
+                AvailabilitySlot(
+                    employee_id=slot_data['entity_id'],
+                    series_id=series_id,
+                    day_of_week=slot_data['day_of_week'],
+                    start_day_of_week=slot_data['start_day_of_week'],
+                    end_day_of_week=slot_data['end_day_of_week'],
+                    week_start_date=slot_data['week_start_date'],
+                    week_end_date=slot_data['week_end_date'],
+                    start_time=slot_data['start_time'],
+                    end_time=slot_data['end_time'],
+                    start_date=slot_data['start_date'],
+                    end_date=slot_data['end_date']
+                )
+            )
+        else:  # patient
+            result.append(
+                PatientCareSlot(
+                    patient_id=slot_data['entity_id'],
+                    series_id=series_id,
+                    day_of_week=slot_data['day_of_week'],
+                    start_day_of_week=slot_data['start_day_of_week'],
+                    end_day_of_week=slot_data['end_day_of_week'],
+                    start_time=slot_data['start_time'],
+                    end_time=slot_data['end_time'],
+                    week_start_date=slot_data['week_start_date'],
+                    week_end_date=slot_data['week_end_date'],
+                    start_date=slot_data['start_date'],
+                    end_date=slot_data['end_date']
+                )
+            )
+
+    return result
