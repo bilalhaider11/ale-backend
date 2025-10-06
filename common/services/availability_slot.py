@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from common.helpers.exceptions import NotFoundError
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.availability_slot import AvailabilitySlot
@@ -102,7 +102,7 @@ class AvailabilitySlotService:
             } for row in sorted_results
         ]
 
-    def delete_employee_availability_slot(self, employee_id: str, slot_id: str, series_id: str, from_date: str) -> AvailabilitySlot:
+    def delete_employee_availability_slot(self, employee_id: str, slot_id: str, series_id: Optional[str] = None, from_date: Optional[str] = None) -> AvailabilitySlot:
         if series_id and from_date:
             deleted_slots = self.availability_slot_repo.delete_future_patient_care_slots(
                 employee_id=employee_id,

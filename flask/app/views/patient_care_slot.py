@@ -214,8 +214,8 @@ class DeletePatientCareSlotResource(Resource):
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def delete(self, person, organization, patient_id: str, slot_id: str = None):
         try:
-            series_id = request.args.get("series_id", '')
-            from_date = request.args.get("from_date", '')
+            series_id = request.args.get("series_id") or None
+            from_date = request.args.get("from_date") or None
 
             patient_care_slot_service = PatientCareSlotService(config)
 
