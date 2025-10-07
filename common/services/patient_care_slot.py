@@ -1,10 +1,18 @@
-from typing import List, Dict, Optional, Any
-from datetime import date, time, timedelta, datetime
+from typing import List, Dict, Optional
+from datetime import date, time, timedelta
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.patient_care_slot import PatientCareSlot
 from common.app_logger import get_logger
 from common.helpers.exceptions import InputValidationError, NotFoundError
-from common.utils.slot import expand_slots
+from common.utils.slot import (
+    expand_slots,
+    validate_and_parse_day_of_week,
+    parse_time_field,
+    parse_date_field,
+    validate_week_start_date,
+    validate_day_range,
+    is_valid_time_range
+)
 
 logger = get_logger(__name__)
 
@@ -15,10 +23,6 @@ class PatientCareSlotService:
         self.config = config
         self.repository_factory = RepositoryFactory(config)
         self.patient_care_slot_repo = self.repository_factory.get_repository(RepoType.PATIENT_CARE_SLOT)
-        
-        # Constants for validation
-        self.MIN_DAY_OF_WEEK = 0
-        self.MAX_DAY_OF_WEEK = 6
 
     def save_patient_care_slot(self, patient_care_slot: PatientCareSlot):
         patient_care_slot = self.patient_care_slot_repo.save(patient_care_slot)
@@ -162,34 +166,6 @@ class PatientCareSlotService:
             # Overnight slot - calculate duration across midnight
             return (24 * 60 - start_minutes) + end_minutes
 
-    def _is_valid_time_range(self, start_time: time, end_time: time) -> bool:
-        """
-        Validate if a time range is valid, including overnight slots.
-
-        Args:
-            start_time: Start time of the slot
-            end_time: End time of the slot
-
-        Returns:
-            True if the time range is valid, False otherwise
-        """
-        if not start_time or not end_time:
-            return False
-
-        # Convert times to minutes for easier comparison
-        start_minutes = start_time.hour * 60 + start_time.minute
-        end_minutes = end_time.hour * 60 + end_time.minute
-
-        # Handle overnight slots (e.g., 23:00 to 03:00)
-        if start_minutes > end_minutes:
-            # Calculate duration for overnight slots
-            duration_minutes = (24 * 60 - start_minutes) + end_minutes
-            # Allow any overnight slot with positive duration
-            return duration_minutes > 0
-        else:
-            # Regular same-day slot - start must be before end
-            return start_minutes < end_minutes
-
     def delete_patient_care_slot(self, patient_id: str, slot_id: str, series_id: Optional[str] = None, from_date: Optional[str] = None) -> PatientCareSlot:
         if series_id and from_date:
             deleted_slots = self.patient_care_slot_repo.delete_future_patient_care_slots(
@@ -204,154 +180,6 @@ class PatientCareSlotService:
         slot.active = False
         return self.patient_care_slot_repo.save(slot)
 
-    def _validate_and_parse_day_of_week(self, value: Any, field_name: str = "day_of_week", allow_none: bool = False) -> Optional[int]:
-        """Validate and return day of week value."""
-        if value is None:
-            if allow_none:
-                return None
-            raise InputValidationError(f"{field_name} is required")
-        
-        if not isinstance(value, int) or not (self.MIN_DAY_OF_WEEK <= value <= self.MAX_DAY_OF_WEEK):
-            raise InputValidationError(
-                f"{field_name} must be an integer between {self.MIN_DAY_OF_WEEK} and {self.MAX_DAY_OF_WEEK}"
-            )
-        return value
-    
-    def _parse_time_field(self, value: Any, field_name: str) -> time:
-        """Parse time from string or time object."""
-        if isinstance(value, str):
-            try:
-                return datetime.strptime(value, '%H:%M').time()
-            except ValueError:
-                raise InputValidationError(f"{field_name} must be in 'HH:MM' format")
-        elif isinstance(value, time):
-            return value
-        else:
-            raise InputValidationError(f"{field_name} must be a time string in 'HH:MM' format or a time object")
-    
-    def _parse_date_field(self, value: Any, field_name: str, allow_none: bool = True) -> Optional[date]:
-        """Parse date from string or date object."""
-        if value is None:
-            if not allow_none:
-                today = datetime.now().date()
-                return today - timedelta(days=today.weekday())
-            return None
-        
-        if isinstance(value, str):
-            try:
-                return datetime.strptime(value, '%Y-%m-%d').date()
-            except ValueError:
-                raise InputValidationError(f"{field_name} must be in 'YYYY-MM-DD' format")
-        elif isinstance(value, date):
-            return value
-        else:
-            raise InputValidationError(f"{field_name} must be a date string in 'YYYY-MM-DD' format or a date object")
-    
-    def _validate_week_start_date(self, week_start_date: Optional[date]) -> Optional[date]:
-        """Validate that week_start_date is a Monday."""
-        if week_start_date and week_start_date.weekday() != 0:
-            raise InputValidationError("week_start_date must be a Monday")
-        return week_start_date
-    
-    def _validate_day_range(self, start_day: Optional[int], end_day: Optional[int]) -> None:
-        """Validate that day range is valid."""
-        if start_day is not None and end_day is not None:
-            if start_day > end_day and not (start_day == 6 and end_day == 0):
-                raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
-    
-    def _parse_slot_data(self, slot_data: dict) -> PatientCareSlot:
-        """Parse and validate slot data into a PatientCareSlot object (DRY helper)."""
-        # Validate required fields
-        required_fields = ["day_of_week", "start_day_of_week", "end_day_of_week", "start_time", "end_time"]
-        missing_fields = [field for field in required_fields if field not in slot_data]
-        if missing_fields:
-            raise InputValidationError(f"Missing required fields: {', '.join(missing_fields)}")
-        
-        # Parse and validate all fields
-        day_of_week = self._validate_and_parse_day_of_week(slot_data.get('day_of_week'), "day_of_week")
-        start_day_of_week = self._validate_and_parse_day_of_week(slot_data.get('start_day_of_week'), "start_day_of_week")
-        end_day_of_week = self._validate_and_parse_day_of_week(slot_data.get('end_day_of_week'), "end_day_of_week")
-        
-        self._validate_day_range(start_day_of_week, end_day_of_week)
-        
-        start_time = self._parse_time_field(slot_data['start_time'], "start_time")
-        end_time = self._parse_time_field(slot_data['end_time'], "end_time")
-        
-        if not self._is_valid_time_range(start_time, end_time):
-            raise InputValidationError(f"Invalid time range: start_time {start_time} to end_time {end_time}")
-        
-        week_start_date = self._parse_date_field(slot_data.get('week_start_date'), "week_start_date", allow_none=False)
-        week_start_date = self._validate_week_start_date(week_start_date)
-        week_end_date = week_start_date + timedelta(days=6) if week_start_date else None
-        
-        start_date = self._parse_date_field(slot_data.get('start_date'), "start_date")
-        end_date = self._parse_date_field(slot_data.get('end_date'), "end_date")
-        
-        return PatientCareSlot(
-            patient_id="",  # Will be set by caller
-            day_of_week=day_of_week,
-            start_day_of_week=start_day_of_week,
-            end_day_of_week=end_day_of_week,
-            start_time=start_time,
-            end_time=end_time,
-            week_start_date=week_start_date,
-            week_end_date=week_end_date,
-            start_date=start_date,
-            end_date=end_date
-        )
-    
-    def create_patient_care_slots(self, patient_id: str, slots_data: List[dict], patient_weekly_quota: Optional[float] = None) -> List[PatientCareSlot]:
-        """
-        Create multiple patient care slots with optimized quota validation.
-        
-        Args:
-            patient_id: The patient's entity_id
-            slots_data: List of slot data dictionaries
-            patient_weekly_quota: Optional patient weekly quota for validation
-            
-        Returns:
-            List of created PatientCareSlot objects
-        """
-        if not slots_data:
-            raise InputValidationError("At least one slot must be provided")
-            
-        if patient_weekly_quota is None or patient_weekly_quota == 0:
-            raise InputValidationError("Please set a weekly quota before adding care slots.")
-        
-        # Parse all slots using DRY helper
-        parsed_slots = []
-        for slot_data in slots_data:
-            if not isinstance(slot_data, dict):
-                raise InputValidationError("Each slot must be a JSON object")
-            
-            slot = self._parse_slot_data(slot_data)
-            slot.patient_id = patient_id
-            parsed_slots.append(slot)
-        
-        # Validate quota for each week separately
-        # Group slots by week for proper quota validation
-        slots_by_week = {}
-        for slot in parsed_slots:
-            week_start = slot.week_start_date
-            if week_start not in slots_by_week:
-                slots_by_week[week_start] = []
-            slots_by_week[week_start].append(slot)
-        
-        # Validate quota for each week using existing helper method
-        for week_start, week_slots in slots_by_week.items():
-            # Get existing slots for this week
-            existing_slots = self.get_patient_care_slots_by_week(patient_id, week_start)
-            
-            # Validate each slot in this week using the existing helper
-            for slot in week_slots:
-                self._validate_weekly_quota(patient_weekly_quota, slot, existing_slots)
-        
-        # Save all slots
-        saved_slots = [self.patient_care_slot_repo.save(slot) for slot in parsed_slots]
-        
-        logger.info(f"Created {len(saved_slots)} patient care slots for patient {patient_id}")
-        return saved_slots
-    
     def update_patient_care_slot(self, patient_id: str, slot_id: str, slot_data: dict, patient_weekly_quota: Optional[float] = None) -> PatientCareSlot:
         """
         Update an existing patient care slot with partial data.
@@ -372,45 +200,45 @@ class PatientCareSlotService:
         
         # Update day of week fields if provided
         if 'day_of_week' in slot_data:
-            slot.day_of_week = self._validate_and_parse_day_of_week(slot_data['day_of_week'], "day_of_week", allow_none=True)
+            slot.day_of_week = validate_and_parse_day_of_week(slot_data['day_of_week'], "day_of_week", allow_none=True)
         
         if 'start_day_of_week' in slot_data:
-            slot.start_day_of_week = self._validate_and_parse_day_of_week(
+            slot.start_day_of_week = validate_and_parse_day_of_week(
                 slot_data['start_day_of_week'], "start_day_of_week", allow_none=True
             )
         
         if 'end_day_of_week' in slot_data:
-            slot.end_day_of_week = self._validate_and_parse_day_of_week(
+            slot.end_day_of_week = validate_and_parse_day_of_week(
                 slot_data['end_day_of_week'], "end_day_of_week", allow_none=True
             )
         
         # Validate day range
-        self._validate_day_range(slot.start_day_of_week, slot.end_day_of_week)
+        validate_day_range(slot.start_day_of_week, slot.end_day_of_week)
         
         # Update time fields if provided
         if 'start_time' in slot_data:
-            slot.start_time = self._parse_time_field(slot_data['start_time'], "start_time")
+            slot.start_time = parse_time_field(slot_data['start_time'], "start_time")
         
         if 'end_time' in slot_data:
-            slot.end_time = self._parse_time_field(slot_data['end_time'], "end_time")
+            slot.end_time = parse_time_field(slot_data['end_time'], "end_time")
         
         # Validate time range
-        if not self._is_valid_time_range(slot.start_time, slot.end_time):
+        if not is_valid_time_range(slot.start_time, slot.end_time):
             raise InputValidationError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
 
         # Update week_start_date if provided
         if 'week_start_date' in slot_data:
-            week_start_date = self._parse_date_field(slot_data['week_start_date'], "week_start_date", allow_none=False)
-            week_start_date = self._validate_week_start_date(week_start_date)
-            slot.week_start_date = week_start_date
-            slot.week_end_date = week_start_date + timedelta(days=6) if week_start_date else None
+            week_start = parse_date_field(slot_data['week_start_date'], "week_start_date", allow_none=False)
+            week_start = validate_week_start_date(week_start)
+            slot.week_start_date = week_start
+            slot.week_end_date = week_start + timedelta(days=6) if week_start else None
         
         # Update start_date and end_date if provided
         if 'start_date' in slot_data:
-            slot.start_date = self._parse_date_field(slot_data['start_date'], "start_date")
+            slot.start_date = parse_date_field(slot_data['start_date'], "start_date")
         
         if 'end_date' in slot_data:
-            slot.end_date = self._parse_date_field(slot_data['end_date'], "end_date")
+            slot.end_date = parse_date_field(slot_data['end_date'], "end_date")
 
         if patient_weekly_quota is None or patient_weekly_quota == 0:
             raise InputValidationError("Please set a weekly quota before adding care slots.")

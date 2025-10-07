@@ -1,9 +1,20 @@
 from typing import List, Optional
-from common.helpers.exceptions import NotFoundError
+from common.helpers.exceptions import NotFoundError, InputValidationError
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.availability_slot import AvailabilitySlot
-from common.utils.slot import expand_slots
-from datetime import time, date
+from common.utils.slot import (
+    expand_slots,
+    validate_and_parse_day_of_week,
+    parse_time_field,
+    parse_date_field,
+    validate_week_start_date,
+    validate_day_range,
+    is_valid_time_range
+)
+from datetime import time, date, timedelta
+from common.app_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class AvailabilitySlotService:
@@ -114,6 +125,68 @@ class AvailabilitySlotService:
         if not slot:
             raise NotFoundError(f"Availability slot with id '{slot_id}' not found for employee '{employee_id}'")
         slot.active = False
+        return self.availability_slot_repo.save(slot)
+
+    def update_availability_slot(self, employee_id: str, slot_id: str, slot_data: dict) -> AvailabilitySlot:
+        """
+        Update an existing availability slot with partial data.
+        
+        Args:
+            employee_id: The employee's entity_id
+            slot_id: The slot's entity_id
+            slot_data: Dictionary containing fields to update
+            
+        Returns:
+            The updated AvailabilitySlot
+        """
+        # Fetch existing slot
+        slot = self.availability_slot_repo.get_one({"entity_id": slot_id, "employee_id": employee_id})
+        if not slot:
+            raise NotFoundError(f"Availability slot with id '{slot_id}' not found for employee '{employee_id}'")
+        
+        # Update day of week fields if provided
+        if 'day_of_week' in slot_data:
+            slot.day_of_week = validate_and_parse_day_of_week(slot_data['day_of_week'], "day_of_week", allow_none=True)
+        
+        if 'start_day_of_week' in slot_data:
+            slot.start_day_of_week = validate_and_parse_day_of_week(
+                slot_data['start_day_of_week'], "start_day_of_week", allow_none=True
+            )
+        
+        if 'end_day_of_week' in slot_data:
+            slot.end_day_of_week = validate_and_parse_day_of_week(
+                slot_data['end_day_of_week'], "end_day_of_week", allow_none=True
+            )
+        
+        # Validate day range
+        validate_day_range(slot.start_day_of_week, slot.end_day_of_week)
+        
+        # Update time fields if provided
+        if 'start_time' in slot_data:
+            slot.start_time = parse_time_field(slot_data['start_time'], "start_time")
+        
+        if 'end_time' in slot_data:
+            slot.end_time = parse_time_field(slot_data['end_time'], "end_time")
+        
+        # Validate time range
+        if not is_valid_time_range(slot.start_time, slot.end_time):
+            raise InputValidationError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
+
+        # Update week_start_date if provided
+        if 'week_start_date' in slot_data:
+            week_start = parse_date_field(slot_data['week_start_date'], "week_start_date", allow_none=False)
+            week_start = validate_week_start_date(week_start)
+            slot.week_start_date = week_start
+            slot.week_end_date = week_start + timedelta(days=6) if week_start else None
+        
+        # Update start_date and end_date if provided
+        if 'start_date' in slot_data:
+            slot.start_date = parse_date_field(slot_data['start_date'], "start_date")
+        
+        if 'end_date' in slot_data:
+            slot.end_date = parse_date_field(slot_data['end_date'], "end_date")
+        
+        logger.info(f"Updating availability slot {slot_id} for employee {employee_id}")
         return self.availability_slot_repo.save(slot)
 
     def expand_and_save_slots(self, payload, employee_id):
