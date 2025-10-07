@@ -3,6 +3,7 @@ from datetime import time, date
 from typing import ClassVar, Optional
 from rococo.models import VersionedModel
 
+
 @dataclass
 class PatientCareSlot(VersionedModel):
     use_type_checking: ClassVar[bool] = True
@@ -24,6 +25,7 @@ class PatientCareSlot(VersionedModel):
         # Ensure logical key is set and consistent.
         self.logical_key = self.generate_logical_key(
             patient_id=self.patient_id,
+            series_id=self.series_id,
             day_of_week=self.day_of_week,
             start_day_of_week=self.start_day_of_week,
             end_day_of_week=self.end_day_of_week,
@@ -32,18 +34,34 @@ class PatientCareSlot(VersionedModel):
         )
 
     @classmethod
-    def generate_logical_key(cls, patient_id: str, day_of_week: int, start_day_of_week: int = None, 
-                           end_day_of_week: int = None, start_time: time = None, end_time: time = None) -> str:
+    def generate_logical_key(
+        cls,
+        patient_id: str,
+        series_id: Optional[str] = None,
+        day_of_week: int = None,
+        start_day_of_week: int = None,
+        end_day_of_week: int = None,
+        start_time: time = None,
+        end_time: time = None
+    ) -> str:
         """Generates a logical key for the patient care slot."""
+        # Start with patient_id
+        key_parts = [patient_id]
+
+        # Add series_id if provided
+        if series_id:
+            key_parts.append(series_id)
+
         # Use day range if both start and end day are provided, otherwise use single day
         if start_day_of_week is not None and end_day_of_week is not None:
             day_part = f"{start_day_of_week}-{end_day_of_week}"
         else:
             day_part = str(day_of_week)
+        key_parts.append(day_part)
 
         # Include time information if provided
-        time_part = ""
         if start_time and end_time:
-            time_part = f"-{start_time.strftime('%H:%M:%S')}-{end_time.strftime('%H:%M:%S')}"
+            key_parts.append(start_time.strftime('%H:%M:%S'))
+            key_parts.append(end_time.strftime('%H:%M:%S'))
 
-        return f"{patient_id}-{day_part}{time_part}"
+        return "-".join(key_parts)
