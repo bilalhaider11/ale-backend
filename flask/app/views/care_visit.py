@@ -383,6 +383,49 @@ class AssignEmployeeToCareSlot(Resource):
             return get_failure_response(f"Error assigning employee: {str(e)}", status_code=500)
 
 
+@care_visit_api.route('/assign-employee-recurring')
+class AssignEmployeeToRecurringPattern(Resource):
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person: Person, organization: Organization):
+        """Assign an employee to ALL slots in a recurring pattern using logical_key"""
+        try:
+            request_data = request.get_json(force=True)
+            
+            # Validate required fields
+            required_fields = ['patient_id', 'employee_id', 'care_slot_logical_key']
+            missing_fields = [field for field in required_fields if field not in request_data]
+            if missing_fields:
+                return get_failure_response(f"Missing required fields: {', '.join(missing_fields)}", status_code=400)
+            
+            # Create care visit data for recurring assignment
+            visit_data = {
+                'patient_id': request_data['patient_id'],
+                'employee_id': request_data['employee_id'],
+                'care_slot_logical_key': request_data['care_slot_logical_key'],
+                'employee_logical_key': request_data.get('employee_logical_key', ''),
+                'employee_name': request_data.get('employee_name', ''),
+                'scheduled_by_id': person.entity_id,
+                'organization_id': organization.entity_id
+            }
+            
+            care_visit_service = CareVisitService(config)
+            
+            # Assign employee to all slots in the recurring pattern
+            created_visits = care_visit_service.assign_employee_to_recurring_pattern(visit_data)
+            
+            return get_success_response(
+                message=f"Employee assigned to {len(created_visits)} slots in recurring pattern successfully",
+                data=[visit.as_dict() for visit in created_visits],
+                count=len(created_visits)
+            )
+            
+        except ValueError as e:
+            return get_failure_response(str(e), status_code=400)
+        except Exception as e:
+            return get_failure_response(f"Error assigning employee to recurring pattern: {str(e)}", status_code=500)
+
+
 @care_visit_api.route('/employee/process_missed_visits')
 class ProcessMissedVisits(Resource):
 

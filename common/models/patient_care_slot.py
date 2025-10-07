@@ -8,6 +8,7 @@ class PatientCareSlot(VersionedModel):
     use_type_checking: ClassVar[bool] = True
 
     patient_id: str = None
+    series_id: Optional[str] = None
     day_of_week: int = None
     start_day_of_week: int = None
     end_day_of_week: int = None

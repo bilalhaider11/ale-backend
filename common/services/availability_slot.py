@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional
 from common.helpers.exceptions import NotFoundError
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.availability_slot import AvailabilitySlot
+from common.utils.slot import expand_slots
 from datetime import time, date
 
 
@@ -24,6 +25,11 @@ class AvailabilitySlotService:
     def get_availability_slots_by_employee_id(self, employee_id: str):
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
         return availability_slots
+
+    def get_availability_slots_by_week(self, employee_id: str, week_start_date: date):
+        availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
+
+        return [slot for slot in availability_slots if slot.week_start_date == week_start_date]
 
     def get_availability_slots_for_organization(self, organization_id: str):
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
@@ -96,9 +102,29 @@ class AvailabilitySlotService:
             } for row in sorted_results
         ]
 
-    def delete_employee_availability_slot(self, employee_id: str, slot_id: str) -> AvailabilitySlot:
+    def delete_employee_availability_slot(self, employee_id: str, slot_id: str, series_id: Optional[str] = None, from_date: Optional[str] = None) -> AvailabilitySlot:
+        if series_id and from_date:
+            deleted_slots = self.availability_slot_repo.delete_future_patient_care_slots(
+                employee_id=employee_id,
+                series_id=series_id,
+                from_date=from_date
+            )
+            return deleted_slots
         slot = self.availability_slot_repo.get_one({"entity_id": slot_id, "employee_id": employee_id})
         if not slot:
             raise NotFoundError(f"Availability slot with id '{slot_id}' not found for employee '{employee_id}'")
         slot.active = False
         return self.availability_slot_repo.save(slot)
+
+    def expand_and_save_slots(self, payload, employee_id):
+        expanded_slots = expand_slots(
+            payload=payload,
+            start_date=payload.get('start_date'),
+            entity_id=employee_id,
+            entity_type='employee'
+        )
+        saved_slots = []
+        for slot in expanded_slots:
+            saved_slot = self.availability_slot_repo.save(slot)
+            saved_slots.append(saved_slot)
+        return saved_slots

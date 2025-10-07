@@ -112,6 +112,7 @@ class PatientCareSlotRepository(BaseRepository):
                 pcs.logical_key,
                 pcs.start_date,
                 pcs.end_date,
+                pcs.series_id,
                 cv.visit_date,
                 cv.employee_id,
                 cv.status,
@@ -146,10 +147,11 @@ class PatientCareSlotRepository(BaseRepository):
 
             if slot_id not in slots_map:
                 slots_map[slot_id] = {
+                    "slot_id": slot_id,
+                    "series_id": row['series_id'],
                     "patient_id": row["patient_id"],
                     "first_name": row["patient_first_name"],
                     "last_name": row["patient_last_name"],
-                    "slot_id": slot_id,
                     "start_time": row["start_time"],
                     "end_time": row["end_time"],
                     "start_date": row["start_date"],
@@ -171,3 +173,22 @@ class PatientCareSlotRepository(BaseRepository):
                 })
 
         return list(slots_map.values())
+
+    def delete_future_patient_care_slots(self, patient_id: str, series_id: str, from_date: str) -> int:
+        """
+        Soft delete all patient care slots from this date forward within the same series.
+        """
+        query = """
+            UPDATE patient_care_slot
+            SET active = false
+            WHERE patient_id = %s
+              AND series_id = %s
+              AND start_date >= %s
+              AND active = true
+        """
+        params = (patient_id, series_id, from_date)
+
+        with self.adapter:
+            rows = self.adapter.execute_query(query, params) or []
+
+        return len(rows)
