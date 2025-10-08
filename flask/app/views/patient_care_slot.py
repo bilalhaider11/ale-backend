@@ -160,6 +160,7 @@ class CreatePatientSlots(Resource):
                         day_of_week=slot.day_of_week,
                         start_time=slot.start_time,
                         end_time=slot.end_time,
+                        start_date=slot.start_date,
                         match_type="contains"
                     )
 

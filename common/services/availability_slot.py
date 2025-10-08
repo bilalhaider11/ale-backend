@@ -218,7 +218,7 @@ class AvailabilitySlotService:
         )
         return self.availability_slot_repo.save(availability_slot)
 
-    def has_availability_for_slot(self, employee_id: str, day_of_week: int, start_time: time, end_time: time, match_type: str = "exact"):
+    def has_availability_for_slot(self, employee_id: str, day_of_week: int, start_time: time, end_time: time, start_date: str, match_type: str = "exact"):
         """
         Check if there's availability for the given slot criteria and return the logical_key.
 
@@ -236,7 +236,10 @@ class AvailabilitySlotService:
         existing_slots = self.get_availability_slots_by_employee_id(employee_id)
 
         # Filter by day of week and active status
-        day_slots = [slot for slot in existing_slots if slot.day_of_week == day_of_week and slot.active]
+        day_slots = [
+            slot for slot in existing_slots
+            if slot.day_of_week == day_of_week and slot.start_date == start_date and slot.active
+        ]
 
         if not day_slots:
             return None
