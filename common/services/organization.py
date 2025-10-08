@@ -215,3 +215,17 @@ class OrganizationService:
         Get all partner organizations associated with the given organization ID.
         """
         return self.organization_repo.get_partner_organizations(organization_id)
+    
+    def get_next_employee_id(self, organization_id: str) -> str:
+        """
+        Get the next available employee ID for an organization.
+        This method increments the counter and returns a padded 4-digit ID.
+        
+        Args:
+            organization_id: The organization ID
+            
+        Returns:
+            str: Formatted employee ID (e.g., "0001", "0002")
+        """
+        next_id = self.organization_repo.increment_employee_id_counter(organization_id)
+        return f"{next_id:04d}"

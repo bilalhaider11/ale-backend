@@ -52,22 +52,60 @@ class EmployeeService:
         records = []
         skipped_entries = []
 
+        # Import organization service for auto-generation
+        from common.services.organization import OrganizationService
+        organization_service = OrganizationService(self.config)
+
+        # Fetch all existing employee IDs for the organization ONCE for efficient duplicate checking
+        existing_employee_ids = self.employee_repo.get_employee_ids_map_for_organization(organization_id)
+        logger.info(f"Loaded {len(existing_employee_ids)} existing employee IDs for duplicate checking")
+
+        # Track IDs used in current batch to detect duplicates within the same CSV
+        current_batch_ids = set()
+
         for row in rows:
-            employee_type = None
-
-            if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
-                employee_type = "caregiver"
-            if get_first_matching_column_value(row, ['employee id', 'employee_id']):
-                employee_type = "employee"
-
-            if get_first_matching_column_value(row, ['employee id', 'employee_id']) and get_first_matching_column_value(
-                    row, ['caregiver id', 'caregiver_id']):
-                logger.info(f"Row has both employee and caregiver ID, using employee ID.")
-
-            if employee_type is None:
-                logger.info(f"Skipping row with neither employee nor caregiver ID: {row}")
+            # Check if row has first name and last name (required fields)
+            first_name = get_first_matching_column_value(row, ['first name', 'first_name'])
+            last_name = get_first_matching_column_value(row, ['last name', 'last_name'])
+            
+            if not first_name or not last_name:
+                logger.info(f"Skipping row without first name or last name: {row}")
                 skipped_entries.append(row)
                 continue
+
+            # Get employee ID from CSV, or None if not provided
+            employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
+            # Auto-generate employee_id if not provided or empty
+            if not employee_id or not employee_id.strip():
+                employee_id = organization_service.get_next_employee_id(organization_id)
+                logger.info(f"Auto-generated employee ID {employee_id} for {first_name} {last_name}")
+            
+            # Check for duplicate employee ID in existing database records
+            if employee_id in existing_employee_ids:
+                existing_employee = existing_employee_ids[employee_id]
+                logger.warning(
+                    f"Duplicate employee ID detected during bulk import (existing in DB): {employee_id} for organization {organization_id}. "
+                    f"Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). "
+                    f"Importing new employee: {first_name} {last_name}. "
+                    f"Saving anyway as per requirements. Alert generation to be implemented in future."
+                )
+            
+            # Check for duplicate employee ID within current batch
+            if employee_id in current_batch_ids:
+                logger.warning(
+                    f"Duplicate employee ID detected within the same CSV batch: {employee_id} for organization {organization_id}. "
+                    f"Multiple employees in this upload have the same ID. "
+                    f"Current employee: {first_name} {last_name}. "
+                    f"Saving anyway as per requirements. Alert generation to be implemented in future."
+                )
+            
+            # Add to current batch tracking
+            current_batch_ids.add(employee_id)
+
+            # Determine employee type
+            employee_type = "employee"
+            if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
+                employee_type = "caregiver"
 
             # Parse dates
             parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
@@ -77,12 +115,11 @@ class EmployeeService:
             record = Employee(
                 changed_by_id=user_id,
                 primary_branch=get_first_matching_column_value(row, ['primary branch', 'primary_branch']),
-                employee_id=get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id',
-                                                                  'caregiver_id']),
-                first_name=get_first_matching_column_value(row, ['first name', 'first_name']),
-                last_name=get_first_matching_column_value(row, ['last name', 'last_name']),
+                employee_id=employee_id,
+                first_name=first_name,
+                last_name=last_name,
                 suffix=get_first_matching_column_value(row, ['suffix']),
-                employee_type=get_first_matching_column_value(row, ['employee type', 'employee_type']),
+                employee_type=get_first_matching_column_value(row, ['employee type', 'employee_type']) or employee_type,
                 user_type=get_first_matching_column_value(row, ['user type', 'user_type']),
                 address_1=get_first_matching_column_value(row, ['address 1', 'address_1', 'address']),
                 address_2=get_first_matching_column_value(row, ['address 2', 'address_2']),
@@ -107,7 +144,7 @@ class EmployeeService:
         self.employee_repo.upsert_employees(records, organization_id)
 
         logger.info(
-            f"Successfully imported {count} employee records. Skipped {len(skipped_entries)} entries without employee or caregiver ID.")
+            f"Successfully imported {count} employee records. Skipped {len(skipped_entries)} entries without first name or last name.")
         return count, skipped_entries
 
     def upload_list_file(self, organization_id, person_id, file_path, file_category, file_id=None, original_filename=None):
