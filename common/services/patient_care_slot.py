@@ -255,11 +255,14 @@ class PatientCareSlotService:
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")
         return self.patient_care_slot_repo.save(slot)
 
-    def get_slots_by_logical_key(self, logical_key: str, patient_id: str) -> List[PatientCareSlot]:
+    def get_all_matching_slots(self, series_id: str, patient_id: str, day_of_week: str, start_time: str, end_time: str) -> List[PatientCareSlot]:
         """Get all slots with the same logical_key for a patient."""
         return self.patient_care_slot_repo.get_many({
-            "logical_key": logical_key,
+            "series_id": series_id,
             "patient_id": patient_id,
+            "day_of_week": day_of_week,
+            "start_time": start_time,
+            "end_time": end_time,
             "active": True
         })
 
