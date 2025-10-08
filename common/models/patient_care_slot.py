@@ -30,7 +30,8 @@ class PatientCareSlot(VersionedModel):
             start_day_of_week=self.start_day_of_week,
             end_day_of_week=self.end_day_of_week,
             start_time=self.start_time,
-            end_time=self.end_time
+            end_time=self.end_time,
+            start_date=self.start_date
         )
 
     @classmethod
@@ -42,7 +43,8 @@ class PatientCareSlot(VersionedModel):
         start_day_of_week: int = None,
         end_day_of_week: int = None,
         start_time: time = None,
-        end_time: time = None
+        end_time: time = None,
+        start_date: Optional[date] = None
     ) -> str:
         """Generates a logical key for the patient care slot."""
         # Start with patient_id
@@ -51,6 +53,10 @@ class PatientCareSlot(VersionedModel):
         # Add series_id if provided
         if series_id:
             key_parts.append(series_id)
+
+        # Add start_date if provided (for uniqueness)
+        if start_date:
+            key_parts.append(start_date.strftime('%Y-%m-%d'))
 
         # Use day range if both start and end day are provided, otherwise use single day
         if start_day_of_week is not None and end_day_of_week is not None:
