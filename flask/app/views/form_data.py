@@ -84,7 +84,6 @@ class FormDataResource(Resource):
             )
             
         except ValueError as e:
-            logger.error(f"Validation error in form data POST: {str(e)}")
             return get_failure_response(str(e), status_code=400)
         except Exception as e:
             logger.error(f"Error saving form data: {str(e)}")
@@ -121,7 +120,6 @@ class FormDataByPersonResource(Resource):
             )
             
         except ValueError as e:
-            logger.error(f"Validation error retrieving form data for person {person_id}: {str(e)}")
             return get_failure_response(str(e), status_code=400)
         except Exception as e:
             logger.error(f"Error retrieving form data for person {person_id}: {str(e)}")
@@ -157,8 +155,7 @@ class FormDataByPersonAndFormResource(Resource):
                 count=len(form_data_response)
             )
             
-        except ValueError as e:
-            logger.error(f"Validation error retrieving form data for person {person_id}, form {form_name}: {str(e)}")
+        except ValueError as e: 
             return get_failure_response(str(e), status_code=400)
         except Exception as e:
             logger.error(f"Error retrieving form data for person {person_id}, form {form_name}: {str(e)}")
