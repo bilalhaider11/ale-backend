@@ -7,6 +7,7 @@ from common.app_config import config
 class Organization(BaseOrganization):
     logo_url: Optional[str] = None
     subdomain: Optional[str] = None
+    employee_id_counter: Optional[int] = 0
     
     def validate_name(self):
         """

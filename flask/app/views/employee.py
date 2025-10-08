@@ -181,10 +181,77 @@ class EmployeeResource(Resource):
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person, organization):
         """
-        Update or create an employee record.
+        Create a new employee record.
         """
         employee_service = EmployeeService(config)
         person_service = PersonService(config)
+        organization_service = OrganizationService(config)
+        
+        # Parse request body
+        parsed_body = parse_request_body(request, [
+            'first_name',
+            'last_name',
+            'employee_id',
+            'date_of_birth',
+            'email_address',
+            'phone_1',
+            'employee_type'
+        ])
+
+        date_of_birth = parsed_body.pop('date_of_birth', None)
+        email_address = parsed_body.pop('email_address', None)
+        phone_1 = parsed_body.pop('phone_1', None)
+        employee_id = parsed_body.pop('employee_id', None)
+        
+        validate_required_fields(parsed_body)
+        
+        # Auto-generate employee_id if not provided
+        if not employee_id or not employee_id.strip():
+            employee_id = organization_service.get_next_employee_id(organization.entity_id)
+        
+        # Check for duplicate employee ID
+        existing_employee = employee_service.employee_repo.get_by_employee_id(employee_id, organization.entity_id)
+        if existing_employee:
+            logger.warning(
+                f"Duplicate employee ID detected: {employee_id} for organization {organization.entity_id}. "
+                f"Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). "
+                f"Creating new employee anyway as per requirements."
+            )
+        
+        person = Person(
+            first_name=parsed_body['first_name'],
+            last_name=parsed_body['last_name']
+        )
+        person = person_service.save_person(person)
+
+        employee = Employee(
+            first_name=parsed_body['first_name'],
+            last_name=parsed_body['last_name'],
+            employee_id=employee_id,
+            date_of_birth=date_of_birth,
+            email_address=email_address,
+            phone_1=phone_1,
+            organization_id=organization.entity_id,
+            person_id=person.entity_id,
+            employee_type=parsed_body['employee_type']
+        )
+        employee = employee_service.save_employee(employee)
+        
+        employee_service.trigger_match_for_employee(employee.entity_id)
+        return get_success_response(
+            message="Employee created successfully",
+            data=employee.as_dict()
+        )
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def put(self, person, organization):
+        """
+        Update an existing employee record.
+        """
+        employee_service = EmployeeService(config)
+        person_service = PersonService(config)
+        organization_service = OrganizationService(config)
         
         # Parse request body
         parsed_body = parse_request_body(request, [
@@ -202,64 +269,50 @@ class EmployeeResource(Resource):
         date_of_birth = parsed_body.pop('date_of_birth', None)
         email_address = parsed_body.pop('email_address', None)
         phone_1 = parsed_body.pop('phone_1', None)
-
+        employee_id = parsed_body.pop('employee_id', None)
+        
+        if not entity_id:
+            return get_failure_response("entity_id is required for update", status_code=400)
+        
         validate_required_fields(parsed_body)
         
-        if entity_id:
-            # Update existing employee
-            employee = employee_service.get_employee_by_id(entity_id, organization.entity_id)
-            if not employee:
-                return get_failure_response("Employee not found", status_code=200)
-            
-            employee.first_name = parsed_body['first_name']
-            employee.last_name = parsed_body['last_name']
-            employee.employee_id = parsed_body['employee_id']
-            employee.date_of_birth = date_of_birth
-            employee.email_address = email_address
-            employee.phone_1 = phone_1
+        # Get existing employee
+        employee = employee_service.get_employee_by_id(entity_id, organization.entity_id)
+        if not employee:
+            return get_failure_response("Employee not found", status_code=404)
+        
+        employee.first_name = parsed_body['first_name']
+        employee.last_name = parsed_body['last_name']
+        
+        # Auto-generate employee_id if not provided
+        if not employee_id or not employee_id.strip():
+            employee_id = organization_service.get_next_employee_id(organization.entity_id)
+        
+        employee.employee_id = employee_id
+        employee.date_of_birth = date_of_birth
+        employee.email_address = email_address
+        employee.phone_1 = phone_1
+        employee.employee_type = parsed_body['employee_type']
 
-            if employee.person_id:
-                person = person_service.get_person_by_id(employee.person_id)
-                if person and (person.first_name != employee.first_name or person.last_name != employee.last_name):
-                    person.first_name = employee.first_name
-                    person.last_name = employee.last_name
-                    person_service.save_person(person)
-            else:
-                person=Person(
-                    first_name=employee.first_name,
-                    last_name=employee.last_name,
-                )
-                person = person_service.save_person(person)
-                employee.person_id = person.entity_id
-
-            employee = employee_service.save_employee(employee)
-            action = "updated"
-
+        if employee.person_id:
+            person = person_service.get_person_by_id(employee.person_id)
+            if person and (person.first_name != employee.first_name or person.last_name != employee.last_name):
+                person.first_name = employee.first_name
+                person.last_name = employee.last_name
+                person_service.save_person(person)
         else:
             person = Person(
-                first_name=parsed_body['first_name'],
-                last_name=parsed_body['last_name']
+                first_name=employee.first_name,
+                last_name=employee.last_name,
             )
             person = person_service.save_person(person)
-            employee = Employee(
-                first_name=parsed_body['first_name'],
-                last_name=parsed_body['last_name'],
-                employee_id=parsed_body['employee_id'],
-                date_of_birth=date_of_birth,
-                email_address=email_address,
-                phone_1=phone_1,
-                organization_id=organization.entity_id,
-                person_id=person.entity_id,
-                employee_type=parsed_body['employee_type']
-            )
+            employee.person_id = person.entity_id
 
-            employee = employee_service.save_employee(employee)
-
-            action = "created"
+        employee = employee_service.save_employee(employee)
         
         employee_service.trigger_match_for_employee(employee.entity_id)
         return get_success_response(
-            message=f"Employee {action} successfully",
+            message="Employee updated successfully",
             data=employee.as_dict()
         )
 

@@ -28,10 +28,11 @@ class EmployeeHandler:
         Returns:
             list: List of dictionaries representing rows
         """
+        # Only first name and last name are required now
+        # Employee ID is optional and will be auto-generated if missing
         required_headers = [
             'first name', 
-            'last name', 
-            ('employee id', 'caregiver id', 'employee_id', 'caregiver_id', 'npi')
+            'last name'
         ]
         
         workbook = load_workbook(file_path, data_only=True)
@@ -74,7 +75,7 @@ class EmployeeHandler:
                 break
         
         if header_row_index is None:
-            raise ValueError("first name, last name, and employee/caregiver ID headers are required")
+            raise ValueError("first name and last name headers are required")
         
         # Convert rows to dictionaries starting from the header row onwards
         rows = []
@@ -105,7 +106,8 @@ class EmployeeHandler:
             list[dict]: List of dictionaries representing rows
         """
 
-        required_headers = ['first name', 'last name', 'date of birth']
+        # Only first name and last name are required now
+        required_headers = ['first name', 'last name']
         
         with open(file_path, mode='r', encoding='utf-8') as csv_file:
             reader = csv.reader(csv_file)
