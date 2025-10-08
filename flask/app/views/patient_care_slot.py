@@ -19,8 +19,15 @@ class MultipleAvailabilitySlotResource(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def get(self, organization: Organization):
+        start_date = request.args.get('start_date', None)
+        end_date = request.args.get('end_date', None)
+
         patient_care_slot_service = PatientCareSlotService(config)
-        patient_care_slots = patient_care_slot_service.get_patient_care_slots_for_organization(organization.entity_id)
+        patient_care_slots = patient_care_slot_service.get_patient_care_slots_for_organization(
+            organization_id=organization.entity_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
         return get_success_response(data=patient_care_slots)
 
 

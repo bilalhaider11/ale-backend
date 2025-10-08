@@ -42,8 +42,12 @@ class AvailabilitySlotService:
 
         return [slot for slot in availability_slots if slot.week_start_date == week_start_date]
 
-    def get_availability_slots_for_organization(self, organization_id: str):
-        availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
+    def get_availability_slots_for_organization(self, organization_id: str, start_date: str, end_date: str):
+        availability_slots = self.availability_slot_repo.get_employee_availability_slots(
+            organization_ids=[organization_id],
+            start_date=start_date,
+            end_date=end_date,
+        )
         return availability_slots
 
     def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:
