@@ -58,10 +58,6 @@ class AvailabilitySlot(VersionedModel):
         if series_id:
             key_parts.append(series_id)
 
-        # Add start_date if provided (for uniqueness)
-        if start_date:
-            key_parts.append(start_date.strftime('%Y-%m-%d'))
-
         # Use day range if both start and end day are provided, otherwise use single day
         if start_day_of_week is not None and end_day_of_week is not None:
             day_part = f"{start_day_of_week}-{end_day_of_week}"
@@ -73,5 +69,9 @@ class AvailabilitySlot(VersionedModel):
         if start_time and end_time:
             key_parts.append(start_time.strftime('%H:%M:%S'))
             key_parts.append(end_time.strftime('%H:%M:%S'))
+
+        # Add start_date at the end if provided
+        if start_date:
+            key_parts.append(start_date.strftime('%Y-%m-%d'))
 
         return "-".join(key_parts)

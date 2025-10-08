@@ -406,7 +406,11 @@ class AssignEmployeeToRecurringPattern(Resource):
                 'employee_logical_key': request_data.get('employee_logical_key', ''),
                 'employee_name': request_data.get('employee_name', ''),
                 'scheduled_by_id': person.entity_id,
-                'organization_id': organization.entity_id
+                'organization_id': organization.entity_id,
+                'series_id': request_data['series_id'],
+                'day_of_week': request_data['day_of_week'],
+                'start_time': request_data['start_time'],
+                'end_time': request_data['end_time'],
             }
             
             care_visit_service = CareVisitService(config)
