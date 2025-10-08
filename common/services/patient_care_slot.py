@@ -109,8 +109,12 @@ class PatientCareSlotService:
             } for row in sorted_results
         ]
 
-    def get_patient_care_slots_for_organization(self, organization_id: str):
-        return self.patient_care_slot_repo.get_patient_care_slots_by_organization(organization_id)
+    def get_patient_care_slots_for_organization(self, organization_id: str, start_date: str, end_date: str):
+        return self.patient_care_slot_repo.get_patient_care_slots_by_organization(
+            organization_id=organization_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
     
     def _calculate_total_hours(self, slots: List[PatientCareSlot]) -> float:
         """Calculate total hours from a list of slots."""
