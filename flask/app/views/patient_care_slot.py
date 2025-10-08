@@ -8,6 +8,7 @@ from common.services import PatientService, PatientCareSlotService
 from common.models import Person, Organization
 from common.app_config import config
 from common.helpers.exceptions import InputValidationError, NotFoundError
+import uuid
 
 # Create the patient care slot blueprint
 patient_care_slot_api = Namespace('patient_care_slot', description="Patient care slot APIs")
@@ -144,11 +145,41 @@ class CreatePatientSlots(Resource):
             created_slots = patient_care_slot_service.expand_and_save_slots(clean_request_data, patient_id)
 
             care_visits = []
+
             if assigned_employee_id and created_slots:
                 from common.services import CareVisitService
                 from datetime import datetime, timedelta
+                from common.services import AvailabilitySlotService
+                availability_slot_service = AvailabilitySlotService(config)
                 care_visit_service = CareVisitService(config)
+
+                series_id = uuid.uuid4().hex if len(created_slots) > 1 else None
                 for slot in created_slots:
+                    employee_logical_key = availability_slot_service.has_availability_for_slot(
+                        employee_id=assigned_employee_id,
+                        day_of_week=slot.day_of_week,
+                        start_time=slot.start_time,
+                        end_time=slot.end_time,
+                        match_type="contains"
+                    )
+
+                    if not employee_logical_key:
+                        availability_slot_data = {
+                            "day_of_week": slot.day_of_week,
+                            "start_day_of_week": slot.start_day_of_week,
+                            "end_day_of_week": slot.end_day_of_week,
+                            "start_time": slot.start_time,
+                            "end_time": slot.end_time,
+                            "employee_id": assigned_employee_id,
+                            "series_id": series_id,
+                            "week_start_date": slot.week_start_date,
+                            "week_end_date": slot.week_end_date,
+                            "start_date": slot.start_date,
+                            "end_date": slot.end_date
+                        }
+                        employee_slot = availability_slot_service.create_availability_slot(availability_slot_data)
+                        employee_logical_key = employee_slot.logical_key
+
                     visit_data = {
                         'patient_id': patient_id,
                         'employee_id': assigned_employee_id,
@@ -156,7 +187,7 @@ class CreatePatientSlots(Resource):
                         'scheduled_start_time': slot.start_time.strftime('%H:%M'),
                         'scheduled_end_time': slot.end_time.strftime('%H:%M'),
                         'care_slot_logical_key': slot.logical_key,
-                        'employee_logical_key': '',
+                        'employee_logical_key': employee_logical_key,
                         'scheduled_by_id': person.entity_id,
                         'organization_id': organization.entity_id
                     }

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Union, Dict, Any
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.care_visit import CareVisit, CareVisitStatusEnum
+import uuid
 
 
 class CareVisitService:
@@ -139,23 +140,50 @@ class CareVisitService:
         Assign an employee to ALL slots in a recurring pattern using logical_key.
         """
         from common.services import PatientCareSlotService
+        from common.services import AvailabilitySlotService
         
         care_slot_logical_key = visit_data.get('care_slot_logical_key')
         patient_id = visit_data.get('patient_id')
+        employee_id = visit_data.get('employee_id')
         
         if not care_slot_logical_key or not patient_id:
             raise ValueError("care_slot_logical_key and patient_id are required for recurring assignment")
         
         # Find all patient care slots with this logical_key
         patient_care_slot_service = PatientCareSlotService(self.config)
+        availability_slot_service = AvailabilitySlotService(self.config)
+
         all_slots = patient_care_slot_service.get_slots_by_logical_key(
             care_slot_logical_key, 
             patient_id
         )
-        
+
         if not all_slots:
             raise ValueError(f"No active slots found for logical_key: {care_slot_logical_key}")
-        
+
+        employee_logical_key = visit_data.get('employee_logical_key', '')
+        series_id = uuid.uuid4().hex if len(all_slots) > 1 else None
+        created_employee_slots = []
+        if not employee_logical_key:
+            for slot in all_slots:
+                availability_slot_data = {
+                    "day_of_week": slot.day_of_week,
+                    "start_day_of_week": slot.start_day_of_week,
+                    "end_day_of_week": slot.end_day_of_week,
+                    "start_time": slot.start_time,
+                    "end_time": slot.end_time,
+                    "employee_id": employee_id,
+                    "series_id": series_id,
+                    "week_start_date": slot.week_start_date,
+                    "week_end_date": slot.week_end_date,
+                    "start_date": slot.start_date,
+                    "end_date": slot.end_date
+                }
+                slot = availability_slot_service.create_availability_slot(availability_slot_data)
+                created_employee_slots.append(slot)
+            employee_logical_key = created_employee_slots[0].logical_key
+            visit_data["employee_logical_key"] = employee_logical_key
+
         created_visits = []
         for slot in all_slots:
             # Create care visit for each slot in the pattern
