@@ -57,6 +57,26 @@ class EmployeeRepository(BaseRepository):
             return Employee(**result[0])
 
         return None
+    
+    def get_employee_ids_map_for_organization(self, organization_id: str) -> dict:
+        """
+        Get a dictionary mapping employee_id to Employee objects for an organization.
+        Used for efficient duplicate checking during bulk imports.
+
+        Args:
+            organization_id: The organization ID to filter by
+        Returns:
+            dict: {employee_id: Employee} mapping
+        """
+        query = "SELECT * FROM employee WHERE organization_id = %s AND active = true"
+
+        with self.adapter:
+            result = self.adapter.execute_query(query, (organization_id,))
+
+        if result:
+            return {row['employee_id']: Employee(**row) for row in result if row.get('employee_id')}
+
+        return {}
 
 
     def get_employees_count(self, organization_id=None) -> int:

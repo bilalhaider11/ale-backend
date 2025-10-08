@@ -38,3 +38,38 @@ class OrganizationRepository(BaseRepository):
         with self.adapter:
             results = self.adapter.execute_query(query, params)
         return results if results else []
+    
+    def increment_employee_id_counter(self, organization_id: str) -> int:
+        """
+        Atomically increment and return the employee_id_counter for an organization.
+        This uses a database transaction to ensure thread-safety.
+        
+        Args:
+            organization_id: The organization ID
+            
+        Returns:
+            int: The next employee ID counter value
+        """
+        update_query = """
+            UPDATE organization 
+            SET employee_id_counter = COALESCE(employee_id_counter, 0) + 1
+            WHERE entity_id = %s
+        """
+        
+        select_query = """
+            SELECT employee_id_counter 
+            FROM organization 
+            WHERE entity_id = %s
+        """
+        
+        with self.adapter:
+            # Perform the update
+            self.adapter.execute_query(update_query, (organization_id,))
+            # Fetch the updated value
+            result = self.adapter.execute_query(select_query, (organization_id,))
+        
+        if result and len(result) > 0:
+            return result[0]['employee_id_counter']
+        
+        # If no result, the organization might not exist
+        return 1
