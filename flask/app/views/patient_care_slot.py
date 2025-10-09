@@ -90,7 +90,7 @@ class PatientCareSlotResource(Resource):
         try:
             # Update the slot with quota validation
             updated_slot = patient_care_slot_service.update_patient_care_slot(
-                patient_id, slot_id, slot_data, patient.weekly_quota
+                patient_id, slot_id, slot_data
             )
             
             return get_success_response(
