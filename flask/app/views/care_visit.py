@@ -41,21 +41,15 @@ def _validate_visit_data(visit_data: dict, required_fields: list):
             raise ValueError(f"'{field}' is required and cannot be empty in visit data.")
 
 
-def _process_visit_payload(request_data, patient_id=None, employee_id=None):
+def _process_visit_payload(request_data):
     """
     Process visit payload - handles both single object and array formats.
     Returns a list of visit data dictionaries.
     """
     required_fields = [
         'visit_date', 'scheduled_start_time',
-        'scheduled_end_time', 'availability_slot_key', 'patient_care_slot_key'
+        'scheduled_end_time', 'availability_slot_id', 'patient_care_slot_id'
     ]
-
-    # Add the missing ID field to required fields
-    if patient_id is None:
-        required_fields.append('patient_id')
-    if employee_id is None:
-        required_fields.append('employee_id')
 
         # Handle array payload
     if isinstance(request_data, list):
@@ -66,13 +60,6 @@ def _process_visit_payload(request_data, patient_id=None, employee_id=None):
         for i, visit_data in enumerate(request_data):
             try:
                 _validate_visit_data(visit_data, required_fields)
-
-                # Add the fixed ID if provided
-                if patient_id:
-                    visit_data['patient_id'] = patient_id
-                if employee_id:
-                    visit_data['employee_id'] = employee_id
-
                 visits_data.append(visit_data)
             except ValueError as e:
                 raise ValueError(f"Error in visit data at index {i}: {str(e)}")
@@ -82,13 +69,6 @@ def _process_visit_payload(request_data, patient_id=None, employee_id=None):
         # Handle single object payload
     elif isinstance(request_data, dict):
         _validate_visit_data(request_data, required_fields)
-
-        # Add the fixed ID if provided
-        if patient_id:
-            request_data['patient_id'] = patient_id
-        if employee_id:
-            request_data['employee_id'] = employee_id
-
         return [request_data]
 
     else:
@@ -126,7 +106,7 @@ class EmployeeCareVisits(Resource):
     def post(self, person: Person, roles: list, organization: Organization, employee_id):
         try:
             request_data = request.get_json(force=True)
-            visits_data = _process_visit_payload(request_data, employee_id=employee_id)
+            visits_data = _process_visit_payload(request_data)
 
             care_visit_service = CareVisitService(config)
 
@@ -176,7 +156,7 @@ class PatientCareVisits(Resource):
     def post(self, person: Person, roles: list, organization: Organization, patient_id):
         try:
             request_data = request.get_json(force=True)
-            visits_data = _process_visit_payload(request_data, patient_id=patient_id)
+            visits_data = _process_visit_payload(request_data)
 
             care_visit_service = CareVisitService(config)
 
@@ -348,20 +328,18 @@ class AssignEmployeeToCareSlot(Resource):
             request_data = request.get_json(force=True)
             
             # Validate required fields
-            required_fields = ['patient_id', 'employee_id', 'visit_date', 'scheduled_start_time', 'scheduled_end_time']
+            required_fields = ['visit_date', 'scheduled_start_time', 'scheduled_end_time', 'patient_care_slot_id', 'availability_slot_id']
             missing_fields = [field for field in required_fields if field not in request_data]
             if missing_fields:
                 return get_failure_response(f"Missing required fields: {', '.join(missing_fields)}", status_code=400)
             
             # Create care visit data
             visit_data = {
-                'patient_id': request_data['patient_id'],
-                'employee_id': request_data['employee_id'],
                 'visit_date': request_data['visit_date'],
                 'scheduled_start_time': request_data['scheduled_start_time'],
                 'scheduled_end_time': request_data['scheduled_end_time'],
-                'care_slot_logical_key': request_data.get('care_slot_logical_key', ''),
-                'employee_logical_key': request_data.get('employee_logical_key', ''),
+                'patient_care_slot_id': request_data.get('patient_care_slot_id', ''),
+                'availability_slot_id': request_data.get('availability_slot_id', ''),
                 'employee_name': request_data.get('employee_name', ''),
                 'scheduled_by_id': person.entity_id,
                 'organization_id': organization.entity_id
@@ -388,29 +366,29 @@ class AssignEmployeeToRecurringPattern(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person: Person, organization: Organization):
-        """Assign an employee to ALL slots in a recurring pattern using logical_key"""
+        """Assign an employee to ALL slots in a recurring pattern using series_id"""
         try:
             request_data = request.get_json(force=True)
             
-            # Validate required fields
-            required_fields = ['patient_id', 'employee_id', 'care_slot_logical_key']
+            # Validate required fields (only need patient_id and employee_id to find the slots)
+            required_fields = ['patient_id', 'employee_id']
             missing_fields = [field for field in required_fields if field not in request_data]
             if missing_fields:
                 return get_failure_response(f"Missing required fields: {', '.join(missing_fields)}", status_code=400)
             
             # Create care visit data for recurring assignment
+            # Note: patient_id and employee_id are only used to query slots, not stored in care_visit
             visit_data = {
-                'patient_id': request_data['patient_id'],
-                'employee_id': request_data['employee_id'],
-                'care_slot_logical_key': request_data['care_slot_logical_key'],
-                'employee_logical_key': request_data.get('employee_logical_key', ''),
+                'patient_id': request_data['patient_id'],  # Used to find patient_care_slots
+                'employee_id': request_data['employee_id'],  # Used to find/create availability_slots
+                'availability_slot_id': request_data.get('availability_slot_id', ''),
                 'employee_name': request_data.get('employee_name', ''),
                 'scheduled_by_id': person.entity_id,
                 'organization_id': organization.entity_id,
-                'series_id': request_data['series_id'],
-                'day_of_week': request_data['day_of_week'],
-                'start_time': request_data['start_time'],
-                'end_time': request_data['end_time'],
+                'series_id': request_data.get('series_id'),
+                'day_of_week': request_data.get('day_of_week'),
+                'start_time': request_data.get('start_time'),
+                'end_time': request_data.get('end_time'),
             }
             
             care_visit_service = CareVisitService(config)

@@ -26,8 +26,6 @@ class CareVisit(VersionedModel):
     use_type_checking: ClassVar[bool] = True
 
     status: CareVisitStatusEnum = CareVisitStatusEnum.SCHEDULED
-    patient_id: str = ""
-    employee_id: str = ""
     visit_date: Optional[datetime] = None
     scheduled_start_time: Optional[datetime] = None
     scheduled_end_time: Optional[datetime] = None
@@ -38,6 +36,6 @@ class CareVisit(VersionedModel):
     clock_out_longitude: Optional[float] = None
     clock_out_latitude: Optional[float] = None
     scheduled_by_id: str = ""
-    availability_slot_key: str = ""
-    patient_care_slot_key: str = ""
+    availability_slot_id: str = ""
+    patient_care_slot_id: str = ""
     organization_id: str = ""
