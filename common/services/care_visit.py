@@ -30,21 +30,19 @@ class CareVisitService:
     def save_care_visit(self, care_visit: CareVisit):
         return self.care_visit_repo.save(care_visit)
 
-    def schedule_care_visit(self, patient_id: str, employee_id: str, visit_date: datetime,
+    def schedule_care_visit(self, visit_date: datetime,
                             scheduled_start_time: datetime, scheduled_end_time: datetime,
-                            scheduled_by_id: str, availability_slot_key: str, patient_care_slot_key: str,
+                            scheduled_by_id: str, availability_slot_id: str, patient_care_slot_id: str,
                             organization_id: str):
 
         care_visit = CareVisit(
             status=CareVisitStatusEnum.SCHEDULED,
-            patient_id=patient_id,
-            employee_id=employee_id,
             visit_date=visit_date,
             scheduled_start_time=scheduled_start_time,
             scheduled_end_time=scheduled_end_time,
             scheduled_by_id=scheduled_by_id,
-            availability_slot_key=availability_slot_key,
-            patient_care_slot_key=patient_care_slot_key,
+            availability_slot_id=availability_slot_id,
+            patient_care_slot_id=patient_care_slot_id,
             organization_id=organization_id
         )
         return self.save_care_visit(care_visit)
@@ -63,14 +61,12 @@ class CareVisitService:
             scheduled_end_time = datetime.fromisoformat(visit_data['scheduled_end_time'].replace('Z', ''))
 
             care_visit = self.schedule_care_visit(
-                patient_id=visit_data['patient_id'],
-                employee_id=visit_data['employee_id'],
                 visit_date=visit_date,
                 scheduled_start_time=scheduled_start_time,
                 scheduled_end_time=scheduled_end_time,
                 scheduled_by_id=scheduled_by_id,
-                availability_slot_key=visit_data['availability_slot_key'],
-                patient_care_slot_key=visit_data['patient_care_slot_key'],
+                availability_slot_id=visit_data['availability_slot_id'],
+                patient_care_slot_id=visit_data['patient_care_slot_id'],
                 organization_id=organization_id
             )
             scheduled_visits.append(care_visit)
@@ -122,14 +118,12 @@ class CareVisitService:
         # Create the care visit
         care_visit = CareVisit(
             status=CareVisitStatusEnum.SCHEDULED,
-            patient_id=visit_data['patient_id'],
-            employee_id=visit_data['employee_id'],
             visit_date=visit_datetime,  # Use datetime instead of date
             scheduled_start_time=start_time,
             scheduled_end_time=end_time,
             scheduled_by_id=visit_data['scheduled_by_id'],
-            availability_slot_key=visit_data.get('employee_logical_key', ''),
-            patient_care_slot_key=visit_data.get('care_slot_logical_key', ''),
+            availability_slot_id=visit_data.get('availability_slot_id', ''),
+            patient_care_slot_id=visit_data.get('patient_care_slot_id', ''),
             organization_id=visit_data['organization_id']
         )
         
@@ -137,19 +131,18 @@ class CareVisitService:
 
     def assign_employee_to_recurring_pattern(self, visit_data: Dict[str, Any]) -> List[CareVisit]:
         """
-        Assign an employee to ALL slots in a recurring pattern using logical_key.
+        Assign an employee to ALL slots in a recurring pattern using series_id.
         """
         from common.services import PatientCareSlotService
         from common.services import AvailabilitySlotService
 
-        care_slot_logical_key = visit_data.get('care_slot_logical_key')
         patient_id = visit_data.get('patient_id')
         employee_id = visit_data.get('employee_id')
 
-        if not care_slot_logical_key or not patient_id:
-            raise ValueError("care_slot_logical_key and patient_id are required for recurring assignment")
+        if not patient_id:
+            raise ValueError("patient_id is required for recurring assignment")
 
-        # Find all patient care slots with this logical_key
+        # Find all patient care slots with matching criteria
         patient_care_slot_service = PatientCareSlotService(self.config)
         availability_slot_service = AvailabilitySlotService(self.config)
 
@@ -162,13 +155,13 @@ class CareVisitService:
         )
 
         if not all_slots:
-            raise ValueError(f"No active slots found for logical_key: {care_slot_logical_key}")
+            raise ValueError(f"No active slots found for the given criteria")
 
-        employee_logical_key = visit_data.get('employee_logical_key', '')
+        availability_slot_id = visit_data.get('availability_slot_id', '')
         series_id = uuid.uuid4().hex if len(all_slots) > 1 else None
         created_employee_slots = []
 
-        if not employee_logical_key:
+        if not availability_slot_id:
             for slot in all_slots:
                 availability_slot_data = {
                     "day_of_week": slot.day_of_week,
@@ -188,18 +181,18 @@ class CareVisitService:
 
         created_visits = []
         for i, slot in enumerate(all_slots):
-            if not employee_logical_key:
-                current_employee_logical_key = created_employee_slots[i].logical_key
+            if not availability_slot_id:
+                current_availability_slot_id = created_employee_slots[i].entity_id
             else:
-                current_employee_logical_key = employee_logical_key
+                current_availability_slot_id = availability_slot_id
 
             slot_visit_data = {
                 **visit_data,
                 'visit_date': slot.start_date.strftime('%Y-%m-%d'),
                 'scheduled_start_time': slot.start_time.strftime('%H:%M'),
                 'scheduled_end_time': slot.end_time.strftime('%H:%M'),
-                'care_slot_logical_key': slot.logical_key,
-                'employee_logical_key': current_employee_logical_key
+                'patient_care_slot_id': slot.entity_id,
+                'availability_slot_id': current_availability_slot_id
             }
             care_visit = self.create_care_visit_from_assignment(slot_visit_data)
             created_visits.append(care_visit)

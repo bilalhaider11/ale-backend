@@ -224,7 +224,7 @@ class AvailabilitySlotService:
 
     def has_availability_for_slot(self, employee_id: str, day_of_week: int, start_time: time, end_time: time, start_date: str, match_type: str = "exact"):
         """
-        Check if there's availability for the given slot criteria and return the logical_key.
+        Check if there's availability for the given slot criteria and return the entity_id.
 
         Args:
             employee_id: The employee's entity_id
@@ -234,7 +234,7 @@ class AvailabilitySlotService:
             match_type: "exact" for exact match, "overlap" for any overlap, "contains" if availability contains the slot
 
         Returns:
-            str: logical_key of the matching availability slot, empty string if no match found
+            str: entity_id of the matching availability slot, None if no match found
         """
         # Get all availability slots for this employee
         existing_slots = self.get_availability_slots_by_employee_id(employee_id)
@@ -252,14 +252,14 @@ class AvailabilitySlotService:
             if match_type == "exact":
                 # Exact time match
                 if slot.start_time == start_time and slot.end_time == end_time:
-                    return slot.logical_key
+                    return slot.entity_id
             elif match_type == "overlap":
                 # Any time overlap
                 if slot.start_time < end_time and slot.end_time > start_time:
-                    return slot.logical_key
+                    return slot.entity_id
             elif match_type == "contains":
                 # Availability slot contains the requested time
                 if slot.start_time <= start_time and slot.end_time >= end_time:
-                    return slot.logical_key
+                    return slot.entity_id
 
         return None

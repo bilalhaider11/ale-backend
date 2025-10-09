@@ -48,7 +48,8 @@ class AvailabilitySlotRepository(BaseRepository):
                     COALESCE((
                         SELECT MAX(cv.scheduled_end_time::time)
                         FROM care_visit cv
-                        WHERE cv.employee_id = slot.employee_id
+                        JOIN availability_slot avs_sub ON cv.availability_slot_id = avs_sub.entity_id
+                        WHERE avs_sub.employee_id = slot.employee_id
                         AND cv.visit_date = %s                 -- visit_date
                         AND cv.active = TRUE
                         -- only bookings that actually end before the target starts
@@ -61,7 +62,8 @@ class AvailabilitySlotRepository(BaseRepository):
                     COALESCE((
                         SELECT MIN(cv.scheduled_start_time::time)
                         FROM care_visit cv
-                        WHERE cv.employee_id = slot.employee_id
+                        JOIN availability_slot avs_sub ON cv.availability_slot_id = avs_sub.entity_id
+                        WHERE avs_sub.employee_id = slot.employee_id
                         AND cv.visit_date = %s                 -- visit_date
                         AND cv.active = TRUE
                         -- next booking that begins after (or at) the target start
@@ -80,8 +82,8 @@ class AvailabilitySlotRepository(BaseRepository):
             AND e.organization_id IN %s
             AND e.active = true
             AND slot.active = true
-            AND slot.logical_key NOT IN (
-                SELECT availability_slot_key
+            AND slot.entity_id NOT IN (
+                SELECT availability_slot_id
                 FROM care_visit
                 WHERE visit_date = %s
                     -- any overlap between booking and patient slot
@@ -91,9 +93,10 @@ class AvailabilitySlotRepository(BaseRepository):
             )
             AND NOT EXISTS (
                 SELECT 1
-                    FROM care_visit cv
+                FROM care_visit cv
+                JOIN patient_care_slot pcs_inner ON cv.patient_care_slot_id = pcs_inner.entity_id
                 WHERE cv.visit_date = %s
-                AND cv.patient_id = %s
+                AND pcs_inner.patient_id = %s
                 AND cv.active = true
                 AND cv.scheduled_start_time < %s
                 AND cv.scheduled_end_time > %s
@@ -132,8 +135,8 @@ class AvailabilitySlotRepository(BaseRepository):
         query = """                                                                                                                                                                                                                                                                                                    
             SELECT
                 e.entity_id AS employee_id,                                                                                                                                                                                                                                                                            
-                e.first_name,                                                                                                                                                                                                                                                                                          
-                e.last_name,                                                                                                                                                                                                                                                                                           
+                emp_per.first_name,                                                                                                                                                                                                                                                                                          
+                emp_per.last_name,                                                                                                                                                                                                                                                                                           
                 s.entity_id AS slot_id,                                                                                                                                                                                                                                                                                
                 s.start_time,                                                                                                                                                                                                                                                                                          
                 s.end_time,                                                                                                                                                                                                                                                                                            
@@ -143,23 +146,26 @@ class AvailabilitySlotRepository(BaseRepository):
                 s.start_date,                                                                                                                                                                                                                                                                                          
                 s.end_date,                                                                                                                                                                                                                                                                                            
                 s.series_id,                                                                                                                                                                                                                                                                                           
-                s.logical_key,                                                                                                                                                                                                                                                                                         
                 cv.visit_date,                                                                                                                                                                                                                                                                                         
-                cv.patient_id,                                                                                                                                                                                                                                                                                         
-                cv.availability_slot_key,                                                                                                                                                                                                                                                                              
+                pcs.patient_id,                                                                                                                                                                                                                                                                                         
+                cv.availability_slot_id,                                                                                                                                                                                                                                                                              
                 cv.status,                                                                                                                                                                                                                                                                                             
-                per.first_name AS patient_first_name,                                                                                                                                                                                                                                                                  
-                per.last_name AS patient_last_name                                                                                                                                                                                                                                                                     
-            FROM employee e                                                                                                                                                                                                                                                                                            
+                pat_per.first_name AS patient_first_name,                                                                                                                                                                                                                                                                  
+                pat_per.last_name AS patient_last_name                                                                                                                                                                                                                                                                     
+            FROM employee e
+            JOIN person emp_per
+                ON e.person_id = emp_per.entity_id                                                                                                                                                                                                                                                                                            
             JOIN availability_slot s                                                                                                                                                                                                                                                                                   
                 ON e.entity_id = s.employee_id                                                                                                                                                                                                                                                                         
             LEFT JOIN care_visit cv                                                                                                                                                                                                                                                                                    
-                ON s.logical_key = cv.availability_slot_key                                                                                                                                                                                                                                                            
-                AND cv.active = true                                                                                                                                                                                                                                                                                   
+                ON s.entity_id = cv.availability_slot_id                                                                                                                                                                                                                                                            
+                AND cv.active = true
+            LEFT JOIN patient_care_slot pcs
+                ON cv.patient_care_slot_id = pcs.entity_id                                                                                                                                                                                                                                                                                   
             LEFT JOIN patient p                                                                                                                                                                                                                                                                                        
-                ON cv.patient_id = p.entity_id                                                                                                                                                                                                                                                                         
-            LEFT JOIN person per                                                                                                                                                                                                                                                                                       
-                ON p.person_id = per.entity_id                                                                                                                                                                                                                                                                         
+                ON pcs.patient_id = p.entity_id                                                                                                                                                                                                                                                                         
+            LEFT JOIN person pat_per                                                                                                                                                                                                                                                                                       
+                ON p.person_id = pat_per.entity_id                                                                                                                                                                                                                                                                         
             WHERE e.organization_id IN %s                                                                                                                                                                                                                                                                              
               AND s.active = true                                                                                                                                                                                                                                                                                      
         """
@@ -204,11 +210,10 @@ class AvailabilitySlotRepository(BaseRepository):
                 "end_date": row["end_date"],
                 "start_day_of_week": row["start_day_of_week"],
                 "end_day_of_week": row["end_day_of_week"],
-                "logical_key": row["logical_key"],
                 "visit_date": row["visit_date"],
                 "assignee_id": row["patient_id"],
                 "assignee": assignee,
-                "availability_slot_key": row["availability_slot_key"],
+                "availability_slot_id": row["availability_slot_id"],
                 "status": row["status"]
             }
             result.append(slot_data)

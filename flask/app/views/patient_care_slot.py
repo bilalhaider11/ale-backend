@@ -162,7 +162,7 @@ class CreatePatientSlots(Resource):
 
                 series_id = uuid.uuid4().hex if len(created_slots) > 1 else None
                 for slot in created_slots:
-                    employee_logical_key = availability_slot_service.has_availability_for_slot(
+                    availability_slot_id = availability_slot_service.has_availability_for_slot(
                         employee_id=assigned_employee_id,
                         day_of_week=slot.day_of_week,
                         start_time=slot.start_time,
@@ -171,7 +171,7 @@ class CreatePatientSlots(Resource):
                         match_type="contains"
                     )
 
-                    if not employee_logical_key:
+                    if not availability_slot_id:
                         availability_slot_data = {
                             "day_of_week": slot.day_of_week,
                             "start_day_of_week": slot.start_day_of_week,
@@ -186,16 +186,14 @@ class CreatePatientSlots(Resource):
                             "end_date": slot.end_date
                         }
                         employee_slot = availability_slot_service.create_availability_slot(availability_slot_data)
-                        employee_logical_key = employee_slot.logical_key
+                        availability_slot_id = employee_slot.entity_id
 
                     visit_data = {
-                        'patient_id': patient_id,
-                        'employee_id': assigned_employee_id,
                         'visit_date': slot.start_date.strftime('%Y-%m-%d'),
                         'scheduled_start_time': slot.start_time.strftime('%H:%M'),
                         'scheduled_end_time': slot.end_time.strftime('%H:%M'),
-                        'care_slot_logical_key': slot.logical_key,
-                        'employee_logical_key': employee_logical_key,
+                        'patient_care_slot_id': slot.entity_id,
+                        'availability_slot_id': availability_slot_id,
                         'scheduled_by_id': person.entity_id,
                         'organization_id': organization.entity_id
                     }

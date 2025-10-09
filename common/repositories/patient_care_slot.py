@@ -51,8 +51,8 @@ class PatientCareSlotRepository(BaseRepository):
             AND pcs.active = true
             AND %s >= p.care_period_start
             AND (%s <= p.care_period_end OR p.care_period_end IS NULL)
-            AND pcs.logical_key NOT IN (
-                SELECT patient_care_slot_key
+            AND pcs.entity_id NOT IN (
+                SELECT patient_care_slot_id
                 FROM care_visit
                 WHERE visit_date = %s
                 AND scheduled_end_time > %s
@@ -62,8 +62,9 @@ class PatientCareSlotRepository(BaseRepository):
             AND NOT EXISTS (
                 SELECT 1
                 FROM care_visit cv
+                JOIN availability_slot avs_inner ON cv.availability_slot_id = avs_inner.entity_id
                 WHERE cv.visit_date = %s
-                    AND cv.employee_id = %s
+                    AND avs_inner.employee_id = %s
                     AND cv.active = true
                     AND cv.scheduled_end_time > (timestamp %s + pcs.start_time)
                     AND cv.scheduled_start_time < (timestamp %s + pcs.end_time)
@@ -110,25 +111,28 @@ class PatientCareSlotRepository(BaseRepository):
                 pcs.day_of_week,                                                                                                                                                                                                                                                                                       
                 pcs.start_day_of_week,                                                                                                                                                                                                                                                                                 
                 pcs.end_day_of_week,                                                                                                                                                                                                                                                                                   
-                pcs.logical_key,                                                                                                                                                                                                                                                                                       
                 pcs.start_date,                                                                                                                                                                                                                                                                                        
                 pcs.end_date,                                                                                                                                                                                                                                                                                          
                 pcs.series_id,                                                                                                                                                                                                                                                                                         
                 cv.visit_date,                                                                                                                                                                                                                                                                                         
-                cv.employee_id,                                                                                                                                                                                                                                                                                        
+                avs.employee_id,                                                                                                                                                                                                                                                                                        
                 cv.status,                                                                                                                                                                                                                                                                                             
-                e.first_name AS employee_first_name,                                                                                                                                                                                                                                                                   
-                e.last_name AS employee_last_name                                                                                                                                                                                                                                                                      
+                emp_per.first_name AS employee_first_name,                                                                                                                                                                                                                                                                   
+                emp_per.last_name AS employee_last_name                                                                                                                                                                                                                                                                      
             FROM patient p                                                                                                                                                                                                                                                                                             
             JOIN person per                                                                                                                                                                                                                                                                                            
                 ON p.person_id = per.entity_id                                                                                                                                                                                                                                                                         
             JOIN patient_care_slot pcs                                                                                                                                                                                                                                                                                 
                 ON p.entity_id = pcs.patient_id                                                                                                                                                                                                                                                                        
             LEFT JOIN care_visit cv                                                                                                                                                                                                                                                                                    
-                ON pcs.logical_key = cv.patient_care_slot_key                                                                                                                                                                                                                                                          
+                ON pcs.entity_id = cv.patient_care_slot_id                                                                                                                                                                                                                                                          
                 AND cv.active = true                                                                                                                                                                                                                                                                                   
+            LEFT JOIN availability_slot avs                                                                                                                                                                                                                                                                       
+                ON cv.availability_slot_id = avs.entity_id                                                                                                                                                                                                                                                        
             LEFT JOIN employee e                                                                                                                                                                                                                                                                                       
-                ON cv.employee_id = e.entity_id                                                                                                                                                                                                                                                                        
+                ON avs.employee_id = e.entity_id
+            LEFT JOIN person emp_per
+                ON e.person_id = emp_per.entity_id                                                                                                                                                                                                                                                                        
             WHERE p.organization_id = %s                                                                                                                                                                                                                                                                               
               AND p.active = true                                                                                                                                                                                                                                                                                      
               AND pcs.active = true                                                                                                                                                                                                                                                                                    
@@ -177,7 +181,6 @@ class PatientCareSlotRepository(BaseRepository):
                 "day_of_week": row["day_of_week"],
                 "start_day_of_week": row["start_day_of_week"],
                 "end_day_of_week": row["end_day_of_week"],
-                "logical_key": row["logical_key"],
                 "visit_date": row["visit_date"],
                 "assignee_id": row["employee_id"],
                 "assignee": assignee,
