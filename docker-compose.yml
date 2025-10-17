@@ -57,7 +57,7 @@ services:
       - ./flask:/api
       - ./common:/api/common
     ports:
-      - "5000:5000"
+      - "5002:5000"
     env_file:
       - .env.secrets
       - ${APP_ENV}.env
