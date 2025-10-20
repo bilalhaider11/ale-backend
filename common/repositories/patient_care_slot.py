@@ -51,8 +51,8 @@ class PatientCareSlotRepository(BaseRepository):
             AND pcs.active = true
             AND %s >= p.care_period_start
             AND (%s <= p.care_period_end OR p.care_period_end IS NULL)
-            AND pcs.entity_id NOT IN (
-                SELECT patient_care_slot_id
+            AND pcs.logical_key NOT IN (
+                SELECT patient_care_slot_key
                 FROM care_visit
                 WHERE visit_date = %s
                 AND scheduled_end_time > %s
@@ -62,9 +62,8 @@ class PatientCareSlotRepository(BaseRepository):
             AND NOT EXISTS (
                 SELECT 1
                 FROM care_visit cv
-                JOIN availability_slot avs_inner ON cv.availability_slot_id = avs_inner.entity_id
                 WHERE cv.visit_date = %s
-                    AND avs_inner.employee_id = %s
+                    AND cv.employee_id = %s
                     AND cv.active = true
                     AND cv.scheduled_end_time > (timestamp %s + pcs.start_time)
                     AND cv.scheduled_start_time < (timestamp %s + pcs.end_time)
@@ -93,62 +92,48 @@ class PatientCareSlotRepository(BaseRepository):
 
         return result
 
-    def get_patient_care_slots_by_organization(self, organization_id: str, start_date: date = None,
-                                               end_date: date = None) -> list:
+    def get_patient_care_slots_by_organization(self, organization_id: str) -> list:
         """
         Get all patient care slots for patients within a given organization,
         including their care visits and the employee handling each visit.
         """
 
-        query = """                                                                                                                                                                                                                                                                                                    
-            SELECT                                                                                                                                                                                                                                                                                                     
-                p.entity_id AS patient_id,                                                                                                                                                                                                                                                                             
-                per.first_name AS patient_first_name,                                                                                                                                                                                                                                                                  
-                per.last_name AS patient_last_name,                                                                                                                                                                                                                                                                    
-                pcs.entity_id AS slot_id,                                                                                                                                                                                                                                                                              
-                pcs.start_time,                                                                                                                                                                                                                                                                                        
-                pcs.end_time,                                                                                                                                                                                                                                                                                          
-                pcs.day_of_week,                                                                                                                                                                                                                                                                                       
-                pcs.start_day_of_week,                                                                                                                                                                                                                                                                                 
-                pcs.end_day_of_week,                                                                                                                                                                                                                                                                                   
-                pcs.start_date,                                                                                                                                                                                                                                                                                        
-                pcs.end_date,                                                                                                                                                                                                                                                                                          
-                pcs.series_id,                                                                                                                                                                                                                                                                                         
-                cv.visit_date,                                                                                                                                                                                                                                                                                         
-                avs.employee_id,                                                                                                                                                                                                                                                                                        
-                cv.status,                                                                                                                                                                                                                                                                                             
-                emp_per.first_name AS employee_first_name,                                                                                                                                                                                                                                                                   
-                emp_per.last_name AS employee_last_name                                                                                                                                                                                                                                                                      
-            FROM patient p                                                                                                                                                                                                                                                                                             
-            JOIN person per                                                                                                                                                                                                                                                                                            
-                ON p.person_id = per.entity_id                                                                                                                                                                                                                                                                         
-            JOIN patient_care_slot pcs                                                                                                                                                                                                                                                                                 
-                ON p.entity_id = pcs.patient_id                                                                                                                                                                                                                                                                        
-            LEFT JOIN care_visit cv                                                                                                                                                                                                                                                                                    
-                ON pcs.entity_id = cv.patient_care_slot_id                                                                                                                                                                                                                                                          
-                AND cv.active = true                                                                                                                                                                                                                                                                                   
-            LEFT JOIN availability_slot avs                                                                                                                                                                                                                                                                       
-                ON cv.availability_slot_id = avs.entity_id                                                                                                                                                                                                                                                        
-            LEFT JOIN employee e                                                                                                                                                                                                                                                                                       
-                ON avs.employee_id = e.entity_id
-            LEFT JOIN person emp_per
-                ON e.person_id = emp_per.entity_id                                                                                                                                                                                                                                                                        
-            WHERE p.organization_id = %s                                                                                                                                                                                                                                                                               
-              AND p.active = true                                                                                                                                                                                                                                                                                      
-              AND pcs.active = true                                                                                                                                                                                                                                                                                    
+        query = """
+            SELECT 
+                p.entity_id AS patient_id,
+                per.first_name AS patient_first_name,
+                per.last_name AS patient_last_name,
+                pcs.entity_id AS slot_id,
+                pcs.start_time,
+                pcs.end_time,
+                pcs.day_of_week,
+                pcs.start_day_of_week,
+                pcs.end_day_of_week,
+                pcs.logical_key,
+                pcs.start_date,
+                pcs.end_date,
+                pcs.series_id,
+                cv.visit_date,
+                cv.employee_id,
+                cv.status,
+                e.first_name AS employee_first_name,
+                e.last_name AS employee_last_name
+            FROM patient p
+            JOIN person per 
+                ON p.person_id = per.entity_id
+            JOIN patient_care_slot pcs 
+                ON p.entity_id = pcs.patient_id
+            LEFT JOIN care_visit cv
+                ON pcs.logical_key = cv.patient_care_slot_key
+                AND cv.active = true
+            LEFT JOIN employee e
+                ON cv.employee_id = e.entity_id
+            WHERE p.organization_id = %s
+              AND p.active = true
+              AND pcs.active = true
+            ORDER BY per.first_name, per.last_name, pcs.start_time;
         """
-        params = [organization_id]
-
-        # Add date range filtering
-        if start_date:
-            query += " AND (pcs.end_date IS NULL OR pcs.end_date >= %s)"
-            params.append(start_date)
-
-        if end_date:
-            query += " AND (pcs.start_date IS NULL OR pcs.start_date <= %s)"
-            params.append(end_date)
-
-        query += " ORDER BY per.first_name, per.last_name, pcs.start_time;"
+        params = (organization_id,)
 
         with self.adapter:
             rows = self.adapter.execute_query(query, params)
@@ -156,39 +141,38 @@ class PatientCareSlotRepository(BaseRepository):
         if not rows:
             return []
 
-            # Return flattened structure - each row represents one slot with optional care visit data
-        result = []
+        slots_map = {}
         for row in rows:
-            # Combine employee first and last name into assignee
-            assignee = None
-            if row["employee_first_name"] and row["employee_last_name"]:
-                assignee = f"{row['employee_first_name']} {row['employee_last_name']}"
-            elif row["employee_first_name"]:
-                assignee = row["employee_first_name"]
-            elif row["employee_last_name"]:
-                assignee = row["employee_last_name"]
+            slot_id = row["slot_id"]
 
-            slot_data = {
-                "slot_id": row["slot_id"],
-                "series_id": row['series_id'],
-                "patient_id": row["patient_id"],
-                "first_name": row["patient_first_name"],
-                "last_name": row["patient_last_name"],
-                "start_time": row["start_time"],
-                "end_time": row["end_time"],
-                "start_date": row["start_date"],
-                "end_date": row["end_date"],
-                "day_of_week": row["day_of_week"],
-                "start_day_of_week": row["start_day_of_week"],
-                "end_day_of_week": row["end_day_of_week"],
-                "visit_date": row["visit_date"],
-                "assignee_id": row["employee_id"],
-                "assignee": assignee,
-                "status": row["status"]
-            }
-            result.append(slot_data)
+            if slot_id not in slots_map:
+                slots_map[slot_id] = {
+                    "slot_id": slot_id,
+                    "series_id": row['series_id'],
+                    "patient_id": row["patient_id"],
+                    "first_name": row["patient_first_name"],
+                    "last_name": row["patient_last_name"],
+                    "start_time": row["start_time"],
+                    "end_time": row["end_time"],
+                    "start_date": row["start_date"],
+                    "end_date": row["end_date"],
+                    "day_of_week": row["day_of_week"],
+                    "start_day_of_week": row["start_day_of_week"],
+                    "end_day_of_week": row["end_day_of_week"],
+                    "logical_key": row["logical_key"],
+                    "care_visits": []
+                }
 
-        return result
+            if row.get("visit_date"):  # only if care visit exists
+                slots_map[slot_id]["care_visits"].append({
+                    "visit_date": row["visit_date"],
+                    "status": row["status"],
+                    "employee_id": row["employee_id"],
+                    "employee_first_name": row["employee_first_name"],
+                    "employee_last_name": row["employee_last_name"]
+                })
+
+        return list(slots_map.values())
 
     def delete_future_patient_care_slots(self, patient_id: str, series_id: str, from_date: str) -> int:
         """

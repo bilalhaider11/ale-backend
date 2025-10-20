@@ -8,7 +8,6 @@ from common.services import PatientService, PatientCareSlotService
 from common.models import Person, Organization
 from common.app_config import config
 from common.helpers.exceptions import InputValidationError, NotFoundError
-import uuid
 
 # Create the patient care slot blueprint
 patient_care_slot_api = Namespace('patient_care_slot', description="Patient care slot APIs")
@@ -19,15 +18,8 @@ class MultipleAvailabilitySlotResource(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def get(self, organization: Organization):
-        start_date = request.args.get('start_date', None)
-        end_date = request.args.get('end_date', None)
-
         patient_care_slot_service = PatientCareSlotService(config)
-        patient_care_slots = patient_care_slot_service.get_patient_care_slots_for_organization(
-            organization_id=organization.entity_id,
-            start_date=start_date,
-            end_date=end_date,
-        )
+        patient_care_slots = patient_care_slot_service.get_patient_care_slots_for_organization(organization.entity_id)
         return get_success_response(data=patient_care_slots)
 
 
@@ -90,7 +82,7 @@ class PatientCareSlotResource(Resource):
         try:
             # Update the slot with quota validation
             updated_slot = patient_care_slot_service.update_patient_care_slot(
-                patient_id, slot_id, slot_data
+                patient_id, slot_id, slot_data, patient.weekly_quota
             )
             
             return get_success_response(
@@ -152,48 +144,19 @@ class CreatePatientSlots(Resource):
             created_slots = patient_care_slot_service.expand_and_save_slots(clean_request_data, patient_id)
 
             care_visits = []
-
             if assigned_employee_id and created_slots:
                 from common.services import CareVisitService
                 from datetime import datetime, timedelta
-                from common.services import AvailabilitySlotService
-                availability_slot_service = AvailabilitySlotService(config)
                 care_visit_service = CareVisitService(config)
-
-                series_id = uuid.uuid4().hex if len(created_slots) > 1 else None
                 for slot in created_slots:
-                    availability_slot_id = availability_slot_service.has_availability_for_slot(
-                        employee_id=assigned_employee_id,
-                        day_of_week=slot.day_of_week,
-                        start_time=slot.start_time,
-                        end_time=slot.end_time,
-                        start_date=slot.start_date,
-                        match_type="contains"
-                    )
-
-                    if not availability_slot_id:
-                        availability_slot_data = {
-                            "day_of_week": slot.day_of_week,
-                            "start_day_of_week": slot.start_day_of_week,
-                            "end_day_of_week": slot.end_day_of_week,
-                            "start_time": slot.start_time,
-                            "end_time": slot.end_time,
-                            "employee_id": assigned_employee_id,
-                            "series_id": series_id,
-                            "week_start_date": slot.week_start_date,
-                            "week_end_date": slot.week_end_date,
-                            "start_date": slot.start_date,
-                            "end_date": slot.end_date
-                        }
-                        employee_slot = availability_slot_service.create_availability_slot(availability_slot_data)
-                        availability_slot_id = employee_slot.entity_id
-
                     visit_data = {
+                        'patient_id': patient_id,
+                        'employee_id': assigned_employee_id,
                         'visit_date': slot.start_date.strftime('%Y-%m-%d'),
                         'scheduled_start_time': slot.start_time.strftime('%H:%M'),
                         'scheduled_end_time': slot.end_time.strftime('%H:%M'),
-                        'patient_care_slot_id': slot.entity_id,
-                        'availability_slot_id': availability_slot_id,
+                        'care_slot_logical_key': slot.logical_key,
+                        'employee_logical_key': '',
                         'scheduled_by_id': person.entity_id,
                         'organization_id': organization.entity_id
                     }

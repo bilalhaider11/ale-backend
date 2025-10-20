@@ -42,12 +42,8 @@ class AvailabilitySlotService:
 
         return [slot for slot in availability_slots if slot.week_start_date == week_start_date]
 
-    def get_availability_slots_for_organization(self, organization_id: str, start_date: str, end_date: str):
-        availability_slots = self.availability_slot_repo.get_employee_availability_slots(
-            organization_ids=[organization_id],
-            start_date=start_date,
-            end_date=end_date,
-        )
+    def get_availability_slots_for_organization(self, organization_id: str):
+        availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
         return availability_slots
 
     def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:
@@ -205,61 +201,3 @@ class AvailabilitySlotService:
             saved_slot = self.availability_slot_repo.save(slot)
             saved_slots.append(saved_slot)
         return saved_slots
-
-    def create_availability_slot(self, data):
-        availability_slot = AvailabilitySlot(
-            day_of_week=data.get('day_of_week'),
-            start_day_of_week=data.get('start_day_of_week'),
-            end_day_of_week=data.get('end_day_of_week'),
-            start_time=data.get('start_time'),
-            end_time=data.get('end_time'),
-            employee_id=data.get('employee_id'),
-            series_id=data.get('series_id', None),
-            week_start_date=data.get('week_start_date'),
-            week_end_date=data.get('week_end_date'),
-            start_date=data.get('start_date'),
-            end_date=data.get('end_date')
-        )
-        return self.availability_slot_repo.save(availability_slot)
-
-    def has_availability_for_slot(self, employee_id: str, day_of_week: int, start_time: time, end_time: time, start_date: str, match_type: str = "exact"):
-        """
-        Check if there's availability for the given slot criteria and return the entity_id.
-
-        Args:
-            employee_id: The employee's entity_id
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
-            start_time: Start time of the slot
-            end_time: End time of the slot
-            match_type: "exact" for exact match, "overlap" for any overlap, "contains" if availability contains the slot
-
-        Returns:
-            str: entity_id of the matching availability slot, None if no match found
-        """
-        # Get all availability slots for this employee
-        existing_slots = self.get_availability_slots_by_employee_id(employee_id)
-
-        # Filter by day of week and active status
-        day_slots = [
-            slot for slot in existing_slots
-            if slot.day_of_week == day_of_week and slot.start_date == start_date and slot.active
-        ]
-
-        if not day_slots:
-            return None
-
-        for slot in day_slots:
-            if match_type == "exact":
-                # Exact time match
-                if slot.start_time == start_time and slot.end_time == end_time:
-                    return slot.entity_id
-            elif match_type == "overlap":
-                # Any time overlap
-                if slot.start_time < end_time and slot.end_time > start_time:
-                    return slot.entity_id
-            elif match_type == "contains":
-                # Availability slot contains the requested time
-                if slot.start_time <= start_time and slot.end_time >= end_time:
-                    return slot.entity_id
-
-        return None

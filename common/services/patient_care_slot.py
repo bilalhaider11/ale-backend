@@ -109,12 +109,62 @@ class PatientCareSlotService:
             } for row in sorted_results
         ]
 
-    def get_patient_care_slots_for_organization(self, organization_id: str, start_date: str, end_date: str):
-        return self.patient_care_slot_repo.get_patient_care_slots_by_organization(
-            organization_id=organization_id,
-            start_date=start_date,
-            end_date=end_date,
-        )
+    def get_patient_care_slots_for_organization(self, organization_id: str):
+        return self.patient_care_slot_repo.get_patient_care_slots_by_organization(organization_id)
+    
+    def _calculate_total_hours(self, slots: List[PatientCareSlot]) -> float:
+        """Calculate total hours from a list of slots."""
+        total_minutes = 0
+        for slot in slots:
+            if slot.start_time and slot.end_time:
+                total_minutes += self._calculate_slot_duration_minutes(slot.start_time, slot.end_time)
+        return total_minutes / 60
+    
+    def _validate_weekly_quota(self, patient_weekly_quota: Optional[float], new_slot: PatientCareSlot, 
+                               existing_slots: List[PatientCareSlot], exclude_slot_id: Optional[str] = None) -> None:
+        """
+        Validate that adding/updating a slot doesn't exceed the patient's weekly quota.
+        
+        Args:
+            patient_weekly_quota: The patient's weekly quota in hours (None means no limit)
+            new_slot: The slot being created or updated
+            existing_slots: Existing slots for the same week
+            exclude_slot_id: Optional slot ID to exclude from calculation (for updates)
+        
+        Raises:
+            InputValidationError: If weekly quota would be exceeded
+        """
+        # Skip validation if patient has no quota set
+        if patient_weekly_quota is None or patient_weekly_quota == 0:
+            return
+        
+        # Filter out the slot being updated
+        slots_to_count = [slot for slot in existing_slots 
+                         if not (exclude_slot_id and slot.entity_id == exclude_slot_id)]
+        
+        # Add the new/updated slot
+        slots_to_count.append(new_slot)
+        
+        # Calculate total hours
+        total_hours = self._calculate_total_hours(slots_to_count)
+        
+        # Validate against quota
+        if total_hours > patient_weekly_quota:
+            raise InputValidationError(
+                f"Weekly quota exceeded: total would be {total_hours:.2f}h, limit is {patient_weekly_quota}h"
+            )
+    
+    def _calculate_slot_duration_minutes(self, start_time: time, end_time: time) -> int:
+        """Calculate slot duration in minutes, handling overnight slots."""
+        start_minutes = start_time.hour * 60 + start_time.minute
+        end_minutes = end_time.hour * 60 + end_time.minute
+        
+        if end_minutes > start_minutes:
+            # Regular same-day slot
+            return end_minutes - start_minutes
+        else:
+            # Overnight slot - calculate duration across midnight
+            return (24 * 60 - start_minutes) + end_minutes
 
     def delete_patient_care_slot(self, patient_id: str, slot_id: str, series_id: Optional[str] = None, from_date: Optional[str] = None) -> PatientCareSlot:
         if series_id and from_date:
@@ -130,7 +180,7 @@ class PatientCareSlotService:
         slot.active = False
         return self.patient_care_slot_repo.save(slot)
 
-    def update_patient_care_slot(self, patient_id: str, slot_id: str, slot_data: dict) -> PatientCareSlot:
+    def update_patient_care_slot(self, patient_id: str, slot_id: str, slot_data: dict, patient_weekly_quota: Optional[float] = None) -> PatientCareSlot:
         """
         Update an existing patient care slot with partial data.
         
@@ -138,7 +188,8 @@ class PatientCareSlotService:
             patient_id: The patient's entity_id
             slot_id: The slot's entity_id
             slot_data: Dictionary containing fields to update
-=
+            patient_weekly_quota: Optional patient weekly quota for validation
+            
         Returns:
             The updated PatientCareSlot
         """
@@ -189,18 +240,22 @@ class PatientCareSlotService:
         if 'end_date' in slot_data:
             slot.end_date = parse_date_field(slot_data['end_date'], "end_date")
 
+        if patient_weekly_quota is None or patient_weekly_quota == 0:
+            raise InputValidationError("Please set a weekly quota before adding care slots.")
+        
+        # Validate weekly quota if provided
+        week_start_date = slot.week_start_date
+        existing_slots = self.get_patient_care_slots_by_week(patient_id, week_start_date) if week_start_date else []
+        self._validate_weekly_quota(patient_weekly_quota, slot, existing_slots, exclude_slot_id=slot_id)
+        
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")
-
         return self.patient_care_slot_repo.save(slot)
 
-    def get_all_matching_slots(self, series_id: str, patient_id: str, day_of_week: str, start_time: str, end_time: str) -> List[PatientCareSlot]:
-        """Get all matching slots."""
+    def get_slots_by_logical_key(self, logical_key: str, patient_id: str) -> List[PatientCareSlot]:
+        """Get all slots with the same logical_key for a patient."""
         return self.patient_care_slot_repo.get_many({
-            "series_id": series_id,
+            "logical_key": logical_key,
             "patient_id": patient_id,
-            "day_of_week": day_of_week,
-            "start_time": start_time,
-            "end_time": end_time,
             "active": True
         })
 
