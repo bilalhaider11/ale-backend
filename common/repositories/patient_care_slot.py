@@ -51,8 +51,8 @@ class PatientCareSlotRepository(BaseRepository):
             AND pcs.active = true
             AND %s >= p.care_period_start
             AND (%s <= p.care_period_end OR p.care_period_end IS NULL)
-            AND pcs.logical_key NOT IN (
-                SELECT patient_care_slot_key
+            AND pcs.entity_id NOT IN (
+                SELECT patient_care_slot_id
                 FROM care_visit
                 WHERE visit_date = %s
                 AND scheduled_end_time > %s
@@ -124,7 +124,7 @@ class PatientCareSlotRepository(BaseRepository):
             JOIN patient_care_slot pcs 
                 ON p.entity_id = pcs.patient_id
             LEFT JOIN care_visit cv
-                ON pcs.logical_key = cv.patient_care_slot_key
+                ON pcs.entity_id = cv.patient_care_slot_id
                 AND cv.active = true
             LEFT JOIN employee e
                 ON cv.employee_id = e.entity_id

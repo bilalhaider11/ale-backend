@@ -145,21 +145,25 @@ class CreatePatientSlots(Resource):
 
             care_visits = []
             if assigned_employee_id and created_slots:
-                from common.services import CareVisitService
+                from common.services import CareVisitService,AvailabilitySlotService
                 from datetime import datetime, timedelta
                 care_visit_service = CareVisitService(config)
-                for slot in created_slots:
+                availability_slot_service = AvailabilitySlotService(config)
+                created_availability_slots = availability_slot_service.expand_and_save_slots(request_data, assigned_employee_id)
+                
+                for slot, avail_slot in zip(created_slots, created_availability_slots):
                     visit_data = {
                         'patient_id': patient_id,
                         'employee_id': assigned_employee_id,
                         'visit_date': slot.start_date.strftime('%Y-%m-%d'),
                         'scheduled_start_time': slot.start_time.strftime('%H:%M'),
                         'scheduled_end_time': slot.end_time.strftime('%H:%M'),
-                        'care_slot_logical_key': slot.logical_key,
-                        'employee_logical_key': '',
+                        'patient_care_slot_id': slot.entity_id,
+                        'availability_slot_id': avail_slot.entity_id,
                         'scheduled_by_id': person.entity_id,
                         'organization_id': organization.entity_id
                     }
+                
                     care_visit = care_visit_service.create_care_visit_from_assignment(visit_data)
                     care_visits.append(care_visit.as_dict())
 
