@@ -127,8 +127,6 @@ class EmployeeCareVisits(Resource):
         try:
             request_data = request.get_json(force=True)
             visits_data = _process_visit_payload(request_data, employee_id=employee_id)
-            print("Visits data: ",visits_data)
-
 
             care_visit_service = CareVisitService(config)
             
@@ -393,14 +391,12 @@ class AssignEmployeeToRecurringPattern(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person: Person, organization: Organization):
-        """Assign an employee to ALL slots in a recurring pattern using logical_key"""
+        """Assign an employee to ALL slots in a recurring pattern using series_id"""
         try:
-            request_data = request.get_json(force=True)
-            print("Request data: ",request_data)
-            
+            request_data = request.get_json(force=True)            
             
             # Validate required fields
-            required_fields = ['patient_id', 'employee_id', 'logical_key']
+            required_fields = ['patient_id', 'employee_id', 'series_id']
             missing_fields = [field for field in required_fields if field not in request_data]
             if missing_fields:
                 return get_failure_response(f"Missing required fields: {', '.join(missing_fields)}", status_code=400)
@@ -409,12 +405,11 @@ class AssignEmployeeToRecurringPattern(Resource):
             visit_data = {
                 'patient_id': request_data['patient_id'],
                 'employee_id': request_data['employee_id'],
-                'logical_key': request_data.get('logical_key'), 
+                'series_id': request_data.get('series_id'), 
                 'employee_name': request_data.get('employee_name', ''),
                 'scheduled_by_id': person.entity_id,
                 'organization_id': organization.entity_id
             }
-            print("visited data: ",visit_data)
             care_visit_service = CareVisitService(config)
             
             # Assign employee to all slots in the recurring pattern

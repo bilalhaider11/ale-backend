@@ -9,10 +9,10 @@ from common.utils.slot import (
     validate_and_parse_day_of_week,
     parse_time_field,
     parse_date_field,
-    validate_week_start_date,
     validate_day_range,
     is_valid_time_range
 )
+
 
 logger = get_logger(__name__)
 
@@ -28,7 +28,7 @@ class PatientCareSlotService:
         patient_care_slot = self.patient_care_slot_repo.save(patient_care_slot)
         return patient_care_slot
 
-    def get_patient_care_slots_by_week(self, patient_id: str, week_start_date: date):
+    def get_patient_care_slots_by_week(self, patient_id: str, start_date: date, end_date: date):
         """Get all care slots for a patient in a specific week."""
         # Get all slots for the patient first
         patient_slots = self.patient_care_slot_repo.get_many({
@@ -36,7 +36,7 @@ class PatientCareSlotService:
         })
 
         # Then filter for the specific week in Python
-        return [slot for slot in patient_slots if slot.week_start_date == week_start_date]
+        return [slot for slot in patient_slots if slot.start_date == start_date ]
 
 
     def get_patient_care_slots_by_patient_id(self, patient_id: str) -> List[PatientCareSlot]:
@@ -199,8 +199,7 @@ class PatientCareSlotService:
             raise NotFoundError(f"Patient care slot with id '{slot_id}' not found for patient '{patient_id}'")
         
         # Update day of week fields if provided
-        if 'day_of_week' in slot_data:
-            slot.day_of_week = validate_and_parse_day_of_week(slot_data['day_of_week'], "day_of_week", allow_none=True)
+        
         
         if 'start_day_of_week' in slot_data:
             slot.start_day_of_week = validate_and_parse_day_of_week(
@@ -227,12 +226,7 @@ class PatientCareSlotService:
             raise InputValidationError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
 
         # Update week_start_date if provided
-        if 'week_start_date' in slot_data:
-            week_start = parse_date_field(slot_data['week_start_date'], "week_start_date", allow_none=False)
-            week_start = validate_week_start_date(week_start)
-            slot.week_start_date = week_start
-            slot.week_end_date = week_start + timedelta(days=6) if week_start else None
-        
+      
         # Update start_date and end_date if provided
         if 'start_date' in slot_data:
             slot.start_date = parse_date_field(slot_data['start_date'], "start_date")
@@ -244,17 +238,21 @@ class PatientCareSlotService:
             raise InputValidationError("Please set a weekly quota before adding care slots.")
         
         # Validate weekly quota if provided
-        week_start_date = slot.week_start_date
-        existing_slots = self.get_patient_care_slots_by_week(patient_id, week_start_date) if week_start_date else []
+        start_date = slot.start_date
+        end_date = slot.end_date
+        existing_slots = self.get_patient_care_slots_by_week(patient_id, start_date,end_date) if start_date and end_date else []
         self._validate_weekly_quota(patient_weekly_quota, slot, existing_slots, exclude_slot_id=slot_id)
         
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")
         return self.patient_care_slot_repo.save(slot)
+    
+    
+    
 
-    def get_slots_by_logical_key(self, logical_key: str, patient_id: str) -> List[PatientCareSlot]:
-        """Get all slots with the same logical_key for a patient."""
+    def get_slots_by_series_id(self, series_id: str, patient_id: str) -> List[PatientCareSlot]:
+        """Get all slots with the same series_id for a patient."""
         return self.patient_care_slot_repo.get_many({
-            "logical_key": logical_key,
+            "series_id": series_id,
             "patient_id": patient_id,
             "active": True
         })
