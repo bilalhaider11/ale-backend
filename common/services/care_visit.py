@@ -31,7 +31,7 @@ class CareVisitService:
 
     def schedule_care_visit(self, patient_id: str, employee_id: str, visit_date: datetime,
                             scheduled_start_time: datetime, scheduled_end_time: datetime,
-                            scheduled_by_id: str, availability_slot_key: str, patient_care_slot_key: str,
+                            scheduled_by_id: str, availability_slot_id: str, patient_care_slot_id: str,
                             organization_id: str):
 
         care_visit = CareVisit(
@@ -42,8 +42,8 @@ class CareVisitService:
             scheduled_start_time=scheduled_start_time,
             scheduled_end_time=scheduled_end_time,
             scheduled_by_id=scheduled_by_id,
-            availability_slot_key=availability_slot_key,
-            patient_care_slot_key=patient_care_slot_key,
+            availability_slot_id=availability_slot_id,
+            patient_care_slot_id=patient_care_slot_id,
             organization_id=organization_id
         )
         return self.save_care_visit(care_visit)
@@ -68,8 +68,8 @@ class CareVisitService:
                 scheduled_start_time=scheduled_start_time,
                 scheduled_end_time=scheduled_end_time,
                 scheduled_by_id=scheduled_by_id,
-                availability_slot_key=visit_data['availability_slot_key'],
-                patient_care_slot_key=visit_data['patient_care_slot_key'],
+                availability_slot_id=visit_data['availability_slot_id'],
+                patient_care_slot_id=visit_data['patient_care_slot_id'],
                 organization_id=organization_id
             )
             scheduled_visits.append(care_visit)
@@ -127,8 +127,9 @@ class CareVisitService:
             scheduled_start_time=start_time,
             scheduled_end_time=end_time,
             scheduled_by_id=visit_data['scheduled_by_id'],
-            availability_slot_key=visit_data.get('employee_logical_key', ''),
-            patient_care_slot_key=visit_data.get('care_slot_logical_key', ''),
+            #logical_key = visit_data.get('logical_key',''),
+            availability_slot_id=visit_data.get('availability_slot_id', ''),
+            patient_care_slot_id=visit_data.get('patient_care_slot_id', ''),
             organization_id=visit_data['organization_id']
         )
         
@@ -138,35 +139,58 @@ class CareVisitService:
         """
         Assign an employee to ALL slots in a recurring pattern using logical_key.
         """
-        from common.services import PatientCareSlotService
+        from common.services import PatientCareSlotService, AvailabilitySlotService
+        from common.models.availability_slot import AvailabilitySlot
         
-        care_slot_logical_key = visit_data.get('care_slot_logical_key')
+        logical_key = visit_data.get('logical_key')
         patient_id = visit_data.get('patient_id')
         
-        if not care_slot_logical_key or not patient_id:
-            raise ValueError("care_slot_logical_key and patient_id are required for recurring assignment")
+        if not logical_key or not patient_id:
+            raise ValueError("care_slot_logical_id and patient_id are required for recurring assignment")
         
         # Find all patient care slots with this logical_key
         patient_care_slot_service = PatientCareSlotService(self.config)
         all_slots = patient_care_slot_service.get_slots_by_logical_key(
-            care_slot_logical_key, 
+            logical_key, 
             patient_id
         )
+        print("all slots: ",all_slots)
         
         if not all_slots:
-            raise ValueError(f"No active slots found for logical_key: {care_slot_logical_key}")
+            raise ValueError(f"No active slots found for logical_key: {logical_key}")
         
         created_visits = []
+
+        availability_slot_service = AvailabilitySlotService(self.config)
+
         for slot in all_slots:
-            # Create care visit for each slot in the pattern
+            # Create a matching availability slot for the employee for this occurrence
+            availability_slot = AvailabilitySlot(
+                employee_id=visit_data['employee_id'],
+                day_of_week=slot.day_of_week,
+                start_day_of_week=slot.start_day_of_week,
+                end_day_of_week=slot.end_day_of_week,
+                start_time=slot.start_time,
+                end_time=slot.end_time,
+                week_start_date=slot.week_start_date,
+                week_end_date=slot.week_end_date,
+                start_date=slot.start_date,
+                end_date=slot.end_date,
+            )
+            saved_availability_slot = availability_slot_service.save_availability_slot(availability_slot)
+
+           
             slot_visit_data = {
                 **visit_data,
                 'visit_date': slot.start_date.strftime('%Y-%m-%d'),
                 'scheduled_start_time': slot.start_time.strftime('%H:%M'),
                 'scheduled_end_time': slot.end_time.strftime('%H:%M'),
-                'care_slot_logical_key': slot.logical_key
+                'patient_care_slot_id': getattr(slot, 'entity_id', ''),
+                'availability_slot_id': getattr(saved_availability_slot, 'entity_id', ''),
+                'logical_key': slot.logical_key,
             }
             care_visit = self.create_care_visit_from_assignment(slot_visit_data)
             created_visits.append(care_visit)
-        
+        print("created Visits: ",created_visits)
         return created_visits
+    

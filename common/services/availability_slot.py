@@ -44,6 +44,8 @@ class AvailabilitySlotService:
 
     def get_availability_slots_for_organization(self, organization_id: str):
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
+        print("Availability slots: ",availability_slots)
+        
         return availability_slots
 
     def get_availability_slots_for_time_slot(self, start_time: time, end_time: time, visit_date: date, patient_id: str, organization_ids: List[str]) -> List[AvailabilitySlot]:

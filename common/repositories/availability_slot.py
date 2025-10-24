@@ -80,8 +80,8 @@ class AvailabilitySlotRepository(BaseRepository):
             AND e.organization_id IN %s
             AND e.active = true
             AND slot.active = true
-            AND slot.logical_key NOT IN (
-                SELECT availability_slot_key
+            AND slot.entity_id NOT IN (
+                SELECT availability_slot_id
                 FROM care_visit
                 WHERE visit_date = %s
                     -- any overlap between booking and patient slot
@@ -145,7 +145,7 @@ class AvailabilitySlotRepository(BaseRepository):
                 s.logical_key,
                 cv.visit_date,
                 cv.patient_id,
-                cv.availability_slot_key,
+                cv.availability_slot_id,
                 cv.status,
                 per.first_name AS patient_first_name,
                 per.last_name AS patient_last_name
@@ -153,7 +153,7 @@ class AvailabilitySlotRepository(BaseRepository):
             JOIN availability_slot s 
                 ON e.entity_id = s.employee_id
             LEFT JOIN care_visit cv 
-                ON s.logical_key = cv.availability_slot_key
+                ON s.entity_id = cv.availability_slot_id
                 AND cv.active = true
             LEFT JOIN patient p
                 ON cv.patient_id = p.entity_id
@@ -201,7 +201,7 @@ class AvailabilitySlotRepository(BaseRepository):
                     "patient_id": row["patient_id"],
                     "patient_first_name": row["patient_first_name"],
                     "patient_last_name": row["patient_last_name"],
-                    "availability_slot_key": row['availability_slot_key'],
+                    "availability_slot_id": row['availability_slot_id'],
                     "status": row['status']
                 })
 

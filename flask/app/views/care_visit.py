@@ -48,7 +48,7 @@ def _process_visit_payload(request_data, patient_id=None, employee_id=None):
     """
     required_fields = [
         'visit_date', 'scheduled_start_time',
-        'scheduled_end_time', 'availability_slot_key', 'patient_care_slot_key'
+        'scheduled_end_time', 'availability_slot_id', 'patient_care_slot_id'
     ]
 
     # Add the missing ID field to required fields
@@ -127,8 +127,11 @@ class EmployeeCareVisits(Resource):
         try:
             request_data = request.get_json(force=True)
             visits_data = _process_visit_payload(request_data, employee_id=employee_id)
+            print("Visits data: ",visits_data)
+
 
             care_visit_service = CareVisitService(config)
+            
 
             # Schedule multiple visits
             scheduled_visits = care_visit_service.schedule_multiple_care_visits(
@@ -360,8 +363,8 @@ class AssignEmployeeToCareSlot(Resource):
                 'visit_date': request_data['visit_date'],
                 'scheduled_start_time': request_data['scheduled_start_time'],
                 'scheduled_end_time': request_data['scheduled_end_time'],
-                'care_slot_logical_key': request_data.get('care_slot_logical_key', ''),
-                'employee_logical_key': request_data.get('employee_logical_key', ''),
+                'patient_care_slot_id': request_data.get('patient_care_slot_id', ''),
+                'availability_slot_id': request_data.get('availability_slot_id', ''),
                 'employee_name': request_data.get('employee_name', ''),
                 'scheduled_by_id': person.entity_id,
                 'organization_id': organization.entity_id
@@ -383,6 +386,8 @@ class AssignEmployeeToCareSlot(Resource):
             return get_failure_response(f"Error assigning employee: {str(e)}", status_code=500)
 
 
+
+
 @care_visit_api.route('/assign-employee-recurring')
 class AssignEmployeeToRecurringPattern(Resource):
     @login_required()
@@ -391,9 +396,11 @@ class AssignEmployeeToRecurringPattern(Resource):
         """Assign an employee to ALL slots in a recurring pattern using logical_key"""
         try:
             request_data = request.get_json(force=True)
+            print("Request data: ",request_data)
+            
             
             # Validate required fields
-            required_fields = ['patient_id', 'employee_id', 'care_slot_logical_key']
+            required_fields = ['patient_id', 'employee_id', 'logical_key']
             missing_fields = [field for field in required_fields if field not in request_data]
             if missing_fields:
                 return get_failure_response(f"Missing required fields: {', '.join(missing_fields)}", status_code=400)
@@ -402,13 +409,12 @@ class AssignEmployeeToRecurringPattern(Resource):
             visit_data = {
                 'patient_id': request_data['patient_id'],
                 'employee_id': request_data['employee_id'],
-                'care_slot_logical_key': request_data['care_slot_logical_key'],
-                'employee_logical_key': request_data.get('employee_logical_key', ''),
+                'logical_key': request_data.get('logical_key'), 
                 'employee_name': request_data.get('employee_name', ''),
                 'scheduled_by_id': person.entity_id,
                 'organization_id': organization.entity_id
             }
-            
+            print("visited data: ",visit_data)
             care_visit_service = CareVisitService(config)
             
             # Assign employee to all slots in the recurring pattern
