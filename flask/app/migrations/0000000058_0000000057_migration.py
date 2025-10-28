@@ -24,7 +24,7 @@ def upgrade(migration):
         datatype="VARCHAR(255) DEFAULT NULL"
     )
     
-    # Add patient_care_slot_key column to care_visit table
+    # Add patient_care_slot_key column to care_visit_audit table
     migration.add_column(
         table_name="care_visit_audit", 
         column_name="patient_care_slot_id", 
@@ -47,10 +47,10 @@ def downgrade(migration):
     
     
     
-       # Drop availability_slot_key column from care_visit table
+       # Drop availability_slot_key column from care_visit_audit table
     migration.drop_column("care_visit_audit", "availability_slot_id")
     
-    # Drop patient_care_slot_key column from care_visit table
+    # Drop patient_care_slot_key column from care_visit_audit table
     migration.drop_column("care_visit_audit", "patient_care_slot_id")
     
 

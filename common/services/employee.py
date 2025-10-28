@@ -3,6 +3,8 @@ from datetime import datetime
 import os
 import uuid
 
+from common.repositories.employee import EmployeeRepository
+
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.employee import Employee
@@ -254,6 +256,14 @@ class EmployeeService:
             int: The number of employees.
         """
         return self.employee_repo.get_employees_count(organization_id=organization_id)
+    
+   ############################################################################# 
+    def get_all_employee_ids(self,organization_id=None)-> list:
+        
+        
+        return self.employee_repo.get_all_employee_ids(organization_id=organization_id)
+    
+    
 
     def reset_last_uploaded_file_status(self, organization_id: str):
         """

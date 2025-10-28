@@ -114,6 +114,12 @@ class PatientService:
         logger.info(f"Successfully imported {count} patient records")
         return count
 
+    def get_all_patient_mrn(self,organization_id=None)-> list:
+        
+        
+        return self.patient_repo.get_all_patient_mrn(organization_id=organization_id)
+    
+    
     def upload_patient_list(self, organization_id: str, person_id: str, file_path: str, original_filename: str = None, file_id=None) -> Dict:
         """
         Upload a patient list file to S3
@@ -164,6 +170,8 @@ class PatientService:
 
         # Get file size
         file_size = os.path.getsize(file_path)
+        
+        
 
         # Create CurrentEmployeesFile instance
         patients_file = PatientsFile(

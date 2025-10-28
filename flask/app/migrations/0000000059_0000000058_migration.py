@@ -18,9 +18,7 @@ def upgrade(migration):
     migration.drop_column("availability_slot", "logical_key")
     
     
-    
-    
-    
+
     
     migration.drop_column("availability_slot_audit", "day_of_week")
     
