@@ -115,8 +115,8 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
     start_weekday = start_date.weekday()
 
     for week in range(payload["duration_weeks"]):
-        for day_of_week in payload["selected_days"]:
-            days_ahead = (day_of_week - start_weekday) % 7
+        for start_day_of_week in payload["selected_days"]:
+            days_ahead = (start_day_of_week - start_weekday) % 7
             days_ahead += (week * 7)
 
             slot_date = start_date + timedelta(days=days_ahead)
@@ -131,14 +131,14 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
 
                 if is_overnight:
                     slot_end_date = slot_date + timedelta(days=1)
-                    end_dow = (day_of_week + 1) % 7
+                    end_dow = (start_day_of_week + 1) % 7
                 else:
                     slot_end_date = slot_date
-                    end_dow = day_of_week
+                    end_dow = start_day_of_week
 
                 slots.append({
                     'entity_id': entity_id,
-                    'start_day_of_week': day_of_week,
+                    'start_day_of_week': start_day_of_week,
                     'end_day_of_week': end_dow,
                     'start_time': start_t,
                     'end_time': end_t,

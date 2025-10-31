@@ -14,6 +14,7 @@ from common.app_config import config
 from common.services import (
     OrganizationService,
     CareVisitService,
+    PatientCareSlotService,
     PersonOrganizationInvitationService,
     PersonOrganizationRoleService,
     PersonService,
@@ -23,7 +24,7 @@ from common.services import (
 )
 
 from common.models import Organization
-from common.models import PersonOrganizationRoleEnum, Person, CareVisitStatusEnum
+from common.models import PersonOrganizationRoleEnum, Person, CareVisitStatusEnum, PatientCareSlot
 from app.helpers.decorators import (login_required,
                                     organization_required,
                                     has_role
@@ -390,13 +391,18 @@ class AssignEmployeeToCareSlot(Resource):
 class AssignEmployeeToRecurringPattern(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
-    def post(self, person: Person, organization: Organization):
+    def post(self, person: Person , organization: Organization):
         """Assign an employee to ALL slots in a recurring pattern using series_id"""
         try:
-            request_data = request.get_json(force=True)            
+            request_data = request.get_json(force=True)     
+            
+            print("request data for recurring events: ",request_data)    
+            print(".................................................................................................")
+          
+             
             
             # Validate required fields
-            required_fields = ['patient_id', 'employee_id', 'series_id']
+            required_fields = ['patient_id', 'employee_id']
             missing_fields = [field for field in required_fields if field not in request_data]
             if missing_fields:
                 return get_failure_response(f"Missing required fields: {', '.join(missing_fields)}", status_code=400)
@@ -407,6 +413,7 @@ class AssignEmployeeToRecurringPattern(Resource):
                 'employee_id': request_data['employee_id'],
                 'series_id': request_data.get('series_id'), 
                 'employee_name': request_data.get('employee_name', ''),
+                'patient_slot_id':request_data.get('patient_slot_id'),
                 'scheduled_by_id': person.entity_id,
                 'organization_id': organization.entity_id
             }

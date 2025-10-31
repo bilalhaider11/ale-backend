@@ -35,12 +35,9 @@ class Organizations(Resource):
     
     @login_required()
     def get(self, person):
-        print("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
         
         organization_service = OrganizationService(config)
-        print("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
         organizations = organization_service.get_organizations_with_roles_by_person(person.entity_id)
-        print("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
         return get_success_response(organizations=organizations)
 
     @login_required()

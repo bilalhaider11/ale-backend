@@ -58,7 +58,7 @@ class PatientHandler:
                 break
 
         if header_row_index is None:
-            raise ValueError("ENOHEADERS")
+            raise ValueError("ENOHEADERS  HHHHHH")
 
         rows = []
         for row in worksheet.iter_rows(min_row=header_row_index + 1, values_only=True):
@@ -99,7 +99,7 @@ class PatientHandler:
                 break
 
         if header_row_index is None:
-            raise ValueError("ENOHEADERS")
+            raise ValueError("ENOHEADERS IIIIIII")
 
         data_rows = all_rows[header_row_index + 1 :]
         result = []

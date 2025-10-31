@@ -56,7 +56,7 @@ class PatientCareSlotService:
         Args:
             start_time: Start time of the availability slot
             end_time: End time of the availability slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -249,13 +249,23 @@ class PatientCareSlotService:
     
     
 
-    def get_slots_by_series_id(self, series_id: str, patient_id: str) -> List[PatientCareSlot]:
+    def get_slots_by_series_id(self, series_id: str, entity_id: str, patient_id: str) -> List[PatientCareSlot]:
         """Get all slots with the same series_id for a patient."""
-        return self.patient_care_slot_repo.get_many({
+        
+        if series_id:
+            return self.patient_care_slot_repo.get_many({
             "series_id": series_id,
             "patient_id": patient_id,
             "active": True
-        })
+            })
+        else:
+            return self.patient_care_slot_repo.get_many({
+            "series_id": series_id,
+            "patient_id": patient_id,
+            "entity_id":entity_id,
+            "active": True
+            })
+            
 
     def expand_and_save_slots(self, payload, patient_id):
         expanded_slots = expand_slots(
@@ -263,7 +273,7 @@ class PatientCareSlotService:
             start_date=payload.get('start_date'),
             entity_id=patient_id,
             entity_type='patient'
-        )
+        ) 
         saved_slots = []
         for slot in expanded_slots:
             saved_slot = self.patient_care_slot_repo.save(slot)

@@ -70,7 +70,7 @@ class AvailabilitySlotService:
         Args:
             start_time: Start time of the patient care slot
             end_time: End time of the patient care slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:

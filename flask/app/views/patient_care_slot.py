@@ -105,6 +105,10 @@ class DeletePatientCareSlotResource(Resource):
         try:
             series_id = request.args.get("series_id") or None
             from_date = request.args.get("from_date") or None
+            
+            print("series_id: ",series_id)
+            print("Request arguments: ",request.args)
+            
 
             patient_care_slot_service = PatientCareSlotService(config)
 
@@ -114,6 +118,7 @@ class DeletePatientCareSlotResource(Resource):
                 series_id=series_id,
                 from_date=from_date
             )
+             
             return get_success_response(data=result)
 
         except NotFoundError as e:
@@ -123,26 +128,27 @@ class DeletePatientCareSlotResource(Resource):
                 f"Error deleting patient care slot: {str(e)}", status_code=500
             )
 
-
 @patient_care_slot_api.route('/create/<string:patient_id>')
 class CreatePatientSlots(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person, organization, patient_id: str):
         try:
+            
             request_data = request.get_json(force=True)
 
-            if not isinstance(request_data, dict):
+            if not isinstance(request_data, dict): 
                 raise InputValidationError("Request body must be a JSON object")
 
             assigned_employee_id = request_data.get('assigned_employee_id')
 
             clean_request_data = {k: v for k, v in request_data.items() if k not in ['assigned_employee_id', 'visit_date']}
+            
 
             patient_care_slot_service = PatientCareSlotService(config)
-            created_slots = patient_care_slot_service.expand_and_save_slots(clean_request_data, patient_id)      
-
-            care_visits = []
+            created_slots = patient_care_slot_service.expand_and_save_slots(clean_request_data, patient_id)   
+  
+            care_visits = [] 
             if assigned_employee_id and created_slots:
                 from common.services import CareVisitService,AvailabilitySlotService
                 from datetime import datetime, timedelta
@@ -168,20 +174,20 @@ class CreatePatientSlots(Resource):
                     }
                 
                     care_visit = care_visit_service.create_care_visit_from_assignment(visit_data)
-                    
-                    
-                    
+             
                     care_visits.append(care_visit.as_dict())
-
+             
             message = f'Successfully created {len(created_slots)} care slots'
 
             if care_visits:
                 message += f' and {len(care_visits)} employee assignments'
+            
 
             return get_success_response(
                 count=len(created_slots),
                 message=message,
-            )
+                
+                ) 
 
         except NotFoundError as e:
             return get_failure_response(str(e), status_code=404)
