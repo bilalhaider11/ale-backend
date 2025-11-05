@@ -7,7 +7,6 @@ from common.utils.slot import (
     validate_and_parse_day_of_week,
     parse_time_field,
     parse_date_field,
-    validate_week_start_date,
     validate_day_range,
     is_valid_time_range
 )
@@ -37,14 +36,14 @@ class AvailabilitySlotService:
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
         return availability_slots
 
-    def get_availability_slots_by_week(self, employee_id: str, week_start_date: date):
+    def get_availability_slots_by_week(self, employee_id: str, start_date: date):
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
 
-        return [slot for slot in availability_slots if slot.week_start_date == week_start_date]
-
+        return [slot for slot in availability_slots if slot.start_date == start_date]
+        
+        
     def get_availability_slots_for_organization(self, organization_id: str):
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
-        print("Availability slots: ",availability_slots)
         
         return availability_slots
 
@@ -147,9 +146,7 @@ class AvailabilitySlotService:
             raise NotFoundError(f"Availability slot with id '{slot_id}' not found for employee '{employee_id}'")
         
         # Update day of week fields if provided
-        if 'day_of_week' in slot_data:
-            slot.day_of_week = validate_and_parse_day_of_week(slot_data['day_of_week'], "day_of_week", allow_none=True)
-        
+       
         if 'start_day_of_week' in slot_data:
             slot.start_day_of_week = validate_and_parse_day_of_week(
                 slot_data['start_day_of_week'], "start_day_of_week", allow_none=True
@@ -174,13 +171,7 @@ class AvailabilitySlotService:
         if not is_valid_time_range(slot.start_time, slot.end_time):
             raise InputValidationError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
 
-        # Update week_start_date if provided
-        if 'week_start_date' in slot_data:
-            week_start = parse_date_field(slot_data['week_start_date'], "week_start_date", allow_none=False)
-            week_start = validate_week_start_date(week_start)
-            slot.week_start_date = week_start
-            slot.week_end_date = week_start + timedelta(days=6) if week_start else None
-        
+
         # Update start_date and end_date if provided
         if 'start_date' in slot_data:
             slot.start_date = parse_date_field(slot_data['start_date'], "start_date")

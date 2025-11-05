@@ -1,3 +1,4 @@
+
 from common.repositories.base import BaseRepository
 from common.models.patient_care_slot import PatientCareSlot
 from datetime import time, date, datetime
@@ -11,8 +12,8 @@ class PatientCareSlotRepository(BaseRepository):
     def get_patient_care_slots_by_patient_id(self, patient_id: str) -> list[PatientCareSlot]:
         return self.get_all({"patient_id": patient_id})
 
-    def get_patient_care_slots_by_day(self, day_of_week: int) -> list[PatientCareSlot]:
-        return self.get_all({"day_of_week": day_of_week})
+    def get_patient_care_slots_by_day(self, start_day_of_week: int) -> list[PatientCareSlot]:
+        return self.get_all({"start_day_of_week": start_day_of_week})
 
     def update_patient_care_slot(self, patient_care_slot: PatientCareSlot) -> PatientCareSlot:
         return self.save(patient_care_slot)
@@ -24,7 +25,7 @@ class PatientCareSlotRepository(BaseRepository):
         Args:
             start_time: Start time of the availability slot
             end_time: End time of the availability slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -42,8 +43,7 @@ class PatientCareSlotRepository(BaseRepository):
             FROM patient_care_slot pcs
             JOIN patient p ON pcs.patient_id = p.entity_id
             JOIN person ps ON p.person_id = ps.entity_id
-            WHERE (pcs.day_of_week = %s 
-                   OR (pcs.start_day_of_week <= %s AND pcs.end_day_of_week >= %s))
+            WHERE (pcs.start_day_of_week <= %s AND pcs.end_day_of_week >= %s))
             AND pcs.end_time > %s
             AND pcs.start_time < %s
             AND p.organization_id IN %s
@@ -70,7 +70,7 @@ class PatientCareSlotRepository(BaseRepository):
             );
         """
         params = (
-            visit_date.weekday(),  # day_of_week = %s
+            visit_date.weekday(),  # start_day_of_week = %s
             visit_date.weekday(),  # start_day_of_week <= %s
             visit_date.weekday(),  # end_day_of_week >= %s
             start_time, 
@@ -106,10 +106,8 @@ class PatientCareSlotRepository(BaseRepository):
                 pcs.entity_id AS slot_id,
                 pcs.start_time,
                 pcs.end_time,
-                pcs.day_of_week,
                 pcs.start_day_of_week,
                 pcs.end_day_of_week,
-                pcs.logical_key,
                 pcs.start_date,
                 pcs.end_date,
                 pcs.series_id,
@@ -156,12 +154,11 @@ class PatientCareSlotRepository(BaseRepository):
                     "end_time": row["end_time"],
                     "start_date": row["start_date"],
                     "end_date": row["end_date"],
-                    "day_of_week": row["day_of_week"],
                     "start_day_of_week": row["start_day_of_week"],
                     "end_day_of_week": row["end_day_of_week"],
-                    "logical_key": row["logical_key"],
-                    "care_visits": []
+                    "care_visits": [] 
                 }
+                    
 
             if row.get("visit_date"):  # only if care visit exists
                 slots_map[slot_id]["care_visits"].append({
@@ -171,6 +168,8 @@ class PatientCareSlotRepository(BaseRepository):
                     "employee_first_name": row["employee_first_name"],
                     "employee_last_name": row["employee_last_name"]
                 })
+                
+                
 
         return list(slots_map.values())
 

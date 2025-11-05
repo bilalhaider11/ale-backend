@@ -1,3 +1,4 @@
+
 from common.repositories.base import BaseRepository
 from common.models import AvailabilitySlot
 from datetime import time, date, datetime
@@ -12,8 +13,8 @@ class AvailabilitySlotRepository(BaseRepository):
     def get_availability_slots_by_employee_id(self, employee_id: str) -> list[AvailabilitySlot]:
         return self.get_all({"employee_id": employee_id})
 
-    def get_availability_slots_by_day(self, day_of_week: int) -> list[AvailabilitySlot]:
-        return self.get_all({"day_of_week": day_of_week})
+    def get_availability_slots_by_day(self, start_day_of_week: int) -> list[AvailabilitySlot]:
+        return self.get_all({"start_day_of_week": start_day_of_week})
 
     def update_availability_slot(self, availability_slot: AvailabilitySlot) -> AvailabilitySlot:
         return self.save(availability_slot)
@@ -25,7 +26,7 @@ class AvailabilitySlotRepository(BaseRepository):
         Args:
             start_time: Start time of the availability slot
             end_time: End time of the availability slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+           start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -73,7 +74,7 @@ class AvailabilitySlotRepository(BaseRepository):
             FROM availability_slot AS slot
             JOIN employee e ON slot.employee_id = e.entity_id
             JOIN person ps ON e.person_id = ps.entity_id
-            WHERE slot.day_of_week = %s
+            WHERE (slot.start_day_of_week <= %s AND slot.end_day_of_week >= %s)
             -- any overlap between employee slot and patient slot
             AND slot.start_time < %s   -- patient_end_time
             AND slot.end_time   > %s   -- patient_start_time
@@ -136,13 +137,11 @@ class AvailabilitySlotRepository(BaseRepository):
                 s.entity_id AS slot_id,
                 s.start_time,
                 s.end_time,
-                s.day_of_week,
                 s.start_day_of_week,
                 s.end_day_of_week,
                 s.start_date,
                 s.end_date,
                 s.series_id,
-                s.logical_key,
                 cv.visit_date,
                 cv.patient_id,
                 cv.availability_slot_id,
@@ -186,12 +185,10 @@ class AvailabilitySlotRepository(BaseRepository):
                     "slot_id": row["slot_id"],
                     "start_time": row["start_time"],
                     "end_time": row["end_time"],
-                    "day_of_week": row["day_of_week"],
                     "start_date": row["start_date"],
                     "end_date": row["end_date"],
                     "start_day_of_week": row["start_day_of_week"],
                     "end_day_of_week": row["end_day_of_week"],
-                    "logical_key": row["logical_key"],
                     "care_visits": []
                 }
 
@@ -225,4 +222,6 @@ class AvailabilitySlotRepository(BaseRepository):
             rows = self.adapter.execute_query(query, params) or []
 
         return len(rows)
+
+
 

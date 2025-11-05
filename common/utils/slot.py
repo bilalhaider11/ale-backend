@@ -56,12 +56,6 @@ def parse_date_field(value: Any, field_name: str, allow_none: bool = True) -> Op
         raise InputValidationError(f"{field_name} must be a date string in 'YYYY-MM-DD' format or a date object")
 
 
-def validate_week_start_date(week_start_date: Optional[date]) -> Optional[date]:
-    """Validate that week_start_date is a Monday."""
-    if week_start_date and week_start_date.weekday() != 0:
-        raise InputValidationError("week_start_date must be a Monday")
-    return week_start_date
-
 
 def validate_day_range(start_day: Optional[int], end_day: Optional[int]) -> None:
     """Validate that day range is valid."""
@@ -127,10 +121,6 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
 
             slot_date = start_date + timedelta(days=days_ahead)
 
-            # Calculate week_start and week_end (needed for patient slots)
-            week_start = slot_date - timedelta(days=slot_date.weekday())
-            week_end = week_start + timedelta(days=6)
-
             for shift in payload["shifts"]:
                 sh, sm = map(int, shift["start_time"].split(":"))
                 eh, em = map(int, shift["end_time"].split(":"))
@@ -148,11 +138,8 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
 
                 slots.append({
                     'entity_id': entity_id,
-                    'day_of_week': day_of_week,
                     'start_day_of_week': day_of_week,
                     'end_day_of_week': end_dow,
-                    'week_start_date': week_start,
-                    'week_end_date': week_end,
                     'start_time': start_t,
                     'end_time': end_t,
                     'start_date': slot_date,
@@ -170,11 +157,8 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
                 AvailabilitySlot(
                     employee_id=slot_data['entity_id'],
                     series_id=series_id,
-                    day_of_week=slot_data['day_of_week'],
                     start_day_of_week=slot_data['start_day_of_week'],
                     end_day_of_week=slot_data['end_day_of_week'],
-                    week_start_date=slot_data['week_start_date'],
-                    week_end_date=slot_data['week_end_date'],
                     start_time=slot_data['start_time'],
                     end_time=slot_data['end_time'],
                     start_date=slot_data['start_date'],
@@ -186,13 +170,10 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
                 PatientCareSlot(
                     patient_id=slot_data['entity_id'],
                     series_id=series_id,
-                    day_of_week=slot_data['day_of_week'],
                     start_day_of_week=slot_data['start_day_of_week'],
                     end_day_of_week=slot_data['end_day_of_week'],
                     start_time=slot_data['start_time'],
                     end_time=slot_data['end_time'],
-                    week_start_date=slot_data['week_start_date'],
-                    week_end_date=slot_data['week_end_date'],
                     start_date=slot_data['start_date'],
                     end_date=slot_data['end_date']
                 )

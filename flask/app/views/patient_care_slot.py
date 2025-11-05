@@ -1,3 +1,4 @@
+
 from flask_restx import Namespace, Resource
 from flask import request
 from datetime import datetime
@@ -29,7 +30,7 @@ class PatientCareSlotResource(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def get(self, person: Person, roles: list, organization: Organization, patient_id: str):
-        """Get patient care slots for a specific patient, optionally filtered by week"""
+        """Get patient care slots for a specific patient"""
         patient_service = PatientService(config)
         patient_care_slot_service = PatientCareSlotService(config)
         
@@ -38,19 +39,14 @@ class PatientCareSlotResource(Resource):
         if not patient:
             return get_failure_response("Patient not found in this organization", status_code=404)
         
-        # Check if filtering by week
-        week_start_date = request.args.get('week_start_date')
-
-        if week_start_date:
-            try:
-                week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
-                if week_start_date.weekday() != 0:
-                    return get_failure_response("week_start_date must be a Monday", status_code=400)
-            except ValueError:
-                return get_failure_response("Invalid week_start_date format. Use YYYY-MM-DD", status_code=400)
+        # Check for date range filtering
+        start_date = request.args.get('start_date')
+        
+        if start_date:
             
-            # Get slots for specific week
-            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, week_start_date)
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, start_date)
+            
         else:
             # Get all slots for patient
             patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_patient_id(patient_id)
@@ -89,6 +85,7 @@ class PatientCareSlotResource(Resource):
                 message="Patient care slot updated successfully",
                 data=updated_slot.as_dict()
             )
+            
         except InputValidationError as e:
             return get_failure_response(str(e), status_code=400)
         except NotFoundError as e:
@@ -106,6 +103,10 @@ class DeletePatientCareSlotResource(Resource):
         try:
             series_id = request.args.get("series_id") or None
             from_date = request.args.get("from_date") or None
+            
+            print("series_id: ",series_id)
+            print("Request arguments: ",request.args)
+            
 
             patient_care_slot_service = PatientCareSlotService(config)
 
@@ -115,6 +116,7 @@ class DeletePatientCareSlotResource(Resource):
                 series_id=series_id,
                 from_date=from_date
             )
+             
             return get_success_response(data=result)
 
         except NotFoundError as e:
@@ -124,31 +126,36 @@ class DeletePatientCareSlotResource(Resource):
                 f"Error deleting patient care slot: {str(e)}", status_code=500
             )
 
-
 @patient_care_slot_api.route('/create/<string:patient_id>')
 class CreatePatientSlots(Resource):
     @login_required()
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person, organization, patient_id: str):
         try:
+            
             request_data = request.get_json(force=True)
 
-            if not isinstance(request_data, dict):
+            if not isinstance(request_data, dict): 
                 raise InputValidationError("Request body must be a JSON object")
 
             assigned_employee_id = request_data.get('assigned_employee_id')
 
             clean_request_data = {k: v for k, v in request_data.items() if k not in ['assigned_employee_id', 'visit_date']}
+            
 
             patient_care_slot_service = PatientCareSlotService(config)
-            created_slots = patient_care_slot_service.expand_and_save_slots(clean_request_data, patient_id)
-
-            care_visits = []
+            created_slots = patient_care_slot_service.expand_and_save_slots(clean_request_data, patient_id)   
+  
+            care_visits = [] 
             if assigned_employee_id and created_slots:
                 from common.services import CareVisitService,AvailabilitySlotService
                 from datetime import datetime, timedelta
+                
+                
                 care_visit_service = CareVisitService(config)
                 availability_slot_service = AvailabilitySlotService(config)
+                
+                
                 created_availability_slots = availability_slot_service.expand_and_save_slots(request_data, assigned_employee_id)
                 
                 for slot, avail_slot in zip(created_slots, created_availability_slots):
@@ -165,19 +172,28 @@ class CreatePatientSlots(Resource):
                     }
                 
                     care_visit = care_visit_service.create_care_visit_from_assignment(visit_data)
+             
                     care_visits.append(care_visit.as_dict())
-
+             
             message = f'Successfully created {len(created_slots)} care slots'
 
             if care_visits:
                 message += f' and {len(care_visits)} employee assignments'
+            
 
             return get_success_response(
                 count=len(created_slots),
                 message=message,
-            )
+                
+                ) 
 
         except NotFoundError as e:
             return get_failure_response(str(e), status_code=404)
         except Exception as e:
             return get_failure_response(f"Error creating patient care slots: {str(e)}", status_code=500)
+            
+            
+            
+            
+            
+            
