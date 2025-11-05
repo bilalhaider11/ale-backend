@@ -74,7 +74,7 @@ class AvailabilitySlotRepository(BaseRepository):
             FROM availability_slot AS slot
             JOIN employee e ON slot.employee_id = e.entity_id
             JOIN person ps ON e.person_id = ps.entity_id
-            WHERE slot.start_day_of_week = %s
+            WHERE (slot.start_day_of_week <= %s AND slot.end_day_of_week >= %s)
             -- any overlap between employee slot and patient slot
             AND slot.start_time < %s   -- patient_end_time
             AND slot.end_time   > %s   -- patient_start_time
@@ -201,8 +201,6 @@ class AvailabilitySlotRepository(BaseRepository):
                     "availability_slot_id": row['availability_slot_id'],
                     "status": row['status']
                 })
-        print("checking for availability slots:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...>>> ")
-        print(slots_map.values()) 
 
         return list(slots_map.values())
 

@@ -37,12 +37,11 @@ class AvailabilitySlotService:
         return availability_slots
 
     def get_availability_slots_by_week(self, employee_id: str, start_date: date):
-        """Get availability slots for an employee within a date range"""
-      
-        return self.availability_slot_repo.get_many({"employee_id": employee_id,"start_date": start_date})
+        availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
+
+        return [slot for slot in availability_slots if slot.start_date == start_date]
         
-    
-    
+        
     def get_availability_slots_for_organization(self, organization_id: str):
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
         
@@ -55,7 +54,7 @@ class AvailabilitySlotService:
         Args:
             start_time: Start time of the patient care slot
             end_time: End time of the patient care slot
-            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
+            day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -195,7 +194,3 @@ class AvailabilitySlotService:
             saved_slot = self.availability_slot_repo.save(slot)
             saved_slots.append(saved_slot)
         return saved_slots
-
-
-
-
