@@ -2,14 +2,14 @@ from typing import List, Dict, Any
 from datetime import datetime
 import os
 import uuid
-
-from common.repositories.employee import EmployeeRepository
+from common.models.alert import AlertLevelEnum, AlertStatusEnum
 
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.employee import Employee
 from common.models.current_employees_file import CurrentEmployeesFile, CurrentEmployeesFileStatusEnum
 from common.services.s3_client import S3ClientService
+from common.services.alert import AlertService
 from common.services.current_employees_file import CurrentEmployeesFileService
 from common.helpers.csv_utils import get_first_matching_column_value
 from common.tasks.send_message import send_message
@@ -26,6 +26,7 @@ class EmployeeService:
         self.person_repo = self.repository_factory.get_repository(RepoType.PERSON, message_queue_name="")
         self.current_employees_file_service = CurrentEmployeesFileService(config)
         self.s3_client = S3ClientService()
+        self.alert_service = AlertService(config)
         self.bucket_name = config.AWS_S3_BUCKET_NAME
         self.employees_prefix = f"{config.AWS_S3_KEY_PREFIX}employees-list/"
         self.physicians_prefix = f"{config.AWS_S3_KEY_PREFIX}physicians-list/"
@@ -52,6 +53,7 @@ class EmployeeService:
                 return None
 
         records = []
+        dup_records = []
         skipped_entries = []
 
         # Import organization service for auto-generation
@@ -66,6 +68,8 @@ class EmployeeService:
         current_batch_ids = set()
 
         for row in rows:
+            
+            print("row of employee: "   ,row)
             # Check if row has first name and last name (required fields)
             first_name = get_first_matching_column_value(row, ['first name', 'first_name'])
             last_name = get_first_matching_column_value(row, ['last name', 'last_name'])
@@ -81,6 +85,16 @@ class EmployeeService:
             if not employee_id or not employee_id.strip():
                 employee_id = organization_service.get_next_employee_id(organization_id)
                 logger.info(f"Auto-generated employee ID {employee_id} for {first_name} {last_name}")
+            print("existing ids: ", existing_employee_ids)    
+            
+            employee_type = "employee"
+            if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
+                employee_type = "caregiver"
+
+            # Parse dates
+            parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
+            parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
+            parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date of birth']))
             
             # Check for duplicate employee ID in existing database records
             if employee_id in existing_employee_ids:
@@ -91,7 +105,53 @@ class EmployeeService:
                     f"Importing new employee: {first_name} {last_name}. "
                     f"Saving anyway as per requirements. Alert generation to be implemented in future."
                 )
-            
+                
+                record = Employee(
+                    entity_id=existing_employee.entity_id,  # Preserve existing entity_id
+                    changed_by_id=user_id,
+                    primary_branch=get_first_matching_column_value(row, ['primary branch', 'primary_branch']),
+                    employee_id=employee_id,
+                    first_name=first_name,
+                    last_name=last_name,
+                    suffix=get_first_matching_column_value(row, ['suffix']),
+                    employee_type=get_first_matching_column_value(row, ['employee type', 'employee_type']) or employee_type,
+                    user_type=get_first_matching_column_value(row, ['user type', 'user_type']),
+                    address_1=get_first_matching_column_value(row, ['address 1', 'address_1', 'address']),
+                    address_2=get_first_matching_column_value(row, ['address 2', 'address_2']),
+                    city=get_first_matching_column_value(row, ['city']),
+                    state=get_first_matching_column_value(row, ['state']),
+                    zip_code=get_first_matching_column_value(row, ['zip code', 'postal code']),
+                    email_address=get_first_matching_column_value(row, ['email address', 'email']),
+                    phone_1=get_first_matching_column_value(row, ['phone 1', 'phone']),
+                    phone_2=get_first_matching_column_value(row, ['phone 2']),
+                    payroll_start_date=parsed_payroll_start_date,
+                    hire_date=parsed_hire_date,
+                    date_of_birth=parsed_date_of_birth,
+                    caregiver_tags=get_first_matching_column_value(row, ['caregiver tags', 'tags']),
+                    social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'],
+                                                                           match_mode='contains'),
+                    organization_id=organization_id
+                )
+                self.employee_repo.insert_employee(record)
+                
+                print("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII")
+                print("record of duplicate: ",record)
+                
+                
+                self.alert_service.create_alert(
+                    organization_id=organization_id,
+                    title="Duplicate Employee ID Detected",
+                    description=(
+                        f"Duplicate employee ID {employee_id} detected during bulk import. "
+                        f"Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). "
+                        f"Imported employee: {first_name} {last_name}."
+                    ),
+                    alert_type=AlertLevelEnum.WARNING.value,
+                    status=AlertStatusEnum.ADDRESSED.value,
+                )
+                
+                
+
             # Check for duplicate employee ID within current batch
             if employee_id in current_batch_ids:
                 logger.warning(
@@ -100,19 +160,20 @@ class EmployeeService:
                     f"Current employee: {first_name} {last_name}. "
                     f"Saving anyway as per requirements. Alert generation to be implemented in future."
                 )
+                
             
             # Add to current batch tracking
             current_batch_ids.add(employee_id)
 
             # Determine employee type
-            employee_type = "employee"
-            if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
-                employee_type = "caregiver"
-
-            # Parse dates
-            parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
-            parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
-            parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date of birth']))
+            #employee_type = "employee"
+            #if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
+            #    employee_type = "caregiver"
+#
+            ## Parse dates
+            #parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
+            #parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
+            #parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date of birth']))
 
             record = Employee(
                 changed_by_id=user_id,
@@ -139,11 +200,15 @@ class EmployeeService:
                                                                        match_mode='contains'),
                 organization_id=organization_id
             )
+            self.employee_repo.insert_employee(record)
+            
 
             records.append(record)
+            
+                
 
         count = len(records)
-        self.employee_repo.upsert_employees(records, organization_id)
+        
 
         logger.info(
             f"Successfully imported {count} employee records. Skipped {len(skipped_entries)} entries without first name or last name.")
@@ -211,9 +276,11 @@ class EmployeeService:
             status=CurrentEmployeesFileStatusEnum.PENDING,
             file_category=file_category
         )
+        
+        print("current employees file to s3: ",current_employees_file)
 
         # Save file metadata to database
-        saved_file = self.current_employees_file_service.save_employees_file(current_employees_file)
+        saved_file = self.current_employees_file_service.save_employees_file (current_employees_file)
 
         # Upload the file with timestamp name
         self.s3_client.upload_file(
@@ -222,7 +289,27 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
-
+        print("employee import queue name: ",self.config.EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME)
+        print("file id key: ",file_id)
+        print("S3 bucket: ",self.config.AWS_S3_BUCKET_NAME)
+        send_message(
+            queue_name=self.config.EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
+            data={
+                'Records': [{
+                    's3': {
+                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
+                        'object': {
+                            'key': file_id_key,
+                            'metadata': {
+                                'organization_id': organization_id,
+                                'file_id': file_id
+                            }
+                        }
+                    }
+                }]
+            }
+        )
+        
         result = {
             "file": {
                 "url": self.s3_client.generate_presigned_url(file_id_key, filename=original_filename or f"{timestamp}{file_extension}"),
@@ -256,14 +343,6 @@ class EmployeeService:
             int: The number of employees.
         """
         return self.employee_repo.get_employees_count(organization_id=organization_id)
-    
-   ############################################################################# 
-    def get_all_employee_ids(self,organization_id=None)-> list:
-        
-        
-        return self.employee_repo.get_all_employee_ids(organization_id=organization_id)
-    
-    
 
     def reset_last_uploaded_file_status(self, organization_id: str):
         """

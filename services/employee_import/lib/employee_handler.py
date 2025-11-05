@@ -31,8 +31,8 @@ class EmployeeHandler:
         # Only first name and last name are required now
         # Employee ID is optional and will be auto-generated if missing
         required_headers = [
-            'first name', 
-            'last name'
+            'first_name', 
+            'last_name'
         ]
         
         workbook = load_workbook(file_path, data_only=True)
@@ -107,7 +107,7 @@ class EmployeeHandler:
         """
 
         # Only first name and last name are required now
-        required_headers = ['first name', 'last name']
+        required_headers = ['first_name', 'last_name']
         
         with open(file_path, mode='r', encoding='utf-8') as csv_file:
             reader = csv.reader(csv_file)
@@ -141,6 +141,7 @@ class EmployeeHandler:
                     for i, cell in enumerate(row)
                     if i < len(header_row) and header_row[i]
                 }
+                print("row_dict: ",row_dict)
                 result.append(row_dict)
             
             if not result:
@@ -183,9 +184,12 @@ class EmployeeHandler:
                 if file_extension == '.xlsx':
                     # Read XLSX file using openpyxl
                     rows = self._read_excel_to_dict_list(temp_path)
+                    
                 else:
                     # Read CSV file using csv module
                     rows = self._read_csv_to_dict_list(temp_path)
+                    print("........................................................")
+                    print("rows from csv: ",rows)
             except ValueError as e:
                 self.employees_file_service.set_error(
                     employees_file, str(e)

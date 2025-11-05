@@ -40,15 +40,12 @@ class PatientCareSlotResource(Resource):
         
         # Check for date range filtering
         start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
         
-        if start_date and end_date:
-            try:
-                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-                patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_date_range(patient_id, start_date, end_date)
-            except ValueError:
-                return get_failure_response("Invalid date format. Use YYYY-MM-DD", status_code=400)
+        if start_date:
+            
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, start_date)
+            
         else:
             # Get all slots for patient
             patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_patient_id(patient_id)

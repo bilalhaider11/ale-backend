@@ -37,6 +37,7 @@ class AvailabilitySlotResource(Resource):
         if start_date:
             try:
                 start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                availability_slots = availability_slot_service.get_availability_slots_by_week(employee_id, start_date)
                 if start_date.weekday() != 0:
                     return get_failure_response("week_start_date must be a Monday", status_code=400)
             except ValueError:

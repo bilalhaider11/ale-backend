@@ -20,23 +20,7 @@ class EmployeeRepository(BaseRepository):
             record: Employee instance to insert
         """
 
-        # Build SQL insert statement
-        columns = [k for k, v in record.__dict__.items() if v is not None and k != 'id']
-
-        # Skip insertion if all fields are None
-        if not columns:
-            return
-
-        values = [getattr(record, col) for col in columns]
-        placeholders = ', '.join(['%s'] * len(values))
-        cols_str = ', '.join([f'"{col}"' for col in columns])
-
-        query = f"""
-            INSERT INTO employee ({cols_str})
-            VALUES ({placeholders})
-        """
-
-        self.adapter.execute_query(query, values)
+        return self.save(record)
 
     def get_by_employee_id(self, employee_id: str, organization_id: str) -> Employee:
         """

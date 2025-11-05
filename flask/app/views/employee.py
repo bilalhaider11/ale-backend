@@ -4,12 +4,10 @@ import csv
 from flask import request
 from flask_restx import Namespace, Resource
 from openpyxl import load_workbook
-from common.models.alert import AlertLevelEnum, AlertStatusEnum
+
 from common.app_config import config
 from common.app_logger import logger
 from common.services.employee import EmployeeService
-from common.services.organization import OrganizationService
-from common.services.alert import AlertService
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
 from app.helpers.decorators import login_required, organization_required, with_partner_organization_ids
 from common.models.person_organization_role import PersonOrganizationRoleEnum
@@ -37,10 +35,6 @@ class EmployeeListUpload(Resource):
         If file contains NPI column, it will be processed as physician data.
         Otherwise, it will be processed as employee data.
         """
-        employee_service = EmployeeService(config)
-        organization_service = OrganizationService(config)
-        alert_service = AlertService(config)
-
         if 'file' not in request.files:
             return get_failure_response("No file provided", status_code=400)
         
@@ -50,7 +44,7 @@ class EmployeeListUpload(Resource):
         if not file.filename:
             return get_failure_response("No file selected", status_code=400)
         
-        # Check allowed extensions
+        # Check if file is a CSV or XLSX
         allowed_extensions = ['.csv', '.xlsx']
         if not any(file.filename.lower().endswith(ext) for ext in allowed_extensions):
             return get_failure_response("File must be a CSV or XLSX", status_code=400)
@@ -60,153 +54,44 @@ class EmployeeListUpload(Resource):
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
             file.save(temp_file.name)
             temp_file_path = temp_file.name
-        
+
         try:
-            #Get all existing employee IDs
-            employee_ids = employee_service.get_all_employee_ids(organization.entity_id)
-            print(employee_ids)
-            existing_ids = {str(row['employee_id']) for row in employee_ids}
-            print("Existing IDs:", existing_ids)
-
-            file_category = "employee"
-
+            # Detect file category by checking for NPI column
+            file_category = "employee"  # default
+            
             if file_extension == '.xlsx':
-                workbook = load_workbook(temp_file_path, data_only=False)
+                workbook = load_workbook(temp_file_path, data_only=True)
                 worksheet = workbook.active
-
-                for row_idx, row in enumerate(worksheet.iter_rows(values_only=True,min_row=2), start=2):
-                    print("///////////////////////////////////////////")
-                    print(row)
-
-                    row = list(row)
-
-                    # for physician data
+                
+                # Check first 10 rows for header row with NPI
+                for row in worksheet.iter_rows(max_row=10, values_only=True):
                     if row and any(cell and 'npi' in str(cell).lower() for cell in row):
                         file_category = "physician"
                         break
-
-                    #if not any(row):
-                    #    continue
-
-                    # Assign new employee_id to missing employee ids
-                    if row[0] is None:
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        new_emp_id = organization_service.get_next_employee_id(organization.entity_id)
-                        row[0] = new_emp_id
-                        existing_ids.add(new_emp_id)
-                        print("existing_ids: ",existing_ids)
-                        
-                        workbook = load_workbook(temp_file_path)
-                        sheet = workbook.active
-                        
-                        cell = sheet.cell(row=row_idx, column=1, value=new_emp_id)
-                        
-                        workbook.save(temp_file_path)
-                        
-                        
-                        print(f"Generated new employee_id {new_emp_id} for row {row_idx}")
-                    else:
-                        current_emp_id = str(row[0])
-                        print(f"Found employee_id: {current_emp_id}")
-                        
-
-                        # Check for duplicate
-                        
-                        if current_emp_id in existing_ids:
-                            
-                            logger.warning(f"Duplicate employee_id detected: {current_emp_id}")
-
-                            description = (
-                                f"Duplicate employee ID detected: {current_emp_id} for organization {organization.entity_id}."
-                            )
-                            status_ = AlertStatusEnum.ADDRESSED.value
-                            level = AlertLevelEnum.WARNING.value
-                            title = "Employee"
-
-                            
-                            alert_service.create_alert(
-                                organization_id=organization.entity_id,
-                                title=title,
-                                description=description,
-                                alert_type=level,
-                                status=status_,
-                                assigned_to_id=current_emp_id
-                            )
-                            print(f" Created alert for duplicate employee_id: {current_emp_id}")
-                            
-                        else:
-                            existing_ids.add(current_emp_id)
-                            print("existing_ids: ",existing_ids)
-                                
-                    print(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
-                    print(row)
-                            
-                    
-
             else:
-                # Handle CSV files similarly
+                # CSV file
                 with open(temp_file_path, 'r', encoding='utf-8') as csv_file:
                     reader = csv.reader(csv_file)
+                    # Check first 10 rows for header row with NPI
                     for i, row in enumerate(reader):
-                        # optional: skip header detection or use a smarter header check
-                        if i == 0 and any(cell and 'employee_id' in cell.lower() for cell in row):
-                            continue
-
+                        if i >= 10:
+                            break
                         if row and any(cell and 'npi' in cell.lower() for cell in row):
                             file_category = "physician"
                             break
-
-                        if not row:
-                            continue
-
-                        if not row[0]:
-                            new_emp_id = organization_service.get_next_employee_id(organization.entity_id)
-                            row[0] = new_emp_id
-                        else:
-                            current_emp_id = str(row[0])
-                            if current_emp_id in existing_ids:
-                                logger.warning(f"Duplicate employee_id detected: {current_emp_id}")
-                                description = (
-                                    f"Duplicate employee ID detected: {current_emp_id} for organization {organization.entity_id}."
-                                )
-                                status_ = AlertStatusEnum.ADDRESSED.value
-                                level = AlertLevelEnum.WARNING.value
-                                title = "Employee"
-
-                                try:
-                                    alert_service.create_alert(
-                                        organization_id=organization.entity_id,
-                                        title=title,
-                                        description=description,
-                                        alert_type=level,
-                                        status=status_,
-                                        assigned_to_id=current_emp_id
-                                    )
-                                except Exception as alert_err:
-                                    logger.exception(f"Failed to create duplicate alert: {alert_err}")
-
-
-                        
-            workbook = load_workbook(filename=temp_file_path) 
-            sheet = workbook.active 
-                
-            for row in sheet.iter_rows(values_only=True):
-                print(row)
-
-
-            # Step 3: Upload to S3 after processing
+            
+            # Upload file to S3
+            employee_service = EmployeeService(config)
             upload_result = employee_service.upload_list_file(
-                organization_id=organization.entity_id,
-                person_id=person.entity_id,
+                organization_id=organization.entity_id, 
+                person_id=person.entity_id, 
                 file_path=temp_file_path,
                 file_category=file_category,
                 file_id=file_id,
                 original_filename=file.filename
             )
 
+            # Clean up temporary file
             os.unlink(temp_file_path)
             
             return get_success_response(
@@ -216,10 +101,14 @@ class EmployeeListUpload(Resource):
             )
 
         except Exception as e:
+            # Clean up temporary file in case of error
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
             logger.exception(e)
-            return get_failure_response(f"Error uploading file: {str(e)}", status_code=500)
+            return get_failure_response(
+                f"Error uploading file: {str(e)}",
+                status_code=500
+            )
 
 @employee_api.route('/matches')
 class EmployeeListMatches(Resource):
@@ -322,36 +211,12 @@ class EmployeeResource(Resource):
         
         # Check for duplicate employee ID
         existing_employee = employee_service.employee_repo.get_by_employee_id(employee_id, organization.entity_id)
-        
-        print("existing_employee: ",existing_employee)
         if existing_employee:
-            
-            description = f"Duplicate employee ID detected: Duplicate employee ID detected: ${employee_id} for organization ${organization.entity_id}.${employee_id} for organization ${organization.entity_id}."
-            status_ =  AlertStatusEnum.ADDRESSED.value
-            level = AlertLevelEnum.WARNING.value
-            title = 'Employee'
             logger.warning(
                 f"Duplicate employee ID detected: {employee_id} for organization {organization.entity_id}. "
                 f"Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). "
                 f"Creating new employee anyway as per requirements."
-                
             )
-            
-            alert_service = AlertService(config)
-            try:
-                print(alert_service)
-                create_duplicateRecord_alert = alert_service.create_alert(
-                    organization_id = organization.entity_id,
-                    title = title,
-                    description = description,
-                    alert_type = level,
-                    status = status_,
-                    assigned_to_id = employee_id
-                
-                )
-            except Exception as e:
-                logger.error(f"Error processing patient file: {str(e)}")
-            
         
         person = Person(
             first_name=parsed_body['first_name'],
