@@ -28,7 +28,7 @@ class PatientCareSlotService:
         patient_care_slot = self.patient_care_slot_repo.save(patient_care_slot)
         return patient_care_slot
 
-    def get_patient_care_slots_by_week(self, patient_id: str, start_date: date, end_date: date):
+    def get_patient_care_slots_by_week(self, patient_id: str, start_date: date):
         """Get all care slots for a patient in a specific week."""
         # Get all slots for the patient first
         patient_slots = self.patient_care_slot_repo.get_many({
@@ -240,7 +240,7 @@ class PatientCareSlotService:
         # Validate weekly quota if provided
         start_date = slot.start_date
         end_date = slot.end_date
-        existing_slots = self.get_patient_care_slots_by_week(patient_id, start_date,end_date) if start_date and end_date else []
+        existing_slots = self.get_patient_care_slots_by_week(patient_id, start_date) if start_date else []
         self._validate_weekly_quota(patient_weekly_quota, slot, existing_slots, exclude_slot_id=slot_id)
         
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")

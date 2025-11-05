@@ -120,6 +120,7 @@ class PatientRepository(BaseRepository):
                 records_to_update.append(record)
             else:
                 # Record doesn't exist, prepare for insert
+                #append and insert
                 records_to_insert.append(record)
 
         logger.info("Preparing to insert %s new records and update %s existing records.", len(records_to_insert), len(records_to_update))

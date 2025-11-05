@@ -1,3 +1,4 @@
+
 from common.repositories.base import BaseRepository
 from common.models.patient_care_slot import PatientCareSlot
 from datetime import time, date, datetime
@@ -24,7 +25,7 @@ class PatientCareSlotRepository(BaseRepository):
         Args:
             start_time: Start time of the availability slot
             end_time: End time of the availability slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -69,7 +70,7 @@ class PatientCareSlotRepository(BaseRepository):
             );
         """
         params = (
-            visit_date.weekday(),  # day_of_week = %s
+            visit_date.weekday(),  # start_day_of_week = %s
             visit_date.weekday(),  # start_day_of_week <= %s
             visit_date.weekday(),  # end_day_of_week >= %s
             start_time, 
@@ -155,8 +156,9 @@ class PatientCareSlotRepository(BaseRepository):
                     "end_date": row["end_date"],
                     "start_day_of_week": row["start_day_of_week"],
                     "end_day_of_week": row["end_day_of_week"],
-                    "care_visits": []
+                    "care_visits": [] 
                 }
+                    
 
             if row.get("visit_date"):  # only if care visit exists
                 slots_map[slot_id]["care_visits"].append({
@@ -166,6 +168,8 @@ class PatientCareSlotRepository(BaseRepository):
                     "employee_first_name": row["employee_first_name"],
                     "employee_last_name": row["employee_last_name"]
                 })
+                
+                
 
         return list(slots_map.values())
 
