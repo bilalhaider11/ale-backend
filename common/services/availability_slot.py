@@ -36,26 +36,11 @@ class AvailabilitySlotService:
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
         return availability_slots
 
-    def get_availability_slots_by_date_range(self, employee_id: str, start_date: date, end_date: date):
+    def get_availability_slots_by_week(self, employee_id: str, start_date: date):
         """Get availability slots for an employee within a date range"""
-        availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
+      
+        return self.availability_slot_repo.get_many({"employee_id": employee_id,"start_date": start_date})
         
-        # Filter slots that fall within the date range
-        filtered_slots = []
-        for slot in availability_slots:
-            if slot.start_date and slot.end_date:
-                # Check if slot overlaps with the requested date range
-                if (slot.start_date <= end_date and slot.end_date >= start_date):
-                    filtered_slots.append(slot)
-            elif slot.start_date:
-                # If only start_date is set, check if it's within range
-                if start_date <= slot.start_date <= end_date:
-                    filtered_slots.append(slot)
-            else:
-                # If no date filtering, include all slots
-                filtered_slots.append(slot)
-        
-        return filtered_slots
     
     
     def get_availability_slots_for_organization(self, organization_id: str):
@@ -70,7 +55,7 @@ class AvailabilitySlotService:
         Args:
             start_time: Start time of the patient care slot
             end_time: End time of the patient care slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -210,3 +195,7 @@ class AvailabilitySlotService:
             saved_slot = self.availability_slot_repo.save(slot)
             saved_slots.append(saved_slot)
         return saved_slots
+
+
+
+

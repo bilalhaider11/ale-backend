@@ -1,3 +1,4 @@
+
 from common.repositories.base import BaseRepository
 from common.models import AvailabilitySlot
 from datetime import time, date, datetime
@@ -25,7 +26,7 @@ class AvailabilitySlotRepository(BaseRepository):
         Args:
             start_time: Start time of the availability slot
             end_time: End time of the availability slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+           start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -200,6 +201,8 @@ class AvailabilitySlotRepository(BaseRepository):
                     "availability_slot_id": row['availability_slot_id'],
                     "status": row['status']
                 })
+        print("checking for availability slots:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...>>> ")
+        print(slots_map.values()) 
 
         return list(slots_map.values())
 
@@ -221,4 +224,6 @@ class AvailabilitySlotRepository(BaseRepository):
             rows = self.adapter.execute_query(query, params) or []
 
         return len(rows)
+
+
 
