@@ -35,6 +35,7 @@ class Organizations(Resource):
     
     @login_required()
     def get(self, person):
+        
         organization_service = OrganizationService(config)
         organizations = organization_service.get_organizations_with_roles_by_person(person.entity_id)
         return get_success_response(organizations=organizations)

@@ -1,5 +1,8 @@
 import tempfile
 import os
+import csv
+from openpyxl import load_workbook
+from common.models.alert import AlertLevelEnum, AlertStatusEnum
 from flask import request
 from flask_restx import Resource, Namespace
 from common.app_config import config
@@ -7,13 +10,15 @@ from common.app_logger import create_logger
 from datetime import datetime, timedelta, date
 from app.helpers.decorators import login_required, organization_required
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
+from common.models.alert import AlertLevelEnum, AlertStatusEnum
 
 from common.models import Person, Patient
 from common.models.person_organization_role import PersonOrganizationRoleEnum
 from common.services.person import PersonService
 from common.services.patient import PatientService
 from common.services.patient_care_slot import PatientCareSlotService
-
+from common.services.organization import OrganizationService
+from common.services.alert import AlertService
 logger = create_logger()
 
 patient_api = Namespace('patient', description='Patient management endpoints')
@@ -50,7 +55,8 @@ class PatientDetails(Resource):
             message="Patient retrieved successfully",
             data=patient.as_dict()
         )
-
+        
+        
 @patient_api.route('/upload')
 class PatientFileUpload(Resource):
     
@@ -58,6 +64,12 @@ class PatientFileUpload(Resource):
     @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
     def post(self, person, organization):
         """Upload a CSV or XLSX file with patient data"""
+        
+        organization_service = OrganizationService(config)
+        alert_service = AlertService(config)
+        
+
+        
         if 'file' not in request.files:
             return get_failure_response("No file provided", 400)
 
@@ -74,15 +86,120 @@ class PatientFileUpload(Resource):
             return get_failure_response("File type not supported. Please upload a CSV or XLSX file.", 400)
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
-            temp_path = temp_file.name
-            file.save(temp_path)
-        
+            temp_file_path = temp_file.name
+            file.save(temp_file_path)
+#######################################################################################        
+
         try:
+            
             patient_service = PatientService(config, person.entity_id)
+            #Get all existing employee IDs
+            patient_mrns = patient_service.get_all_patient_mrn(organization.entity_id)
+            existing_ids = {str(row['medical_record_number']) for row in patient_mrns}
+
+            file_category = "patient"
+
+            if file_extension == '.xlsx':
+                workbook = load_workbook(temp_file_path, data_only=False)
+                worksheet = workbook.active
+
+                for row_idx, row in enumerate(worksheet.iter_rows(values_only=True,min_row=2), start=2):
+                   
+                    row = list(row)
+
+                    # for physician data
+                    if row and any(cell and 'npi' in str(cell).lower() for cell in row):
+                        file_category = "physician"
+                        break
+                    # Assign new employee_id to missing employee ids
+                    if row[0] is None:
+                        new_pat_mrn = organization_service.get_next_patient_mrn(organization.entity_id)
+                        row[0] = new_pat_mrn
+                        existing_ids.add(new_pat_mrn)
+                        
+                        workbook = load_workbook(temp_file_path)
+                        sheet = workbook.active
+                        
+                        cell = sheet.cell(row=row_idx, column=1, value=new_pat_mrn)
+                        
+                        workbook.save(temp_file_path)
+                    else:
+                        current_pat_mrn = str(row[0])
+                        
+                        if current_pat_mrn in existing_ids:
+                            
+                            logger.warning(f"Duplicate detected: {current_pat_mrn}")
+
+                            description = (
+                                f"Duplicate employee ID detected: {current_pat_mrn} for organization {organization.entity_id}."
+                            )
+                            status_ = AlertStatusEnum.ADDRESSED.value
+                            level = AlertLevelEnum.WARNING.value
+                            title = "patient"
+
+                            
+                            alert_service.create_alert(
+                                organization_id=organization.entity_id,
+                                title=title,
+                                description=description,
+                                alert_type=level,
+                                status=status_,
+                                assigned_to_id=current_pat_mrn
+                            )
+                            
+                        else:
+                            existing_ids.add(current_pat_mrn)
+                    
+
+            else:
+                # Handle CSV files similarly
+                with open(temp_file_path, 'r', encoding='utf-8') as csv_file:
+                    reader = csv.reader(csv_file)
+                    for i, row in enumerate(reader):
+                        # optional: skip header detection or use a smarter header check
+                        if i == 0 and any(cell and 'mrn' in cell.lower() for cell in row):
+                            continue
+
+                        if row and any(cell and 'npi' in cell.lower() for cell in row):
+                            file_category = "physician"
+                            break
+
+                        if not row:
+                            continue
+
+                        if not row[0]:
+                            new_pat_mrn = organization_service.get_next_patient_mrn(organization.entity_id)
+                            row[0] = new_pat_mrn
+                        else:
+                            current_pat_mrn = str(row[0])
+                            if current_pat_mrn in existing_ids:
+                                logger.warning(f"Duplicate detected: {current_pat_mrn}")
+                                description = (
+                                    f"Duplicate employee ID detected: {current_pat_mrn} for organization {organization.entity_id}."
+                                )
+                                status_ = AlertStatusEnum.ADDRESSED.value
+                                level = AlertLevelEnum.WARNING.value
+                                title = "Patient"
+
+                                try:
+                                    alert_service.create_alert(
+                                        organization_id=organization.entity_id,
+                                        title=title,
+                                        description=description,
+                                        alert_type=level,
+                                        status=status_,
+                                        assigned_to_id=current_pat_mrn
+                                    )
+                                except Exception as alert_err:
+                                    logger.exception(f"Failed to create duplicate alert: {alert_err}")
+
+            workbook = load_workbook(filename=temp_file_path) 
+            sheet = workbook.active  
+            
             result = patient_service.upload_patient_list(
                 organization_id=organization.entity_id,
                 person_id=person.entity_id,
-                file_path=temp_path,
+                file_path=temp_file_path,
                 original_filename=file.filename,
                 file_id=file_id,
             )
@@ -91,15 +208,15 @@ class PatientFileUpload(Resource):
                 message="File uploaded successfully",
                 upload_info=result,
             )
-        
+            
         except Exception as e:
             logger.error(f"Error processing patient file: {str(e)}")
             return get_failure_response(f"Error processing file: {str(e)}", 500)
         
         finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
-
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+           
 @patient_api.route('')
 class PatientResource(Resource):
     
@@ -109,6 +226,9 @@ class PatientResource(Resource):
         """Update or create a patient record"""
         patient_service = PatientService(config)
         person_service = PersonService(config)
+        alert_service = AlertService(config)
+        organization_service = OrganizationService(config)
+        
         
         parsed_body = parse_request_body(request, [
             'entity_id',
@@ -134,8 +254,43 @@ class PatientResource(Resource):
 
         validate_required_fields(parsed_body)
         
+        if not medical_record_number:
+            MRN_auto_assigner = organization_service.get_next_patient_MRN(organization.entity_id)
+            medical_record_number = MRN_auto_assigner
+            
+        existing_patient = patient_service.patient_repo.get_by_patient_mrn(medical_record_number, organization.entity_id)
+        
+        #logic for duplicate patient
+        if existing_patient:
+            description = f"Duplicate employee ID detected: Duplicate patient detected: ${medical_record_number} for organization ${organization.entity_id}.${medical_record_number} for organization ${organization.entity_id}."
+            status_ =  AlertStatusEnum.ADDRESSED.value
+            level = AlertLevelEnum.WARNING.value
+            title = 'Patient'
+            logger.warning(
+                f"Duplicate detected: {medical_record_number} for organization {organization.entity_id}. "
+                f"Existing employee: {existing_patient.entity_id} . "
+                f"Creating new employee anyway as per requirements."
+                
+            )
+            
+            alert_service = AlertService(config)
+            try:
+                create_duplicateRecord_alert = alert_service.create_alert(
+                    organization_id = organization.entity_id,
+                    title = title,
+                    description = description,
+                    alert_type = level,
+                    status = status_,
+                    assigned_to_id = medical_record_number
+                
+                )
+            except Exception as e:
+                logger.error(f"Error processing patient file: {str(e)}")
+            
         if entity_id:
             patient = patient_service.get_patient_by_id(entity_id, organization.entity_id)
+            
+            
             if not patient:
                 return get_failure_response("Patient not found", status_code=404)
             

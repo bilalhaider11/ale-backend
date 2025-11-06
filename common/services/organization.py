@@ -17,6 +17,11 @@ class OrganizationService:
     def save_organization(self, organization: Organization):
         organization = self.organization_repo.save(organization)
         return organization
+    
+    
+    def get_employee_id_counter_from_organization(self, entity_id):
+        
+        return self.organization_repo.get_employee_id_counter(entity_id)
 
     def get_organization_by_id(self, entity_id: str):
         organization = self.organization_repo.get_one({"entity_id": entity_id})
@@ -31,6 +36,7 @@ class OrganizationService:
 
         # Dictionary to group organizations by entity_id
         orgs_map = {}
+        
 
         for result in results:
             if isinstance(result, dict):
@@ -228,4 +234,18 @@ class OrganizationService:
             str: Formatted employee ID (e.g., "0001", "0002")
         """
         next_id = self.organization_repo.increment_employee_id_counter(organization_id)
+        return f"{next_id:04d}"
+    
+    def get_next_patient_mrn(self, organization_id: str) -> str:
+        """
+        Get the next available employee ID for an organization.
+        This method increments the counter and returns a padded 4-digit ID.
+        
+        Args:
+            organization_id: The organization ID
+            
+        Returns:
+            str: Formatted employee ID (e.g., "0001", "0002")
+        """
+        next_id = self.organization_repo.increment_patient_mrn_counter(organization_id)
         return f"{next_id:04d}"

@@ -73,3 +73,39 @@ class OrganizationRepository(BaseRepository):
         
         # If no result, the organization might not exist
         return 1
+    
+    
+    def increment_patient_mrn_counter(self, organization_id: str) -> int:
+        """
+        Atomically increment and return the employee_id_counter for an organization.
+        This uses a database transaction to ensure thread-safety.
+        
+        Args:
+            organization_id: The organization ID
+            
+        Returns:
+            int: The next employee ID counter value
+        """
+        update_query = """
+            UPDATE organization 
+            SET patient_mrn_counter = COALESCE(patient_mrn_counter, 0) + 1
+            WHERE entity_id = %s
+        """
+        
+        select_query = """
+            SELECT patient_mrn_counter 
+            FROM organization 
+            WHERE entity_id = %s
+        """
+        
+        with self.adapter:
+            # Perform the update
+            self.adapter.execute_query(update_query, (organization_id,))
+            # Fetch the updated value
+            result = self.adapter.execute_query(select_query, (organization_id,))
+        
+        if result and len(result) > 0:
+            return result[0]['patient_mrn_counter']
+        
+        # If no result, the organization might not exist
+        return 1
