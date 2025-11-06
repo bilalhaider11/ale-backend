@@ -95,9 +95,7 @@ class PatientFileUpload(Resource):
             patient_service = PatientService(config, person.entity_id)
             #Get all existing employee IDs
             patient_mrns = patient_service.get_all_patient_mrn(organization.entity_id)
-            print(patient_mrns)
             existing_ids = {str(row['medical_record_number']) for row in patient_mrns}
-            print("Existing IDs:", existing_ids)
 
             file_category = "patient"
 
@@ -106,30 +104,18 @@ class PatientFileUpload(Resource):
                 worksheet = workbook.active
 
                 for row_idx, row in enumerate(worksheet.iter_rows(values_only=True,min_row=2), start=2):
-                    print("///////////////////////////////////////////")
-                    print(row)
-
+                   
                     row = list(row)
 
                     # for physician data
                     if row and any(cell and 'npi' in str(cell).lower() for cell in row):
                         file_category = "physician"
                         break
-
-                    #if not any(row):
-                    #    continue
-
                     # Assign new employee_id to missing employee ids
                     if row[0] is None:
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        print(row[0])
                         new_pat_mrn = organization_service.get_next_patient_mrn(organization.entity_id)
                         row[0] = new_pat_mrn
                         existing_ids.add(new_pat_mrn)
-                        print("existing_ids: ",existing_ids)
                         
                         workbook = load_workbook(temp_file_path)
                         sheet = workbook.active
@@ -137,15 +123,8 @@ class PatientFileUpload(Resource):
                         cell = sheet.cell(row=row_idx, column=1, value=new_pat_mrn)
                         
                         workbook.save(temp_file_path)
-                        
-                        
-                        print(f"Generated new employee_id {new_pat_mrn} for row {row_idx}")
                     else:
                         current_pat_mrn = str(row[0])
-                        print(f"Found employee_id: {current_pat_mrn}")
-                        
-
-                        # Check for duplicate
                         
                         if current_pat_mrn in existing_ids:
                             
@@ -167,16 +146,9 @@ class PatientFileUpload(Resource):
                                 status=status_,
                                 assigned_to_id=current_pat_mrn
                             )
-                            print(f" Created alert for duplicate employee_id: {current_pat_mrn}")
                             
                         else:
                             existing_ids.add(current_pat_mrn)
-                            print("existing_ids: ",existing_ids)
-                                
-                    print(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
-                    print(row)
-                    
-                            
                     
 
             else:
@@ -221,18 +193,8 @@ class PatientFileUpload(Resource):
                                 except Exception as alert_err:
                                     logger.exception(f"Failed to create duplicate alert: {alert_err}")
 
-                        
-                        
-#####################################################################################                  print()
-
-            print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
             workbook = load_workbook(filename=temp_file_path) 
-            sheet = workbook.active   
-            for row in sheet.iter_rows(values_only=True):
-                print(row)
-
-
-            
+            sheet = workbook.active  
             
             result = patient_service.upload_patient_list(
                 organization_id=organization.entity_id,
@@ -254,13 +216,7 @@ class PatientFileUpload(Resource):
         finally:
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
-        
-        
-        
-        
-#######################################################################################        
-        
-
+           
 @patient_api.route('')
 class PatientResource(Resource):
     
@@ -304,10 +260,8 @@ class PatientResource(Resource):
             
         existing_patient = patient_service.patient_repo.get_by_patient_mrn(medical_record_number, organization.entity_id)
         
-        print("existing patient: ",existing_patient)
         #logic for duplicate patient
         if existing_patient:
-            print("duplicates")
             description = f"Duplicate employee ID detected: Duplicate patient detected: ${medical_record_number} for organization ${organization.entity_id}.${medical_record_number} for organization ${organization.entity_id}."
             status_ =  AlertStatusEnum.ADDRESSED.value
             level = AlertLevelEnum.WARNING.value
@@ -321,7 +275,6 @@ class PatientResource(Resource):
             
             alert_service = AlertService(config)
             try:
-                print(alert_service)
                 create_duplicateRecord_alert = alert_service.create_alert(
                     organization_id = organization.entity_id,
                     title = title,
@@ -334,7 +287,6 @@ class PatientResource(Resource):
             except Exception as e:
                 logger.error(f"Error processing patient file: {str(e)}")
             
- #####################################################################################       
         if entity_id:
             patient = patient_service.get_patient_by_id(entity_id, organization.entity_id)
             

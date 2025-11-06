@@ -132,7 +132,6 @@ class CreateEmployeeSlots(Resource):
     def post(self, person, organization, employee_id: str):
         try:
             request_data = request.get_json(force=True)
-            print("creating request data: ",request_data)
             availability_slot_service = AvailabilitySlotService(config)
             created_slots = availability_slot_service.expand_and_save_slots(request_data, employee_id)
             return get_success_response(

@@ -64,9 +64,7 @@ class EmployeeListUpload(Resource):
         try:
             #Get all existing employee IDs
             employee_ids = employee_service.get_all_employee_ids(organization.entity_id)
-            print(employee_ids)
             existing_ids = {str(row['employee_id']) for row in employee_ids}
-            print("Existing IDs:", existing_ids)
 
             file_category = "employee"
 
@@ -75,9 +73,6 @@ class EmployeeListUpload(Resource):
                 worksheet = workbook.active
 
                 for row_idx, row in enumerate(worksheet.iter_rows(values_only=True,min_row=2), start=2):
-                    print("///////////////////////////////////////////")
-                    print(row)
-
                     row = list(row)
 
                     # for physician data
@@ -90,14 +85,9 @@ class EmployeeListUpload(Resource):
 
                     # Assign new employee_id to missing employee ids
                     if row[0] is None:
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
-                        print("/////////////////////////////////////////////////////")
                         new_emp_id = organization_service.get_next_employee_id(organization.entity_id)
                         row[0] = new_emp_id
                         existing_ids.add(new_emp_id)
-                        print("existing_ids: ",existing_ids)
                         
                         workbook = load_workbook(temp_file_path)
                         sheet = workbook.active
@@ -106,13 +96,8 @@ class EmployeeListUpload(Resource):
                         
                         workbook.save(temp_file_path)
                         
-                        
-                        print(f"Generated new employee_id {new_emp_id} for row {row_idx}")
                     else:
                         current_emp_id = str(row[0])
-                        print(f"Found employee_id: {current_emp_id}")
-                        
-
                         # Check for duplicate
                         
                         if current_emp_id in existing_ids:
@@ -135,17 +120,10 @@ class EmployeeListUpload(Resource):
                                 status=status_,
                                 assigned_to_id=current_emp_id
                             )
-                            print(f" Created alert for duplicate employee_id: {current_emp_id}")
                             
                         else:
                             existing_ids.add(current_emp_id)
-                            print("existing_ids: ",existing_ids)
-                                
-                    print(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,")
-                    print(row)
                             
-                    
-
             else:
                 # Handle CSV files similarly
                 with open(temp_file_path, 'r', encoding='utf-8') as csv_file:
@@ -187,16 +165,10 @@ class EmployeeListUpload(Resource):
                                     )
                                 except Exception as alert_err:
                                     logger.exception(f"Failed to create duplicate alert: {alert_err}")
-
-
-                        
+      
             workbook = load_workbook(filename=temp_file_path) 
             sheet = workbook.active 
-                
-            for row in sheet.iter_rows(values_only=True):
-                print(row)
-
-
+         
             # Step 3: Upload to S3 after processing
             upload_result = employee_service.upload_list_file(
                 organization_id=organization.entity_id,
@@ -323,7 +295,6 @@ class EmployeeResource(Resource):
         # Check for duplicate employee ID
         existing_employee = employee_service.employee_repo.get_by_employee_id(employee_id, organization.entity_id)
         
-        print("existing_employee: ",existing_employee)
         if existing_employee:
             
             description = f"Duplicate employee ID detected: Duplicate employee ID detected: ${employee_id} for organization ${organization.entity_id}.${employee_id} for organization ${organization.entity_id}."
@@ -339,7 +310,6 @@ class EmployeeResource(Resource):
             
             alert_service = AlertService(config)
             try:
-                print(alert_service)
                 create_duplicateRecord_alert = alert_service.create_alert(
                     organization_id = organization.entity_id,
                     title = title,

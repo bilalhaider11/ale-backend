@@ -43,10 +43,6 @@ def downgrade(migration):
     # Drop patient_care_slot_key column from care_visit table
     migration.drop_column("care_visit", "patient_care_slot_id")
     
-    
-    
-    
-    
        # Drop availability_slot_key column from care_visit_audit table
     migration.drop_column("care_visit_audit", "availability_slot_id")
     
