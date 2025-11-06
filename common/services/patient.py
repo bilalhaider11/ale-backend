@@ -40,9 +40,9 @@ class PatientService:
         logger.info(f"Processing {record_count} patient records...")
 
         # Get all existing patients for this organization
-        print("rows receieved: ",rows)
+    
         existing_patients = self.patient_repo.get_many({"organization_id": organization_id})
-        print("existing patients: ",existing_patients)
+        
         # Create a map of MRN to patient for quick lookup
         existing_patients_map = {}
         if existing_patients:
@@ -50,7 +50,6 @@ class PatientService:
                 if patient.medical_record_number:
                     existing_patients_map[patient.medical_record_number] = patient
                     
-        print("existing patients map: ",existing_patients_map)
 
         from common.services.organization import OrganizationService
         organization_service = OrganizationService(self.config)
@@ -81,7 +80,6 @@ class PatientService:
                 'existing_patient': existing_patients_map.get(mrn)
             })
         
-        print("patient data prepared: ",patient_data)
 
         # Create temporary patient objects with name data
         temp_patients = []
@@ -102,6 +100,8 @@ class PatientService:
 
         # Bulk upsert persons and get MRN to person_id mapping
         mrn_to_person_id = self.person_repo.upsert_persons_from_patients(temp_patients, user_id)
+        
+        
 
         # Now create final patient records with person_ids
         records = []

@@ -94,7 +94,6 @@ class PatientFileUpload(Resource):
                 file_id=file_id,
             )
             
-            print("final result from views of patient: ",result)
         
             return get_success_response(
                 message="File uploaded successfully",
