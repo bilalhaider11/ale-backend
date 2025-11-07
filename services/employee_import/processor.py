@@ -28,7 +28,6 @@ class EmployeeImportProcessor(BaseServiceProcessor):
         """Main processor method that handles incoming messages"""
         try:
             self.logger.info("Processing employee import message")
-            print("Processing employee import message:", message)
             if not isinstance(message, dict):
                 try:
                     message = json.loads(message)
@@ -36,15 +35,12 @@ class EmployeeImportProcessor(BaseServiceProcessor):
                     self.logger.error(f"Failed to parse message as JSON: {str(e)}")
                     return
                 
-            print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
             # Check if this is an S3 notification
             if 'Records' not in message:
                 self.logger.info("Message is not an S3 notification")
                 return
 
             for record in message['Records']:
-                
-                print("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") 
                 
                 #if record.get('eventSource') != 'aws:s3':
                 #    continue
@@ -64,9 +60,7 @@ class EmployeeImportProcessor(BaseServiceProcessor):
                 self.logger.info(f"Processing CSV from S3: {bucket_name}/{key}")
                 
                 # Process the CSV or XLSX file
-                self.import_handler.process_list_file(bucket_name, key)
-                
-            print("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")    
+                self.import_handler.process_list_file(bucket_name, key)  
         except Exception as e:
             self.logger.error(f"Error processing employee import message: {str(e)}")
             self.logger.exception(e)
