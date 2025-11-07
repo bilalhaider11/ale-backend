@@ -65,16 +65,12 @@ class EmployeeService:
     
         # Fetch all existing employee IDs for the organization ONCE
         existing_employee_ids = self.employee_repo.get_employee_ids_map_for_organization(organization_id)
-        logger.info(f"Loaded {len(existing_employee_ids)} existing employee IDs for duplicate checking")
-        
-        print("existing employee ids: ",existing_employee_ids)
-    
+            
         for row in rows:
             first_name = get_first_matching_column_value(row, ['first name', 'first_name'])
             last_name = get_first_matching_column_value(row, ['last name', 'last_name'])
     
             if not first_name or not last_name:
-                logger.info(f"Skipping row without first name or last name: {row}")
                 skipped_entries.append(row)
                 continue
     
@@ -82,7 +78,6 @@ class EmployeeService:
             employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
             if not employee_id or not employee_id.strip():
                 employee_id = organization_service.get_next_employee_id(organization_id)
-                logger.info(f"Auto-generated employee ID {employee_id} for {first_name} {last_name}")
     
             # Detect duplicates in DB
             if employee_id in existing_employee_ids:
@@ -142,7 +137,6 @@ class EmployeeService:
             self.employee_repo.upsert_employee(record, organization_id)
             success_count += 1
     
-        logger.info(f"Successfully processed {success_count} employees. Skipped {len(skipped_entries)} entries.")
         return success_count, skipped_entries
 
 

@@ -106,9 +106,6 @@ class EmployeeRepository(BaseRepository):
         Upsert a single employee record based on first_name, last_name, employee_id, and organization_id.
         Create Person if missing.
         """
-        print("getting record from bulk upload: ",record)
-        
-        
         from common.services import PersonService
         from common.services import OrganizationService
         from common.app_config import config
@@ -124,7 +121,6 @@ class EmployeeRepository(BaseRepository):
         existing_employees = self.get_many({"organization_id": organization_id})
         existing_employees_map = {(emp.first_name, emp.last_name, emp.employee_id): emp for emp in existing_employees}
         
-        print("existing employee map from existing record from database: ",existing_employees_map)
     
         if key in existing_employees_map:
             # Update existing
@@ -138,7 +134,6 @@ class EmployeeRepository(BaseRepository):
             
             self._batch_save_employees(record)
             
-            print(f"Updated existing employee: {record.first_name} {record.last_name} ({record.employee_id})")
             return {"status": "updated", "employee_id": record.employee_id}
         else:
             # Create new person and employee
@@ -156,7 +151,6 @@ class EmployeeRepository(BaseRepository):
                 person_service.save_persons([new_person])
     
             self._batch_save_employees(record)
-            print(f"Inserted new employee: {record.first_name} {record.last_name} ({record.employee_id})")
             return {"status": "inserted", "employee_id": record.employee_id}
 
     def _batch_records(self, records: list[VersionedModel], batch_size: int = 1000):
