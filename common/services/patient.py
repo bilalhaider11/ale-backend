@@ -11,7 +11,7 @@ from common.models.patient import Patient
 from common.services.s3_client import S3ClientService
 from common.services.alert import AlertService
 from common.models.alert import AlertLevelEnum, AlertStatusEnum
-
+from common.services.organization import OrganizationService
 from common.helpers.csv_utils import get_first_matching_column_value, parse_date_string
 from common.services.patients_file import PatientsFileService
 from common.models.patients_file import PatientsFile, PatientsFileStatusEnum
@@ -33,6 +33,7 @@ class PatientService:
         self.patient_file_service = PatientsFileService(config)
         self.person_service = PersonService(config)
         self.alert_service = AlertService(config)
+        self.organization_service = OrganizationService(config)
 
     def bulk_import_patients(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> int:
         """Import CSV data into patient table using batch processing."""
@@ -40,7 +41,6 @@ class PatientService:
         logger.info(f"Processing {record_count} patient records...")
 
         # Get all existing patients for this organization
-    
         existing_patients = self.patient_repo.get_many({"organization_id": organization_id})
         
         # Create a map of MRN to patient for quick lookup
@@ -49,97 +49,63 @@ class PatientService:
             for patient in existing_patients:
                 if patient.medical_record_number:
                     existing_patients_map[patient.medical_record_number] = patient
-                    
 
-        from common.services.organization import OrganizationService
-        organization_service = OrganizationService(self.config)
-        
-        
         # Temporary structure to hold patient data with names
         patient_data = []
+        count = 0
         for row in rows:
             first_name = get_first_matching_column_value(row, ["first name", "first_name"])
             last_name = get_first_matching_column_value(row, ["last name", "last_name"])
             dob_raw = get_first_matching_column_value(row, ["date of birth", "date_of_birth", "dob"])
-            mrn = get_first_matching_column_value(row, ["medical record number", "mrn", "medical_record_number"], match_mode="contains")
+            mrn = get_first_matching_column_value(row, ["medical_record_number", "mrn"], match_mode="contains")
             gender = get_first_matching_column_value(row, ["gender"], match_mode="contains")
-            
+
             if not mrn:
-                mrn = organization_service.get_next_patient_mrn(organization_id)
-                logger.info(f"Auto-generated MRN {mrn} for {first_name} {last_name}")
+                mrn = self.organization_service.get_next_patient_mrn(organization_id)
                 
+            if mrn in existing_patients_map:
+                logger.warning(
+                    f"Duplicate patient MRN detected during bulk import"
+                )
+    
+                # Create an alert
+                self.alert_service.create_alert(
+                    organization_id=organization_id,
+                    title="Duplicate patientMRN Detected",
+                    description=(
+                        f"Duplicate patient MRN detected during bulk import. "
+                        
+                    ),
+                    alert_type=AlertLevelEnum.WARNING.value,
+                    status=AlertStatusEnum.ADDRESSED.value,
+                )
 
             date_of_birth = parse_date(dob_raw)
-
-            patient_data.append({
-                'mrn': mrn,
-                'first_name': first_name,
-                'last_name': last_name,
-                'date_of_birth': date_of_birth,
-                'gender':gender,
-                'existing_patient': existing_patients_map.get(mrn)
-            })
-        
-
-        # Create temporary patient objects with name data
-        temp_patients = []
-        for data in patient_data:
+            
+            
             patient = Patient(
                 changed_by_id=user_id,
-                medical_record_number=data['mrn'],
-                organization_id=organization_id,
-                person_id=data['existing_patient'].person_id if data['existing_patient'] else None
+                medical_record_number=mrn,
+                organization_id=organization_id
             )
-            # Temporarily store name data on patient object
-            patient.first_name = data['first_name']
-            patient.last_name = data['last_name']
-            patient.date_of_birth = data['date_of_birth']
-            patient.gender = data['gender']
-
-            temp_patients.append(patient)
-                
-
-        # Bulk upsert persons and get MRN to person_id mapping
-        mrn_to_person_id = self.person_repo.upsert_persons_from_patients(temp_patients, user_id)
-        print("MRN to Person ID mapping: ",mrn_to_person_id)
-
-        # Now create final patient records with person_ids
-        records = []
-        count = 0
-        print("///////////////////////////////////////////////////////////////////////////////////////////////////")
-        for data in patient_data:
-            existing = data['existing_patient']
+            patient_for_person = patient
+            patient_for_person.first_name=first_name
+            patient_for_person.last_name=last_name
+            patient_for_person.gender=gender
+            patient_for_person.date_of_birth=date_of_birth
             
+            mrn_to_person_id = self.person_repo.upsert_persons_from_patients(patient_for_person, user_id)
             
-            record = Patient(
-                changed_by_id=user_id,
-                medical_record_number=data['mrn'],
-                organization_id=organization_id,
-                person_id=mrn_to_person_id.get(data['mrn']) or (existing.person_id if existing else None)
-            )
+            patient.person_id=mrn_to_person_id
             
-            print("patient that is created, is: ",record)
+            self.patient_repo.upsert_patient(patient, organization_id)
             
-            # If patient exists, preserve the care-related fields
-            if existing:
-                record.care_period_start = existing.care_period_start
-                record.care_period_end = existing.care_period_end
-                record.weekly_quota = existing.weekly_quota
-                record.current_week_remaining_quota = existing.current_week_remaining_quota
-                
-            self.patient_repo.upsert_patients(record, organization_id)
             count+=1
-
+   
         logger.info(f"Successfully imported {count} patient records")
         return count
-    
-    
 
-    def get_all_patient_mrn(self,organization_id=None)-> list:
-        
-        
-        return self.patient_repo.get_all_patient_mrn(organization_id=organization_id)
-    
+
     
     def upload_patient_list(self, organization_id: str, person_id: str, file_path: str, original_filename: str = None, file_id=None) -> Dict:
         """

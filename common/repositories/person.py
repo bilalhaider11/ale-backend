@@ -3,6 +3,7 @@ from typing import List, Dict
 from common.repositories.base import BaseRepository
 from common.models.person import Person
 from common.app_logger import get_logger
+from common.models.patient import Patient
 
 logger = get_logger(__name__)
 
@@ -173,7 +174,7 @@ class PersonRepository(BaseRepository):
         logger.info(f"Upserted %s person records", len(persons_to_save))
         return npi_to_person_id
 
-    def upsert_persons_from_patients(self, patients: List, user_id: str) -> Dict[str, str]:
+    def upsert_persons_from_patients(self, patient: Patient, user_id: str) -> Dict[str, str]:
         """
         Bulk upsert persons from patient data and return MRN to person_id mapping.
         
@@ -184,41 +185,33 @@ class PersonRepository(BaseRepository):
         Returns:
             Dict mapping MRN to person_id
         """
-        mrn_to_person_id = {}
+        mrn_to_person_id = ''
         
-        for patient in patients:
-            if not (hasattr(patient, 'first_name') or hasattr(patient, 'last_name')):
-                continue
+        
+        # Check if person already exists (if patient has person_id)
+        if patient.person_id:
+            person = self.get_one({"entity_id": patient.person_id})
+            if person:
+                # Update existing person
+                person.first_name = getattr(patient, 'first_name', person.first_name)
+                person.last_name = getattr(patient, 'last_name', person.last_name)
+                person.date_of_birth = getattr(patient, 'date_of_birth', person.date_of_birth)
+                person.gender = getattr(patient, 'gender', person.gender)
+                person.changed_by_id = user_id
+                self.save(person)
                 
-            # Check if person already exists (if patient has person_id)
-            if patient.person_id:
-                person = self.get_one({"entity_id": patient.person_id})
-                if person:
-                    # Update existing person
-                    person.first_name = getattr(patient, 'first_name', person.first_name)
-                    person.last_name = getattr(patient, 'last_name', person.last_name)
-                    person.date_of_birth = getattr(patient, 'date_of_birth', person.date_of_birth)
-                    person.gender = getattr(patient, 'gender', person.gender)
-                    person.changed_by_id = user_id
-                    self.save(person)
-                    if patient.medical_record_number:
-                        mrn_to_person_id[patient.medical_record_number] = person.entity_id
-                    continue
-            
-            # Create new person
-            person = Person(
-                first_name=getattr(patient, 'first_name', None),
-                last_name=getattr(patient, 'last_name', None),
-                date_of_birth=getattr(patient, 'date_of_birth', None),
-                gender=getattr(patient, 'gender', None),
-                changed_by_id=user_id
-            )
-            saved_person = self.save(person)
-            
-            if patient.medical_record_number:
-                mrn_to_person_id[patient.medical_record_number] = saved_person.entity_id
+        # Create new person
+        person = Person(
+            first_name=getattr(patient, 'first_name', None),
+            last_name=getattr(patient, 'last_name', None),
+            date_of_birth=getattr(patient, 'date_of_birth', None),
+            gender=getattr(patient, 'gender', None),
+            changed_by_id=user_id
+        )
         
-        return mrn_to_person_id
+        saved_person = self.save(person)
+        
+        return person.entity_id
 
     def save_multiple(self, persons: list[Person]):
         """

@@ -164,8 +164,6 @@ class PatientHandler:
                 organization_id=organization_id,
                 user_id=patient_file.uploaded_by,
             )
-            print("")
-            print("import count: ",import_count)
 
             patient_file.record_count = import_count
             self.patient_file_service.update_status(patient_file, PatientsFileStatusEnum.IMPORTED)

@@ -61,23 +61,6 @@ class EmployeeRepository(BaseRepository):
             return {row['employee_id']: Employee(**row) for row in result if row.get('employee_id')}
 
         return {}
-   
-#####################################################################################
-    
-    def get_all_employee_ids(self,organization_id=None) -> list:
-        
-        query = "SELECT employee_id FROM employee"
-        
-        with self.adapter:
-            result = self.adapter.execute_query(query if query else None)
-            
-        if result:
-            return result
-        
-        return result
-        
-        
-
 
     def get_employees_count(self, organization_id=None) -> int:
         """
@@ -132,7 +115,7 @@ class EmployeeRepository(BaseRepository):
             record.email_address = existing_record.email_address,
             record.previous_version = existing_record.previous_version
             
-            self._batch_save_employees(record)
+            self.save(record)
             
             return {"status": "updated", "employee_id": record.employee_id}
         else:
@@ -150,35 +133,9 @@ class EmployeeRepository(BaseRepository):
                 record.person_id = new_person.entity_id
                 person_service.save_persons([new_person])
     
-            self._batch_save_employees(record)
+            self.save(record)
             return {"status": "inserted", "employee_id": record.employee_id}
 
-    def _batch_records(self, records: list[VersionedModel], batch_size: int = 1000):
-        """
-        Split a list of versioned model records into batches of specified size.
-
-        Args:
-            records: List of VersionedModel instances to batch
-            batch_size: Size of each batch (default: 1000)
-
-        Yields:
-            List[VersionedModel]: Batches of VersionedModel records
-        """
-        for i in range(0, len(records), batch_size):
-            yield records[i:i + batch_size]
-
-    def _batch_save_employees(self, record: Employee) -> int:
-        """
-        Save a batch of employee records to the database.
-        Args:
-            records: List of Employee instances to save
-        Returns:
-            int: Number of records saved
-        """
-        if not record:
-            return 0
-        record = self.save(record)
-        return 1
 
     def get_employees_with_matches(self, organization_id: str):
         """

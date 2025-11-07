@@ -396,11 +396,6 @@ class AssignEmployeeToRecurringPattern(Resource):
         try:
             request_data = request.get_json(force=True)     
             
-            print("request data for recurring events: ",request_data)    
-            print(".................................................................................................")
-          
-             
-            
             # Validate required fields
             required_fields = ['patient_id', 'employee_id']
             missing_fields = [field for field in required_fields if field not in request_data]

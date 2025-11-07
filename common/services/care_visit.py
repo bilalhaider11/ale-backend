@@ -104,7 +104,6 @@ class CareVisitService:
         """
         from datetime import datetime, date, time
         
-        print("Visit data: ",visit_data) 
         
         # Parse date and time fields
         visit_date = datetime.strptime(visit_data['visit_date'], '%Y-%m-%d').date()
@@ -121,8 +120,7 @@ class CareVisitService:
         
         # Convert visit_date to datetime (start of day) since the model expects datetime
         visit_datetime = datetime.combine(visit_date, datetime.min.time())
-        print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-        print(visit_data) 
+        
         # Create the care visit
         care_visit = CareVisit(
             status=CareVisitStatusEnum.SCHEDULED,
@@ -161,14 +159,12 @@ class CareVisitService:
             patient_slot_id,
             patient_id
         )
-        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         if not all_slots:
             raise ValueError(f"No active slots found for series_id: {series_id}")
         
         created_visits = []
 
         availability_slot_service = AvailabilitySlotService(self.config)
-        print("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
 
         for slot in all_slots:
             # Create a matching availability slot for the employee for this occurrence 
@@ -194,9 +190,7 @@ class CareVisitService:
                 'patient_care_slot_id': getattr(slot, 'entity_id', ''),
                 'availability_slot_id': getattr(saved_availability_slot, 'entity_id', ''),
             }
-            print("ccccccccccccccccccccccccccccccccccccccccccc")
             care_visit = self.create_care_visit_from_assignment(slot_visit_data)
-            print("ddddddddddddddddddddddddddddddddddddddddddddddd")
             created_visits.append(care_visit)
         return created_visits
     

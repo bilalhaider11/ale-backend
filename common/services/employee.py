@@ -203,7 +203,6 @@ class EmployeeService:
             file_category=file_category
         )
         
-        print("current employees file to s3: ",current_employees_file)
 
         # Save file metadata to database
         saved_file = self.current_employees_file_service.save_employees_file (current_employees_file)
@@ -215,9 +214,6 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
-        print("employee import queue name: ",self.config.EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME)
-        print("file id key: ",file_id)
-        print("S3 bucket: ",self.config.AWS_S3_BUCKET_NAME)
         send_message(
             queue_name=self.config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
             data={

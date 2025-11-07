@@ -102,11 +102,7 @@ class DeletePatientCareSlotResource(Resource):
         try:
             series_id = request.args.get("series_id") or None
             from_date = request.args.get("from_date") or None
-            
-            print("series_id: ",series_id)
-            print("Request arguments: ",request.args)
-            
-
+           
             patient_care_slot_service = PatientCareSlotService(config)
 
             result = patient_care_slot_service.delete_patient_care_slot(

@@ -32,9 +32,7 @@ class OrganizationService:
         return organization
 
     def get_organizations_with_roles_by_person(self, person_id: str):
-        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         results = self.organization_repo.get_organizations_by_person_id(person_id)
-        print("results: ",results)
 
         # Dictionary to group organizations by entity_id
         orgs_map = {}
@@ -250,5 +248,4 @@ class OrganizationService:
             str: Formatted employee ID (e.g., "0001", "0002")
         """
         next_id = self.organization_repo.increment_patient_mrn_counter(organization_id)
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",next_id)
         return f"{next_id:04d}"

@@ -8,7 +8,9 @@ from openpyxl import load_workbook
 from common.app_config import config
 from common.app_logger import logger
 from common.services.employee import EmployeeService
+from common.services.alert import AlertService
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
+from common.models.alert import AlertStatusEnum,AlertLevelEnum
 from app.helpers.decorators import login_required, organization_required, with_partner_organization_ids
 from common.models.person_organization_role import PersonOrganizationRoleEnum
 from common.models import Employee
@@ -186,6 +188,7 @@ class EmployeeResource(Resource):
         employee_service = EmployeeService(config)
         person_service = PersonService(config)
         organization_service = OrganizationService(config)
+        alert_service = AlertService(config)
         
         # Parse request body
         parsed_body = parse_request_body(request, [
@@ -202,6 +205,8 @@ class EmployeeResource(Resource):
         email_address = parsed_body.pop('email_address', None)
         phone_1 = parsed_body.pop('phone_1', None)
         employee_id = parsed_body.pop('employee_id', None)
+        first_name = parsed_body.pop('first_name',None)
+        last_name = parsed_body.pop('last_name',None)
         
         validate_required_fields(parsed_body)
         
@@ -217,16 +222,28 @@ class EmployeeResource(Resource):
                 f"Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). "
                 f"Creating new employee anyway as per requirements."
             )
+            alert_service.create_alert(
+                organization_id=organization.entity_id,
+                title="Duplicate Employee ID Detected",
+                description=(
+                    f"Duplicate employee ID detected during bulk import. "
+                    f"Existing employee: {existing_employee.entity_id} "
+                    f"({existing_employee.first_name} {existing_employee.last_name}). "
+                    f"Imported employee: {first_name} {last_name}."
+                ),
+                alert_type=AlertLevelEnum.WARNING.value,
+                status=AlertStatusEnum.ADDRESSED.value,
+            )
         
         person = Person(
-            first_name=parsed_body['first_name'],
-            last_name=parsed_body['last_name']
+            first_name=first_name,
+            last_name=last_name
         )
         person = person_service.save_person(person)
 
         employee = Employee(
-            first_name=parsed_body['first_name'],
-            last_name=parsed_body['last_name'],
+            first_name=first_name,
+            last_name=last_name,
             employee_id=employee_id,
             date_of_birth=date_of_birth,
             email_address=email_address,
