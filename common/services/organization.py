@@ -250,4 +250,5 @@ class OrganizationService:
             str: Formatted employee ID (e.g., "0001", "0002")
         """
         next_id = self.organization_repo.increment_patient_mrn_counter(organization_id)
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",next_id)
         return f"{next_id:04d}"

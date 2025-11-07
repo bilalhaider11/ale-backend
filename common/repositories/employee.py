@@ -101,122 +101,63 @@ class EmployeeRepository(BaseRepository):
 
         return None
 
-    def upsert_employees(self, records: list[Employee], organization_id: str) -> dict:
+    def upsert_employee(self, record: Employee, organization_id: str) -> dict:
         """
-        Upsert a list of employee records based on first_name, last_name,
-        employee_id, and organization_id attributes.
-
-        Args:
-            records: List of Employee instances to upsert
-            organization_id: The organization ID to filter existing records
-
-        Returns:
-            dict: Dictionary with 'inserted' and 'updated' counts
+        Upsert a single employee record based on first_name, last_name, employee_id, and organization_id.
+        Create Person if missing.
         """
-        if not records:
-            return {'inserted': 0, 'updated': 0}
-
-
-        existing_employees = self.get_many({"organization_id": organization_id})
-
-        # Convert existing results to a dictionary keyed by (first_name, last_name, employee_id)
-        existing_employees_map = {}
-        if existing_employees:
-            for employee in existing_employees:
-                key = (employee.first_name, employee.last_name, employee.employee_id)
-                existing_employees_map[key] = employee
-
-        records_to_insert = []
-        records_to_update = []
-
+        print("getting record from bulk upload: ",record)
+        
+        
         from common.services import PersonService
+        from common.services import OrganizationService
         from common.app_config import config
+        
         person_service = PersonService(config)
-
-        person_records_to_insert = []
-
-        # Process each record to determine if it should be inserted or updated
-        for record in records:
-            # Set organization_id if not already set
-            if not record.organization_id:
-                record.organization_id = organization_id
-
-            key = (record.first_name, record.last_name, record.employee_id)
-
-            if key in existing_employees_map:
-                # Record exists, prepare for update
-                existing_record = existing_employees_map[key]
-                existing_id = existing_record.entity_id
-                existing_person_id = existing_record.person_id
-
-                record.entity_id = existing_id  # Ensure the record has the existing ID for update
-                record.version = existing_record.version  # Use the existing version for update
-                record.previous_version = existing_record.previous_version
-                record.person_id = existing_person_id  # Retain the existing person_id
-
-                records_to_update.append(record)
-            else:
-                # Record doesn't exist, prepare for insert
-
-                def names_differ(person1, person2):
-                    return (
-                        person1.first_name.strip().lower() != person2.first_name.strip().lower() or
-                        person1.last_name.strip().lower() != person2.last_name.strip().lower()
-                    )
-
-                def create_and_attach_person(record):
-                    person = Person(first_name=record.first_name, last_name=record.last_name)
-                    record.person_id = person.entity_id
-                    person_records_to_insert.append(person)
-                    return person
-
-                # Check if the person needs to be merged.
-                if record.email_address:
-                    existing_person = person_service.get_person_by_email_address(record.email_address)
-
-                    if existing_person:
-                        if names_differ(existing_person, record):
-                            # Email exists but name is different — create and attach new person
-                            create_and_attach_person(record)
-                        else:
-                            # Match found — use existing person
-                            record.person_id = existing_person.entity_id
-                    else:
-                        # Email not found — create new person
-                        create_and_attach_person(record)
+    
+        if not record.organization_id:
+            record.organization_id = organization_id
+    
+        key = (record.first_name, record.last_name, record.employee_id)
+    
+        # Find existing employee
+        existing_employees = self.get_many({"organization_id": organization_id})
+        existing_employees_map = {(emp.first_name, emp.last_name, emp.employee_id): emp for emp in existing_employees}
+        
+        print("existing employee map from existing record from database: ",existing_employees_map)
+    
+        if key in existing_employees_map:
+            # Update existing
+            
+            existing_record = existing_employees_map[key]
+            record.entity_id = existing_record.entity_id
+            record.person_id = existing_record.person_id
+            record.version = existing_record.version
+            record.email_address = existing_record.email_address,
+            record.previous_version = existing_record.previous_version
+            
+            self._batch_save_employees(record)
+            
+            print(f"Updated existing employee: {record.first_name} {record.last_name} ({record.employee_id})")
+            return {"status": "updated", "employee_id": record.employee_id}
+        else:
+            # Create new person and employee
+            if record.email_address:
+                existing_person = person_service.get_person_by_email_address(record.email_address)
+                if existing_person:
+                    record.person_id = existing_person.entity_id
                 else:
-                    # No email — create new person
-                    create_and_attach_person(record)
-                
-                records_to_insert.append(record)
-
-
-        logger.info("Preparing to insert %s new records and update %s existing records.", len(records_to_insert), len(records_to_update))
-
-        inserted_count = 0
-        updated_count = 0
-
-        # Perform batch inserts in chunks
-        if records_to_insert:
-            for idx, insert_batch in enumerate(self._batch_records(records_to_insert, batch_size=100)):
-                logger.info("Inserting batch %s of size %s", idx + 1, len(insert_batch))
-                inserted_count += self._batch_save_employees(insert_batch)
-
-        # Perform batch updates in chunks
-        if records_to_update:
-            for idx, update_batch in enumerate(self._batch_records(records_to_update, batch_size=100)):
-                logger.info("Updating batch %s of size %s", idx + 1, len(update_batch))
-                updated_count += self._batch_save_employees(update_batch)
-
-        # Save person records if any
-        if person_records_to_insert:
-            for idx, person_batch in enumerate(self._batch_records(person_records_to_insert, batch_size=100)):
-                logger.info("Inserting person batch %s of size %s", idx + 1, len(person_batch))
-                person_service.save_persons(person_batch)
-
-        logger.info("Upsert employees completed: %s records inserted, %s records updated.", inserted_count, updated_count)
-        logger.info("%s person records inserted.", len(person_records_to_insert))
-        return records_to_insert + records_to_update
+                    new_person = Person(first_name=record.first_name, last_name=record.last_name)
+                    record.person_id = new_person.entity_id
+                    person_service.save_persons([new_person])
+            else:
+                new_person = Person(first_name=record.first_name, last_name=record.last_name)
+                record.person_id = new_person.entity_id
+                person_service.save_persons([new_person])
+    
+            self._batch_save_employees(record)
+            print(f"Inserted new employee: {record.first_name} {record.last_name} ({record.employee_id})")
+            return {"status": "inserted", "employee_id": record.employee_id}
 
     def _batch_records(self, records: list[VersionedModel], batch_size: int = 1000):
         """
@@ -232,7 +173,7 @@ class EmployeeRepository(BaseRepository):
         for i in range(0, len(records), batch_size):
             yield records[i:i + batch_size]
 
-    def _batch_save_employees(self, records: list[Employee]) -> int:
+    def _batch_save_employees(self, record: Employee) -> int:
         """
         Save a batch of employee records to the database.
         Args:
@@ -240,12 +181,10 @@ class EmployeeRepository(BaseRepository):
         Returns:
             int: Number of records saved
         """
-        if not records:
+        if not record:
             return 0
-        for record in records:
-            record = self.save(record)
-        return len(records)
-
+        record = self.save(record)
+        return 1
 
     def get_employees_with_matches(self, organization_id: str):
         """

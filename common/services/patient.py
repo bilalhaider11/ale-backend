@@ -97,16 +97,19 @@ class PatientService:
             patient.gender = data['gender']
 
             temp_patients.append(patient)
+                
 
         # Bulk upsert persons and get MRN to person_id mapping
         mrn_to_person_id = self.person_repo.upsert_persons_from_patients(temp_patients, user_id)
-        
-        
+        print("MRN to Person ID mapping: ",mrn_to_person_id)
 
         # Now create final patient records with person_ids
         records = []
+        count = 0
+        print("///////////////////////////////////////////////////////////////////////////////////////////////////")
         for data in patient_data:
             existing = data['existing_patient']
+            
             
             record = Patient(
                 changed_by_id=user_id,
@@ -115,6 +118,8 @@ class PatientService:
                 person_id=mrn_to_person_id.get(data['mrn']) or (existing.person_id if existing else None)
             )
             
+            print("patient that is created, is: ",record)
+            
             # If patient exists, preserve the care-related fields
             if existing:
                 record.care_period_start = existing.care_period_start
@@ -122,25 +127,8 @@ class PatientService:
                 record.weekly_quota = existing.weekly_quota
                 record.current_week_remaining_quota = existing.current_week_remaining_quota
                 
-                self.patient_repo.save(record)
-                
-                try:
-                    self.alert_service.create_alert(
-                    organization_id=organization_id,
-                    title="Duplicate Patient MRN Detected",
-                    description=f"Duplicate MRN detected: {data['mrn']} for organization {organization_id}.",
-                    alert_type=AlertLevelEnum.WARNING.value,
-                    status=AlertStatusEnum.ADDRESSED.value,
-                )
-                except Exception as e:
-                    logger.error(f"Failed to create alert for duplicate MRN {data['mrn']}: {str(e)}")
-    
-            records.append(record)
-            
-
-        count = len(records)
-        if count:
-            self.patient_repo.upsert_patients(records, organization_id)
+            self.patient_repo.upsert_patients(record, organization_id)
+            count+=1
 
         logger.info(f"Successfully imported {count} patient records")
         return count
@@ -209,7 +197,6 @@ class PatientService:
 
         # Save file metadata to database
         saved_file = self.patient_file_service.save_patient_file(patients_file)
-        print("Saved file: ",saved_file)
         
         # Upload the file
         self.s3_client.upload_file(
@@ -255,7 +242,6 @@ class PatientService:
             "file_metadata": saved_file
         }
         
-        print("results: ", result )
 
         return result  
 
