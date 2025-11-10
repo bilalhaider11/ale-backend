@@ -38,13 +38,13 @@ class PatientCareSlotResource(Resource):
         if not patient:
             return get_failure_response("Patient not found in this organization", status_code=404)
         
-        # Check for date range filtering
-        start_date = request.args.get('start_date')
+        week_start_date = request.args.get('week_start_date')
+         
         
-        if start_date:
+        if week_start_date:
             
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, start_date)
+            week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
+            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, week_start_date)
             
         else:
             # Get all slots for patient
@@ -103,10 +103,6 @@ class DeletePatientCareSlotResource(Resource):
             series_id = request.args.get("series_id") or None
             from_date = request.args.get("from_date") or None
             
-            print("series_id: ",series_id)
-            print("Request arguments: ",request.args)
-            
-
             patient_care_slot_service = PatientCareSlotService(config)
 
             result = patient_care_slot_service.delete_patient_care_slot(

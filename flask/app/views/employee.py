@@ -11,12 +11,14 @@ from common.services.employee import EmployeeService
 from app.helpers.response import get_success_response, get_failure_response, parse_request_body, validate_required_fields
 from app.helpers.decorators import login_required, organization_required, with_partner_organization_ids
 from common.models.person_organization_role import PersonOrganizationRoleEnum
+from common.models.alert import AlertLevelEnum,AlertStatusEnum
 from common.models import Employee
 from common.services import (
     PersonOrganizationInvitationService,
     PersonService,
     OrganizationService,
-    AvailabilitySlotService
+    AvailabilitySlotService,
+    AlertService
 )
 from common.models import Person
 from datetime import datetime
@@ -185,6 +187,7 @@ class EmployeeResource(Resource):
         """
         employee_service = EmployeeService(config)
         person_service = PersonService(config)
+        alert_service = AlertService(config)
         organization_service = OrganizationService(config)
         
         # Parse request body
@@ -217,6 +220,15 @@ class EmployeeResource(Resource):
                 f"Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). "
                 f"Creating new employee anyway as per requirements."
             )
+            alert_service.create_alert(
+                organization_id=organization.entity_id,
+                area="views of employee",
+                message=
+                f"Duplicate employee ID detected: {employee_id} for organization {organization.entity_id}Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). ", 
+                status=AlertStatusEnum.ADDRESSED.value,
+                level=AlertLevelEnum.WARNING.value
+            )
+            
         
         person = Person(
             first_name=parsed_body['first_name'],

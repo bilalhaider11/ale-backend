@@ -200,8 +200,6 @@ class AvailabilitySlotRepository(BaseRepository):
                     "availability_slot_id": row['availability_slot_id'],
                     "status": row['status']
                 })
-        print("checking for availability slots:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>...>>> ")
-        print(slots_map.values()) 
 
         return list(slots_map.values())
 

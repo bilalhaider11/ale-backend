@@ -141,7 +141,6 @@ class EmployeeHandler:
                     for i, cell in enumerate(row)
                     if i < len(header_row) and header_row[i]
                 }
-                print("row_dict: ",row_dict)
                 result.append(row_dict)
             
             if not result:
@@ -188,8 +187,6 @@ class EmployeeHandler:
                 else:
                     # Read CSV file using csv module
                     rows = self._read_csv_to_dict_list(temp_path)
-                    print("........................................................")
-                    print("rows from csv: ",rows)
             except ValueError as e:
                 self.employees_file_service.set_error(
                     employees_file, str(e)

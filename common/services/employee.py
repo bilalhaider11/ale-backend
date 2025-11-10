@@ -53,7 +53,6 @@ class EmployeeService:
                 return None
 
         records = []
-        dup_records = []
         skipped_entries = []
 
         # Import organization service for auto-generation
@@ -69,7 +68,6 @@ class EmployeeService:
 
         for row in rows:
             
-            print("row of employee: "   ,row)
             # Check if row has first name and last name (required fields)
             first_name = get_first_matching_column_value(row, ['first name', 'first_name'])
             last_name = get_first_matching_column_value(row, ['last name', 'last_name'])
@@ -85,7 +83,6 @@ class EmployeeService:
             if not employee_id or not employee_id.strip():
                 employee_id = organization_service.get_next_employee_id(organization_id)
                 logger.info(f"Auto-generated employee ID {employee_id} for {first_name} {last_name}")
-            print("existing ids: ", existing_employee_ids)    
             
             employee_type = "employee"
             if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
@@ -134,24 +131,6 @@ class EmployeeService:
                 )
                 self.employee_repo.insert_employee(record)
                 
-                print("IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII")
-                print("record of duplicate: ",record)
-                
-                
-                self.alert_service.create_alert(
-                    organization_id=organization_id,
-                    title="Duplicate Employee ID Detected",
-                    description=(
-                        f"Duplicate employee ID {employee_id} detected during bulk import. "
-                        f"Existing employee: {existing_employee.entity_id} ({existing_employee.first_name} {existing_employee.last_name}). "
-                        f"Imported employee: {first_name} {last_name}."
-                    ),
-                    alert_type=AlertLevelEnum.WARNING.value,
-                    status=AlertStatusEnum.ADDRESSED.value,
-                )
-                
-                
-
             # Check for duplicate employee ID within current batch
             if employee_id in current_batch_ids:
                 logger.warning(
@@ -161,19 +140,8 @@ class EmployeeService:
                     f"Saving anyway as per requirements. Alert generation to be implemented in future."
                 )
                 
-            
             # Add to current batch tracking
             current_batch_ids.add(employee_id)
-
-            # Determine employee type
-            #employee_type = "employee"
-            #if get_first_matching_column_value(row, ['caregiver id', 'caregiver_id']):
-            #    employee_type = "caregiver"
-#
-            ## Parse dates
-            #parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
-            #parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
-            #parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date of birth']))
 
             record = Employee(
                 changed_by_id=user_id,
@@ -202,11 +170,8 @@ class EmployeeService:
             )
             self.employee_repo.insert_employee(record)
             
-
             records.append(record)
             
-                
-
         count = len(records)
         
 
@@ -277,7 +242,6 @@ class EmployeeService:
             file_category=file_category
         )
         
-        print("current employees file to s3: ",current_employees_file)
 
         # Save file metadata to database
         saved_file = self.current_employees_file_service.save_employees_file (current_employees_file)
@@ -288,26 +252,6 @@ class EmployeeService:
             s3_key=file_id_key,
             metadata=metadata,
             content_type=content_type
-        )
-        print("employee import queue name: ",self.config.EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME)
-        print("file id key: ",file_id)
-        print("S3 bucket: ",self.config.AWS_S3_BUCKET_NAME)
-        send_message(
-            queue_name=self.config.EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
-            data={
-                'Records': [{
-                    's3': {
-                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
-                        'object': {
-                            'key': file_id_key,
-                            'metadata': {
-                                'organization_id': organization_id,
-                                'file_id': file_id
-                            }
-                        }
-                    }
-                }]
-            }
         )
         
         result = {

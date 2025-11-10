@@ -31,14 +31,13 @@ class AvailabilitySlotResource(Resource):
 
         availability_slot_service = AvailabilitySlotService(config)
 
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
+        week_start_date = request.args.get('week_start_date')
 
-        if start_date:
+        if week_start_date:
             try:
-                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-                availability_slots = availability_slot_service.get_availability_slots_by_week(employee_id, start_date)
-                if start_date.weekday() != 0:
+                week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
+                availability_slots = availability_slot_service.get_availability_slots_by_week(employee_id, week_start_date)
+                if week_start_date.weekday() != 0:
                     return get_failure_response("week_start_date must be a Monday", status_code=400)
             except ValueError:
                 return get_failure_response("Invalid date format. Use YYYY-MM-DD", status_code=400)
@@ -132,7 +131,6 @@ class CreateEmployeeSlots(Resource):
     def post(self, person, organization, employee_id: str):
         try:
             request_data = request.get_json(force=True)
-            print("creating request data: ",request_data)
             availability_slot_service = AvailabilitySlotService(config)
             created_slots = availability_slot_service.expand_and_save_slots(request_data, employee_id)
             return get_success_response(

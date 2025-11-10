@@ -52,7 +52,6 @@ class PatientsFileService:
             PatientsFile: The saved file instance.
         """
         logger.info(f"Saving patient file metadata for organization: {file_instance.organization_id}")
-        print("file instance to save: ", file_instance)
         return self.patient_file_repo.save(file_instance)
 
     def update_status(self, instance: PatientsFile, status: str) -> PatientsFile:

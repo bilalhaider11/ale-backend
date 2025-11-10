@@ -123,18 +123,7 @@ class PatientService:
                 record.current_week_remaining_quota = existing.current_week_remaining_quota
                 
                 self.patient_repo.save(record)
-                
-                try:
-                    self.alert_service.create_alert(
-                    organization_id=organization_id,
-                    title="Duplicate Patient MRN Detected",
-                    description=f"Duplicate MRN detected: {data['mrn']} for organization {organization_id}.",
-                    alert_type=AlertLevelEnum.WARNING.value,
-                    status=AlertStatusEnum.ADDRESSED.value,
-                )
-                except Exception as e:
-                    logger.error(f"Failed to create alert for duplicate MRN {data['mrn']}: {str(e)}")
-    
+              
             records.append(record)
             
 
@@ -209,7 +198,7 @@ class PatientService:
 
         # Save file metadata to database
         saved_file = self.patient_file_service.save_patient_file(patients_file)
-        print("Saved file: ",saved_file)
+
         
         # Upload the file
         self.s3_client.upload_file(
@@ -218,31 +207,6 @@ class PatientService:
             metadata=metadata,
             content_type=content_type
         )
-        
-        
-        
-        send_message(
-            queue_name=self.config.PATIENT_IMPORT_PROCESSOR_QUEUE_NAME,
-            data={
-                'Records': [{
-                    's3': {
-                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
-                        'object': {
-                            'key': s3_key,
-                            'metadata': {
-                                'organization_id': organization_id,
-                                'file_id': file_id,
-                                'uploaded_by': person_id
-                            }
-                        }
-                    }
-                }]
-            }
-        )
-
-        # Get file size
-        
-        
         
 
         # Create CurrentEmployeesFile instance
@@ -254,8 +218,6 @@ class PatientService:
             },
             "file_metadata": saved_file
         }
-        
-        print("results: ", result )
 
         return result  
 

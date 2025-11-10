@@ -148,17 +148,6 @@ class PatientRepository(BaseRepository):
         for i in range(0, len(records), batch_size):
             yield records[i:i + batch_size]
 
-    def get_all_patient_mrn(self,organization_id=None) -> list:
-        
-        query = "SELECT medical_record_number FROM patient"
-        
-        with self.adapter:
-            result = self.adapter.execute_query(query if query else None)
-            
-        if result:
-            return result
-        
-        return result
 
     def _batch_save_patients(self, records: list[Patient]) -> int:
         """Persist a batch of patients via self.save()."""

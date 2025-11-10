@@ -151,10 +151,8 @@ class PatientResource(Resource):
             
         existing_patient = patient_service.patient_repo.get_by_patient_mrn(medical_record_number, organization.entity_id)
         
-        print("existing patient: ",existing_patient)
         #logic for duplicate patient
         if existing_patient:
-            print("duplicates")
             description = f"Duplicate employee ID detected: Duplicate patient detected: ${medical_record_number} for organization ${organization.entity_id}.${medical_record_number} for organization ${organization.entity_id}."
             status_ =  AlertStatusEnum.ADDRESSED.value
             level = AlertLevelEnum.WARNING.value
@@ -168,7 +166,6 @@ class PatientResource(Resource):
             
             alert_service = AlertService(config)
             try:
-                print(alert_service)
                 create_duplicateRecord_alert = alert_service.create_alert(
                     organization_id = organization.entity_id,
                     title = title,
