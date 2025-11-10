@@ -1,3 +1,4 @@
+
 from common.repositories.base import BaseRepository
 from common.models.patient_care_slot import PatientCareSlot
 from datetime import time, date, datetime

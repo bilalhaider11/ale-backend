@@ -38,7 +38,6 @@ class PatientList(Resource):
             patients=patients,
             count=len(patients)
         )
-
 @patient_api.route('/admin/<string:entity_id>')
 class PatientDetails(Resource):
     @login_required()
@@ -55,9 +54,7 @@ class PatientDetails(Resource):
             message="Patient retrieved successfully",
             data=patient.as_dict()
         )
-        
-        
-
+     
 @patient_api.route('/upload')
 class PatientFileUpload(Resource):
     
@@ -94,7 +91,6 @@ class PatientFileUpload(Resource):
                 file_id=file_id,
             )
             
-        
             return get_success_response(
                 message="File uploaded successfully",
                 upload_info=result,
@@ -119,7 +115,6 @@ class PatientResource(Resource):
         person_service = PersonService(config)
         alert_service = AlertService(config)
         organization_service = OrganizationService(config)
-        
         
         parsed_body = parse_request_body(request, [
             'entity_id',
@@ -160,8 +155,7 @@ class PatientResource(Resource):
             logger.warning(
                 f"Duplicate detected: {medical_record_number} for organization {organization.entity_id}. "
                 f"Existing employee: {existing_patient.entity_id} . "
-                f"Creating new employee anyway as per requirements."
-                
+                f"Creating new employee anyway as per requirements."   
             )
             
             alert_service = AlertService(config)
@@ -178,7 +172,6 @@ class PatientResource(Resource):
             except Exception as e:
                 logger.error(f"Error processing patient file: {str(e)}")
             
- #####################################################################################       
         if entity_id:
             patient = patient_service.get_patient_by_id(entity_id, organization.entity_id)
             

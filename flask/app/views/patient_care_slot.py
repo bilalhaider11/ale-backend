@@ -1,3 +1,4 @@
+
 from flask_restx import Namespace, Resource
 from flask import request
 from datetime import datetime
@@ -186,3 +187,9 @@ class CreatePatientSlots(Resource):
             return get_failure_response(str(e), status_code=404)
         except Exception as e:
             return get_failure_response(f"Error creating patient care slots: {str(e)}", status_code=500)
+            
+            
+            
+            
+            
+            

@@ -142,3 +142,6 @@ class CreateEmployeeSlots(Resource):
             return get_failure_response(str(e), status_code=404)
         except Exception as e:
             return get_failure_response(f"Error creating employee care slots: {str(e)}", status_code=500)
+
+
+
