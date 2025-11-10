@@ -110,6 +110,8 @@ class CareVisitService:
         # Parse time strings (format: HH:MM)
         start_time_str = visit_data['scheduled_start_time']
         end_time_str = visit_data['scheduled_end_time']
+        patient_care_slot_id = visit_data['patient_care_slot_id']
+        availability_slot_id = visit_data['availability_slot_id']
         
         # Convert time strings to datetime objects for the visit date
         start_time = datetime.strptime(f"{visit_date} {start_time_str}", '%Y-%m-%d %H:%M')
@@ -127,7 +129,6 @@ class CareVisitService:
             scheduled_start_time=start_time,
             scheduled_end_time=end_time,
             scheduled_by_id=visit_data['scheduled_by_id'],
-            #logical_key = visit_data.get('logical_key',''),
             availability_slot_id=visit_data.get('availability_slot_id', ''),
             patient_care_slot_id=visit_data.get('patient_care_slot_id', ''),
             organization_id=visit_data['organization_id']
@@ -144,17 +145,19 @@ class CareVisitService:
         
         series_id = visit_data.get('series_id')
         patient_id = visit_data.get('patient_id')
+        patient_slot_id = visit_data.get('patient_slot_id')
         
         if not patient_id:
             raise ValueError("care_slot_logical_id and patient_id are required for recurring assignment")
+      
         
         # Find all patient care slots with this series_id
         patient_care_slot_service = PatientCareSlotService(self.config)
         all_slots = patient_care_slot_service.get_slots_by_series_id(
             series_id, 
+            patient_slot_id,
             patient_id
         )
-        
         if not all_slots:
             raise ValueError(f"No active slots found for series_id: {series_id}")
         
@@ -163,7 +166,7 @@ class CareVisitService:
         availability_slot_service = AvailabilitySlotService(self.config)
 
         for slot in all_slots:
-            # Create a matching availability slot for the employee for this occurrence
+            # Create a matching availability slot for the employee for this occurrence 
             availability_slot = AvailabilitySlot(
                 employee_id=visit_data['employee_id'],
                 start_day_of_week=slot.start_day_of_week,
@@ -174,13 +177,14 @@ class CareVisitService:
                 end_date=slot.end_date,
                 series_id = slot.series_id
             )
+            
             saved_availability_slot = availability_slot_service.save_availability_slot(availability_slot)
 
            
             slot_visit_data = {
                 **visit_data,
                 'visit_date': slot.start_date.strftime('%Y-%m-%d'),
-                'scheduled_start_time': slot.start_time.strftime('%H:%M'),
+                'scheduled_start_time': slot.start_time.strftime('%H:%M'), 
                 'scheduled_end_time': slot.end_time.strftime('%H:%M'),
                 'patient_care_slot_id': getattr(slot, 'entity_id', ''),
                 'availability_slot_id': getattr(saved_availability_slot, 'entity_id', ''),

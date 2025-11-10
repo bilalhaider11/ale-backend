@@ -27,10 +27,11 @@ class PatientHandler:
         Required headers: first name, last name, date of birth (any variant).
         """
         required_headers = [
-            "first name",
-            "last name",
+            ("first_name", "first name"),
+            ("last_name", "last name"),
             ("date of birth", "date_of_birth", "dob"),
-            ("medical record number", "medical_record_number", "mrn")
+            ("medical record number", "medical_record_number", "mrn"),
+            ("gender","sex")
         ]
 
         workbook = load_workbook(file_path, data_only=True)
@@ -78,9 +79,9 @@ class PatientHandler:
     def _read_csv_to_dict_list(self, file_path: str) -> list[dict]:
         """
         Read CSV file and convert to list of dicts.
-        Required headers: first name, last name, date of birth (any variant).
+        Required headers: first_name, last_name, date_of_birth (any variant).
         """
-        required_headers = ["first name", "last name", "date of birth"]
+        required_headers = ["first_name", "last_name", "date_of_birth"]
 
         with open(file_path, mode="r", encoding="utf-8") as f:
             reader = csv.reader(f)
@@ -99,7 +100,7 @@ class PatientHandler:
                 break
 
         if header_row_index is None:
-            raise ValueError("ENOHEADERS")
+            raise ValueError("ENOHEADERS") 
 
         data_rows = all_rows[header_row_index + 1 :]
         result = []

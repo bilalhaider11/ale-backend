@@ -38,6 +38,7 @@ class EmployeeRepository(BaseRepository):
 
         self.adapter.execute_query(query, values)
 
+
     def get_by_employee_id(self, employee_id: str, organization_id: str) -> Employee:
         """
         Get an employee record by employee_id.
@@ -77,24 +78,7 @@ class EmployeeRepository(BaseRepository):
             return {row['employee_id']: Employee(**row) for row in result if row.get('employee_id')}
 
         return {}
-   
-#####################################################################################
-    
-    def get_all_employee_ids(self,organization_id=None) -> list:
-        
-        query = "SELECT employee_id FROM employee"
-        
-        with self.adapter:
-            result = self.adapter.execute_query(query if query else None)
-            
-        if result:
-            return result
-        
-        return result
-        
-        
-
-
+ 
     def get_employees_count(self, organization_id=None) -> int:
         """
         Get the count of employees in the database.

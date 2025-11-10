@@ -5,6 +5,7 @@ from common.models.availability_slot import AvailabilitySlot
 from common.utils.slot import (
     expand_slots,
     validate_and_parse_day_of_week,
+    get_week_start_date,
     parse_time_field,
     parse_date_field,
     validate_day_range,
@@ -36,12 +37,15 @@ class AvailabilitySlotService:
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
         return availability_slots
 
-    def get_availability_slots_by_week(self, employee_id: str, start_date: date):
+    def get_availability_slots_by_week(self, employee_id: str, week_start_date: date):
+        """Get availability slots for an employee within a date range"""
+      
         availability_slots = self.availability_slot_repo.get_many({"employee_id": employee_id})
-
-        return [slot for slot in availability_slots if slot.start_date == start_date]
         
+        return [slot for slot in availability_slots if week_start_date == get_week_start_date(slot.start_date)]
         
+    
+    
     def get_availability_slots_for_organization(self, organization_id: str):
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
         
@@ -54,7 +58,7 @@ class AvailabilitySlotService:
         Args:
             start_time: Start time of the patient care slot
             end_time: End time of the patient care slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:

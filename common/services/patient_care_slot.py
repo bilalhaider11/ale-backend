@@ -6,6 +6,7 @@ from common.app_logger import get_logger
 from common.helpers.exceptions import InputValidationError, NotFoundError
 from common.utils.slot import (
     expand_slots,
+    get_week_start_date,
     validate_and_parse_day_of_week,
     parse_time_field,
     parse_date_field,
@@ -28,21 +29,21 @@ class PatientCareSlotService:
         patient_care_slot = self.patient_care_slot_repo.save(patient_care_slot)
         return patient_care_slot
 
-    def get_patient_care_slots_by_week(self, patient_id: str, start_date: date):
+    def get_patient_care_slots_by_week(self, patient_id: str, week_start_date: date):
         """Get all care slots for a patient in a specific week."""
         # Get all slots for the patient first
         patient_slots = self.patient_care_slot_repo.get_many({
-            "patient_id": patient_id
+            "patient_id": patient_id,
         })
 
         # Then filter for the specific week in Python
-        return [slot for slot in patient_slots if slot.start_date == start_date ]
+        return [slot for slot in patient_slots if week_start_date == get_week_start_date(slot.start_date) ] 
 
 
     def get_patient_care_slots_by_patient_id(self, patient_id: str) -> List[PatientCareSlot]:
         """
         Get all care slots for a specific patient.
-        """
+        """ 
         return self.patient_care_slot_repo.get_many({
             "patient_id": patient_id
         })
@@ -56,7 +57,7 @@ class PatientCareSlotService:
         Args:
             start_time: Start time of the availability slot
             end_time: End time of the availability slot
-            day_of_week: Day of the week (0=Monday, 6=Sunday)
+            start_day_of_week: Day of the week (0=Monday, 6=Sunday)
             organization_ids: The organization IDs to filter by
 
         Returns:
@@ -239,8 +240,7 @@ class PatientCareSlotService:
         
         # Validate weekly quota if provided
         start_date = slot.start_date
-        end_date = slot.end_date
-        existing_slots = self.get_patient_care_slots_by_week(patient_id, start_date) if start_date else []
+        existing_slots = self.get_patient_care_slots_by_week(patient_id, start_date) if start_date  else []
         self._validate_weekly_quota(patient_weekly_quota, slot, existing_slots, exclude_slot_id=slot_id)
         
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")
@@ -249,13 +249,23 @@ class PatientCareSlotService:
     
     
 
-    def get_slots_by_series_id(self, series_id: str, patient_id: str) -> List[PatientCareSlot]:
+    def get_slots_by_series_id(self, series_id: str, entity_id: str, patient_id: str) -> List[PatientCareSlot]:
         """Get all slots with the same series_id for a patient."""
-        return self.patient_care_slot_repo.get_many({
+        
+        if series_id:
+            return self.patient_care_slot_repo.get_many({
             "series_id": series_id,
             "patient_id": patient_id,
             "active": True
-        })
+            })
+        else:
+            return self.patient_care_slot_repo.get_many({
+            "series_id": series_id,
+            "patient_id": patient_id,
+            "entity_id":entity_id,
+            "active": True
+            })
+            
 
     def expand_and_save_slots(self, payload, patient_id):
         expanded_slots = expand_slots(
@@ -263,7 +273,7 @@ class PatientCareSlotService:
             start_date=payload.get('start_date'),
             entity_id=patient_id,
             entity_type='patient'
-        )
+        ) 
         saved_slots = []
         for slot in expanded_slots:
             saved_slot = self.patient_care_slot_repo.save(slot)

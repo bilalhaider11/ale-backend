@@ -32,8 +32,8 @@ class OrganizationService:
         return organization
 
     def get_organizations_with_roles_by_person(self, person_id: str):
-        results = self.organization_repo.get_organizations_by_person_id(person_id)
 
+        results = self.organization_repo.get_organizations_by_person_id(person_id)
         # Dictionary to group organizations by entity_id
         orgs_map = {}
         

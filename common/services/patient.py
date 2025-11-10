@@ -2,15 +2,21 @@ from typing import List, Dict, Optional
 from datetime import date, datetime, timedelta
 import os
 import uuid
+from common.models.alert import AlertLevelEnum, AlertStatusEnum
+
 from common.helpers.csv_utils import parse_date
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.patient import Patient
 from common.services.s3_client import S3ClientService
+from common.services.alert import AlertService
+from common.models.alert import AlertLevelEnum, AlertStatusEnum
+
 from common.helpers.csv_utils import get_first_matching_column_value, parse_date_string
 from common.services.patients_file import PatientsFileService
 from common.models.patients_file import PatientsFile, PatientsFileStatusEnum
 from common.services.person import PersonService
+from common.tasks.send_message import send_message
 
 logger = get_logger(__name__)
 
@@ -26,6 +32,7 @@ class PatientService:
         self.patients_prefix = f"{config.AWS_S3_KEY_PREFIX}patients-list/" 
         self.patient_file_service = PatientsFileService(config)
         self.person_service = PersonService(config)
+        self.alert_service = AlertService(config)
 
     def bulk_import_patients(self, rows: List[Dict[str, str]], organization_id: str, user_id: str) -> int:
         """Import CSV data into patient table using batch processing."""
@@ -33,6 +40,7 @@ class PatientService:
         logger.info(f"Processing {record_count} patient records...")
 
         # Get all existing patients for this organization
+    
         existing_patients = self.patient_repo.get_many({"organization_id": organization_id})
         
         # Create a map of MRN to patient for quick lookup
@@ -41,19 +49,25 @@ class PatientService:
             for patient in existing_patients:
                 if patient.medical_record_number:
                     existing_patients_map[patient.medical_record_number] = patient
+                    
 
+        from common.services.organization import OrganizationService
+        organization_service = OrganizationService(self.config)
+        
+        
         # Temporary structure to hold patient data with names
         patient_data = []
         for row in rows:
             first_name = get_first_matching_column_value(row, ["first name", "first_name"])
             last_name = get_first_matching_column_value(row, ["last name", "last_name"])
             dob_raw = get_first_matching_column_value(row, ["date of birth", "date_of_birth", "dob"])
-            mrn = get_first_matching_column_value(row, ["medical record number", "mrn"], match_mode="contains")
+            mrn = get_first_matching_column_value(row, ["medical record number", "mrn", "medical_record_number"], match_mode="contains")
             gender = get_first_matching_column_value(row, ["gender"], match_mode="contains")
-
+            
             if not mrn:
-                logger.warning(f"Skipping row without MRN: {row}")
-                continue
+                mrn = organization_service.get_next_patient_mrn(organization_id)
+                logger.info(f"Auto-generated MRN {mrn} for {first_name} {last_name}")
+                
 
             date_of_birth = parse_date(dob_raw)
 
@@ -65,6 +79,7 @@ class PatientService:
                 'gender':gender,
                 'existing_patient': existing_patients_map.get(mrn)
             })
+        
 
         # Create temporary patient objects with name data
         temp_patients = []
@@ -85,6 +100,8 @@ class PatientService:
 
         # Bulk upsert persons and get MRN to person_id mapping
         mrn_to_person_id = self.person_repo.upsert_persons_from_patients(temp_patients, user_id)
+        
+        
 
         # Now create final patient records with person_ids
         records = []
@@ -104,8 +121,11 @@ class PatientService:
                 record.care_period_end = existing.care_period_end
                 record.weekly_quota = existing.weekly_quota
                 record.current_week_remaining_quota = existing.current_week_remaining_quota
-            
+                
+                self.patient_repo.save(record)
+              
             records.append(record)
+            
 
         count = len(records)
         if count:
@@ -113,6 +133,8 @@ class PatientService:
 
         logger.info(f"Successfully imported {count} patient records")
         return count
+    
+    
 
     def get_all_patient_mrn(self,organization_id=None)-> list:
         
@@ -157,23 +179,10 @@ class PatientService:
             "uploaded_by": person_id
         }
         
-        if original_filename:
-            metadata["original_filename"] = original_filename
-        
-        # Upload the file
-        self.s3_client.upload_file(
-            file_path=file_path,
-            s3_key=s3_key,
-            metadata=metadata,
-            content_type=content_type
-        )
-
-        # Get file size
         file_size = os.path.getsize(file_path)
         
-        
-
-        # Create CurrentEmployeesFile instance
+        if original_filename:
+            metadata["original_filename"] = original_filename
         patients_file = PatientsFile(
             entity_id=file_id,
             organization_id=organization_id,
@@ -185,11 +194,23 @@ class PatientService:
             uploaded_by=person_id,
             status=PatientsFileStatusEnum.PENDING,
         )
-
-        logger.info(f"Patient Object: {patients_file}")
+        
 
         # Save file metadata to database
         saved_file = self.patient_file_service.save_patient_file(patients_file)
+
+        
+        # Upload the file
+        self.s3_client.upload_file(
+            file_path=file_path,
+            s3_key=s3_key,
+            metadata=metadata,
+            content_type=content_type
+        )
+        
+
+        # Create CurrentEmployeesFile instance
+        
 
         result = {
             "file": {
@@ -283,3 +304,22 @@ class PatientService:
             Patient: The saved patient object with updated entity_id.
         """
         return self.patient_repo.save(patient)
+    
+    def make_alert_on_duplicate_patient_MRN(self,organization_entity_id,current_emp_id,alert_service):
+        logger.warning(f"Duplicate employee_id detected: {current_emp_id}")
+
+        description = (
+            f"Duplicate MRN detected: {current_emp_id} for organization {organization_entity_id}."
+        )
+        status_ = AlertStatusEnum.ADDRESSED.value
+        level = AlertLevelEnum.WARNING.value
+        title = "Patient"
+        
+        alert_service.create_alert(
+            organization_id=organization_entity_id,
+            title=title,
+            description=description,
+            alert_type=level,
+            status=status_,
+            assigned_to_id=current_emp_id
+        )
