@@ -180,3 +180,17 @@ def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: st
             )
 
     return result
+
+def get_week_start_date(date_:date):
+   
+    # Get the weekday as an integer (Monday=0, Sunday=6)
+    day_of_week = date_.weekday()
+
+    # Calculate the number of days to subtract to reach Monday
+    # If it's already Monday (0), subtract 0 days
+    # If it's Tuesday (1), subtract 1 day, and so on.
+    days_to_subtract = day_of_week
+
+    # Subtract the calculated days from the original date
+    start_of_week = date_ - timedelta(days=days_to_subtract)
+    return start_of_week

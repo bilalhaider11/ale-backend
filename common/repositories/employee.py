@@ -77,7 +77,6 @@ class EmployeeRepository(BaseRepository):
             return {row['employee_id']: Employee(**row) for row in result if row.get('employee_id')}
 
         return {}
-
     def get_employees_count(self, organization_id=None) -> int:
         """
         Get the count of employees in the database.

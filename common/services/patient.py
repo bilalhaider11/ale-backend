@@ -159,7 +159,6 @@ class PatientService:
             uploaded_by=person_id,
             status=PatientsFileStatusEnum.PENDING,
         )
-        
 
         # Save file metadata to database
         saved_file = self.patient_file_service.save_patient_file(patients_file)
@@ -172,35 +171,6 @@ class PatientService:
             content_type=content_type
         )
         
-        
-        
-        send_message(
-            queue_name=self.config.PATIENT_IMPORT_PROCESSOR_QUEUE_NAME,
-            data={
-                'Records': [{
-                    's3': {
-                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
-                        'object': {
-                            'key': s3_key,
-                            'metadata': {
-                                'organization_id': organization_id,
-                                'file_id': file_id,
-                                'uploaded_by': person_id
-                            }
-                        }
-                    }
-                }]
-            }
-        )
-
-        # Get file size
-        
-        
-        
-
-        # Create CurrentEmployeesFile instance
-        
-
         result = {
             "file": {
                 "url": self.s3_client.generate_presigned_url(s3_key, filename=original_filename or f"{timestamp}{file_extension}"),
@@ -208,7 +178,6 @@ class PatientService:
             "file_metadata": saved_file
         }
         
-
         return result  
 
     def get_all_patients_for_organization(self, organization_id: str) -> List[Patient]:

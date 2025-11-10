@@ -103,8 +103,7 @@ class CareVisitService:
         Create a care visit from employee assignment data.
         """
         from datetime import datetime, date, time
-        
-        
+      
         # Parse date and time fields
         visit_date = datetime.strptime(visit_data['visit_date'], '%Y-%m-%d').date()
         

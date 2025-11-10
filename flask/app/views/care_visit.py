@@ -395,7 +395,6 @@ class AssignEmployeeToRecurringPattern(Resource):
         """Assign an employee to ALL slots in a recurring pattern using series_id"""
         try:
             request_data = request.get_json(force=True)     
-            
             # Validate required fields
             required_fields = ['patient_id', 'employee_id']
             missing_fields = [field for field in required_fields if field not in request_data]

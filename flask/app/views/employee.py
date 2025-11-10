@@ -13,12 +13,14 @@ from app.helpers.response import get_success_response, get_failure_response, par
 from common.models.alert import AlertStatusEnum,AlertLevelEnum
 from app.helpers.decorators import login_required, organization_required, with_partner_organization_ids
 from common.models.person_organization_role import PersonOrganizationRoleEnum
+from common.models.alert import AlertLevelEnum,AlertStatusEnum
 from common.models import Employee
 from common.services import (
     PersonOrganizationInvitationService,
     PersonService,
     OrganizationService,
-    AvailabilitySlotService
+    AvailabilitySlotService,
+    AlertService
 )
 from common.models import Person
 from datetime import datetime
@@ -187,6 +189,7 @@ class EmployeeResource(Resource):
         """
         employee_service = EmployeeService(config)
         person_service = PersonService(config)
+        alert_service = AlertService(config)
         organization_service = OrganizationService(config)
         alert_service = AlertService(config)
         

@@ -1,3 +1,4 @@
+
 from flask_restx import Namespace, Resource
 from flask import request
 from datetime import datetime
@@ -38,13 +39,13 @@ class PatientCareSlotResource(Resource):
         if not patient:
             return get_failure_response("Patient not found in this organization", status_code=404)
         
-        # Check for date range filtering
-        start_date = request.args.get('start_date')
+        week_start_date = request.args.get('week_start_date')
+         
         
-        if start_date:
+        if week_start_date:
             
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, start_date)
+            week_start_date = datetime.strptime(week_start_date, '%Y-%m-%d').date()
+            patient_care_slots = patient_care_slot_service.get_patient_care_slots_by_week(patient_id, week_start_date)
             
         else:
             # Get all slots for patient
@@ -186,3 +187,9 @@ class CreatePatientSlots(Resource):
             return get_failure_response(str(e), status_code=404)
         except Exception as e:
             return get_failure_response(f"Error creating patient care slots: {str(e)}", status_code=500)
+            
+            
+            
+            
+            
+            
