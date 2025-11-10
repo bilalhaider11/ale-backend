@@ -94,60 +94,77 @@ class EmployeeHandler:
 
         return rows
     
-
-    def _read_csv_to_dict_list(self, file_path):
+    def _read_csv_to_dict_list(self, file_path: str) -> list[dict]:
         """
-        Read CSV file and convert to list of dictionaries
-        
-        Args:
-            file_path (str): Path to the CSV file
+        Read CSV file and convert to list of dicts.
+        Required headers with multiple variations for each field.
+        """
+        required_headers = [
+            ("first_name", "first name", "f name", "f_name"),
+            ("last_name", "last name", "l name", "l_name"),
+            ("date of birth", "date_of_birth", "dob"),
+            ("employee id", "employee_id", "id"),
+            ("phone","mobile","contact","contact no","contact_no","mobile no","mobile_no","cell","cell no","cell_no"),
+            ("email","e-mail","email_address","email address")
             
-        Returns:
-            list[dict]: List of dictionaries representing rows
-        """
-
-        # Only first name and last name are required now
-        required_headers = ['first_name', 'last_name']
-        
-        with open(file_path, mode='r', encoding='utf-8') as csv_file:
-            reader = csv.reader(csv_file)
+        ]
+    
+        with open(file_path, mode="r", encoding="utf-8") as f:
+            reader = csv.reader(f)
             all_rows = list(reader)
-            
-            header_row_index = None
-            header_row = None
-            
-            # Find the header row
-            for i, row in enumerate(all_rows):
-                if not row:
-                    continue
+    
+        header_row_index = None
+        header_row = None
+    
+        for i, row in enumerate(all_rows):
+            if not row:
+                continue
                 
-                row_headers_lower = [cell.lower().strip() if cell else '' for cell in row]
-                if all(req in row_headers_lower for req in required_headers):
-                    header_row_index = i
-                    header_row = [cell.strip().lower() if cell else '' for cell in row]  # Normalize
+            row_headers_lower = [cell.lower().strip() if cell else "" for cell in row]
+            
+            # Check if all required header groups have at least one match
+            has_all_required = True
+            for header_group in required_headers:
+                if not any(variant in row_headers_lower for variant in header_group):
+                    has_all_required = False
                     break
-            
-            if header_row_index is None:
-                raise ValueError("ENOHEADERS")
-            
-            data_rows = all_rows[header_row_index + 1:]
-            
-            result = []
-            for row in data_rows:
-                if not row or all(not (cell or "").strip() for cell in row):
-                    continue
-                row_dict = {
-                    header_row[i]: cell
-                    for i, cell in enumerate(row)
-                    if i < len(header_row) and header_row[i]
-                }
-                result.append(row_dict)
-            
-            if not result:
-                raise ValueError("ENODATA")
-
-            return result
-
+                    
+            if has_all_required:
+                header_row_index = i
+                header_row = row_headers_lower
+                break
+    
+        if header_row_index is None:
+            raise ValueError("Error in headers name of your file, download the sample file provided ,to check the headers name or use these instead: ",required_headers)
+    
+        # Process data rows
+        data_rows = all_rows[header_row_index + 1:]
+        result = []
+        
+        for row in data_rows:
+            if not row or all(not (cell or "").strip() for cell in row):
+                continue
+                
+            row_dict = {}
+            for i, cell in enumerate(row):
+                if i < len(header_row) and header_row[i]:
+                    # Normalize header names to standard format
+                    header_value = header_row[i]
+                    for header_group in required_headers:
+                        if header_value in header_group:
+                            # Use the first variant as the standardized key
+                            row_dict[header_group[0]] = cell
+                            break
+                    else:
+                        # If not in required headers, use as-is
+                        row_dict[header_value] = cell
+                        
+            result.append(row_dict)
+    
+        if not result:
+            raise ValueError("No Data exist in your .csv file")
+    
+        return result
 
     def process_employee_list(self, key, file_category):
         """

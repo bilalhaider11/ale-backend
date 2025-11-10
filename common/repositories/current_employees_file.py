@@ -74,7 +74,6 @@ class CurrentEmployeesFileRepository(BaseRepository):
         with self.adapter:
             result = self.adapter.execute_query(query, params if params else None)
         
-        print(query)
         if result:
             return result[0]['count']
         

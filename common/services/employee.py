@@ -11,11 +11,10 @@ from common.models.current_employees_file import CurrentEmployeesFile, CurrentEm
 from common.services.s3_client import S3ClientService
 from common.services.alert import AlertService
 from common.services.current_employees_file import CurrentEmployeesFileService
-from common.helpers.csv_utils import get_first_matching_column_value
+from common.helpers.csv_utils import get_first_matching_column_value,is_valid_email
 from common.tasks.send_message import send_message
 
 logger = get_logger(__name__)
-
 
 class EmployeeService:
     
@@ -69,11 +68,17 @@ class EmployeeService:
         for row in rows:
             first_name = get_first_matching_column_value(row, ['first name', 'first_name'])
             last_name = get_first_matching_column_value(row, ['last name', 'last_name'])
+            email_address = get_first_matching_column_value(row,['email address','email_address','email','email-address'])
     
-            if not first_name or not last_name:
+            if not first_name or not last_name or not email_address:
                 skipped_entries.append(row)
                 continue
-    
+            
+            validate_email = is_valid_email(email_address)
+            if validate_email == False :
+                skipped_entries.append(row)
+                continue
+            
             # Get employee_id or auto-generate
             employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
             if not employee_id or not employee_id.strip():
@@ -176,16 +181,13 @@ class EmployeeService:
         
         # Define S3 key for timestamped file
         file_id_key = f"{s3_prefix}{organization_id}/{file_id}"
-
         # Prepare metadata
         metadata = {
             "upload_date": timestamp,
             "organization_id": organization_id
         }
-
         if original_filename:
             metadata["original_filename"] = original_filename
-        
         # Get file size
         file_size = os.path.getsize(file_path)
 
@@ -203,10 +205,8 @@ class EmployeeService:
             file_category=file_category
         )
         
-
         # Save file metadata to database
         saved_file = self.current_employees_file_service.save_employees_file (current_employees_file)
-
         # Upload the file with timestamp name
         self.s3_client.upload_file(
             file_path=file_path,
@@ -238,7 +238,6 @@ class EmployeeService:
             },
             "file_metadata": saved_file
         }
-
         return result    
 
     def get_employee_by_id(self, entity_id: str, organization_id: str) -> Employee:
@@ -276,7 +275,6 @@ class EmployeeService:
         s3_key = f"{self.employees_prefix}{organization_id}/latest"
         self.s3_client.delete_object(s3_key)
         return True
-
 
     def get_employees_with_matches(self, organization_id: str) -> List[Employee]:
         """

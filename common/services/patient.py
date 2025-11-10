@@ -295,21 +295,3 @@ class PatientService:
         """
         return self.patient_repo.save(patient)
     
-    def make_alert_on_duplicate_patient_MRN(self,organization_entity_id,current_emp_id,alert_service):
-        logger.warning(f"Duplicate employee_id detected: {current_emp_id}")
-
-        description = (
-            f"Duplicate MRN detected: {current_emp_id} for organization {organization_entity_id}."
-        )
-        status_ = AlertStatusEnum.ADDRESSED.value
-        level = AlertLevelEnum.WARNING.value
-        title = "Patient"
-        
-        alert_service.create_alert(
-            organization_id=organization_entity_id,
-            title=title,
-            description=description,
-            alert_type=level,
-            status=status_,
-            assigned_to_id=current_emp_id
-        )

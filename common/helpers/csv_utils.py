@@ -1,6 +1,18 @@
 from typing import Optional, Dict, List
 from datetime import date, datetime
+import re
 
+def is_valid_email(email):
+    # The regex pattern
+    if not email:
+        return False
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    
+    # Use re.fullmatch() to check if the entire string matches the pattern
+    if re.fullmatch(pattern, email):
+        return True
+    else:
+        return False
 
 def clean_string(value) -> Optional[str]:
     """Clean string values from CSV data"""
