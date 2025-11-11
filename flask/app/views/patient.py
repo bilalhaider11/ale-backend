@@ -141,8 +141,8 @@ class PatientResource(Resource):
         validate_required_fields(parsed_body)
         
         if not medical_record_number:
-            MRN_auto_assigner = organization_service.get_next_patient_MRN(organization.entity_id)
-            medical_record_number = MRN_auto_assigner
+            MRN_auto_assigner = organization_service.get_next_patient_mrn(organization.entity_id)
+            medical_record_number = MRN_auto_assigner 
             
         existing_patient = patient_service.patient_repo.get_by_patient_mrn(medical_record_number, organization.entity_id)
         
@@ -160,7 +160,7 @@ class PatientResource(Resource):
             
             alert_service = AlertService(config)
             try:
-                create_duplicateRecord_alert = alert_service.create_alert(
+                alert_service.create_alert(
                     organization_id = organization.entity_id,
                     title = title,
                     description = description,
@@ -171,7 +171,7 @@ class PatientResource(Resource):
                 )
             except Exception as e:
                 logger.error(f"Error processing patient file: {str(e)}")
-            
+                
         if entity_id:
             patient = patient_service.get_patient_by_id(entity_id, organization.entity_id)
             
@@ -231,6 +231,7 @@ class PatientResource(Resource):
             
             patient = patient_service.save_patient(patient)
             action = "created"
+        
         
         return get_success_response(
             message=f"Patient {action} successfully",

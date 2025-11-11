@@ -3,6 +3,7 @@ from typing import List, Dict
 from common.repositories.base import BaseRepository
 from common.models.person import Person
 from common.app_logger import get_logger
+from common.models.patient import Patient
 
 logger = get_logger(__name__)
 
@@ -219,7 +220,6 @@ class PersonRepository(BaseRepository):
                 mrn_to_person_id[patient.medical_record_number] = saved_person.entity_id
         
         return mrn_to_person_id
-
     def save_multiple(self, persons: list[Person]):
         """
         Save multiple Person records in a single transaction.

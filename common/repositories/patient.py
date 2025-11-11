@@ -1,3 +1,4 @@
+
 from common.repositories.base import BaseRepository
 from common.models.patient import Patient
 from common.app_logger import logger
@@ -9,7 +10,6 @@ class PatientRepository(BaseRepository):
     def __init__(self, adapter, message_adapter, message_queue_name, person_id):
         super().__init__(adapter, message_adapter, message_queue_name, person_id)
         
-
     def get_patients_for_organization(self, organization_id: str) -> list:
         """
         Get all patients associated with an organization.
@@ -59,8 +59,7 @@ class PatientRepository(BaseRepository):
         
         return []
 
-
-    def upsert_patients(self, records: list[Patient], organization_id: str) -> list[Patient]:
+    def upsert_patient(self, record: Patient, organization_id: str) -> list[Patient]:
         """
         Upsert a list of patient records based on medical_record_number
         and organization_id attributes.
@@ -72,7 +71,7 @@ class PatientRepository(BaseRepository):
         Returns:
             List of upserted Patient records
         """
-        if not records:
+        if not record:
             return []
 
         existing_patients = self.get_many({"organization_id": organization_id})
@@ -85,79 +84,40 @@ class PatientRepository(BaseRepository):
                     key = patient.medical_record_number
                     existing_patients_map[key] = patient
 
-        records_to_insert = []
-        records_to_update = []
-
         # Process each record to determine if it should be inserted or updated
-        for record in records:
-            # Set organization_id if not already set
-            if not record.organization_id:
-                record.organization_id = organization_id
-
-            key = record.medical_record_number
-
-            if key and key in existing_patients_map:
-                # Record exists, prepare for update
-                existing_record = existing_patients_map[key]
-                existing_id = existing_record.entity_id
-                existing_person_id = existing_record.person_id
-
-                record.entity_id = existing_id  # Ensure the record has the existing ID for update
-                record.version = existing_record.version  # Use the existing version for update
-                record.previous_version = existing_record.previous_version
-                record.person_id = existing_person_id  # Retain the existing person_id
+        # Set organization_id if not already set
+        if not record.organization_id:
+            record.organization_id = organization_id
+            
+        key = record.medical_record_number
+        
+        if key and key in existing_patients_map:
+            # Record exists, prepare for update
+            existing_record = existing_patients_map[key]
+            existing_id = existing_record.entity_id
+            existing_person_id = existing_record.person_id
+            record.entity_id = existing_id  # Ensure the record has the existing ID for update
+            record.version = existing_record.version  # Use the existing version for update
+            record.previous_version = existing_record.previous_version
+            record.person_id = existing_person_id  # Retain the existing person_id
+            
+            # Preserve care-related fields if not provided in the import
+            if not record.care_period_start:
+                record.care_period_start = existing_record.care_period_start
+            if not record.care_period_end:
+                record.care_period_end = existing_record.care_period_end
+            if not record.weekly_quota:
+                record.weekly_quota = existing_record.weekly_quota
+            if not record.current_week_remaining_quota:
+                record.current_week_remaining_quota = existing_record.current_week_remaining_quota
                 
-                # Preserve care-related fields if not provided in the import
-                if not record.care_period_start:
-                    record.care_period_start = existing_record.care_period_start
-                if not record.care_period_end:
-                    record.care_period_end = existing_record.care_period_end
-                if not record.weekly_quota:
-                    record.weekly_quota = existing_record.weekly_quota
-                if not record.current_week_remaining_quota:
-                    record.current_week_remaining_quota = existing_record.current_week_remaining_quota
+            self.save(record)
+        else:
+            # Record doesn't exist, prepare for insert
+            self.save(record)
 
-                records_to_update.append(record)
-            else:
-                # Record doesn't exist, prepare for insert
-                #append and insert
-                records_to_insert.append(record)
+        return record
 
-        logger.info("Preparing to insert %s new records and update %s existing records.", len(records_to_insert), len(records_to_update))
-
-        inserted_count = 0
-        updated_count = 0
-
-        # Perform batch inserts in chunks
-        if records_to_insert:
-            for idx, insert_batch in enumerate(self._batch_patients(records_to_insert, batch_size=100)):
-                logger.info("Inserting batch %s of size %s", idx + 1, len(insert_batch))
-                inserted_count += self._batch_save_patients(insert_batch)
-
-        # Perform batch updates in chunks
-        if records_to_update:
-            for idx, update_batch in enumerate(self._batch_patients(records_to_update, batch_size=100)):
-                logger.info("Updating batch %s of size %s", idx + 1, len(update_batch))
-                updated_count += self._batch_save_patients(update_batch)
-
-        logger.info("Upsert patients completed: %s records inserted, %s records updated.", inserted_count, updated_count)
-        return records_to_insert + records_to_update
-
-
-    def _batch_patients(self, records: list[Patient], batch_size: int = 1000):
-        """Yield patient records in chunks."""
-        for i in range(0, len(records), batch_size):
-            yield records[i:i + batch_size]
-
-
-    def _batch_save_patients(self, records: list[Patient]) -> int:
-        """Persist a batch of patients via self.save()."""
-        if not records:
-            return 0
-        for r in records:
-            self.save(r)
-        return len(records)
-    
     def get_by_patient_mrn(self, medical_record_number: str, organization_id: str) -> Patient:
         """
         Get an employee record by employee_id.

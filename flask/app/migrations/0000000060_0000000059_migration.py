@@ -51,12 +51,7 @@ def downgrade(migration):
         column_name="logical_key",
         datatype="VARCHAR(255) DEFAULT NULL"
     )
-    
-    
-    
-    
-    
-    
+   
     migration.add_column(
         table_name="patient_care_slot_audit",
         column_name="day_of_week",
