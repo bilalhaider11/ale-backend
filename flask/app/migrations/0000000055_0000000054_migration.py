@@ -1,7 +1,6 @@
 revision = "0000000055"
 down_revision = "0000000054"
 
-
 def upgrade(migration):
     # Add series_id columns
     migration.add_column(
@@ -41,7 +40,6 @@ def upgrade(migration):
     """)
 
     migration.update_version_table(version=revision)
-
 
 def downgrade(migration):
     # Drop series_id columns
