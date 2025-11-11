@@ -215,24 +215,6 @@ class EmployeeService:
             content_type=content_type
         )
         
-        send_message(
-            queue_name=self.config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
-            data={
-                'Records': [{
-                    'eventSource': 'aws:s3',
-                    's3': {
-                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
-                        'object': {
-                            'key': file_id_key,
-                            'metadata': {
-                                'organization_id': organization_id,
-                                'file_id': file_id
-                            }
-                        }
-                    }
-                }]
-            }
-        )
         
         result = {
             "file": {
