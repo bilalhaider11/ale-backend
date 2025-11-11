@@ -69,6 +69,7 @@ class EmployeeService:
             first_name = get_first_matching_column_value(row, ['first name', 'first_name'])
             last_name = get_first_matching_column_value(row, ['last name', 'last_name'])
             email_address = get_first_matching_column_value(row,['email address','email_address','email','email-address'])
+            employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
     
             if not first_name or not last_name or not email_address:
                 skipped_entries.append(row)
@@ -214,7 +215,6 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
-        
         
         result = {
             "file": {

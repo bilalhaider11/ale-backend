@@ -1,3 +1,4 @@
+
 import uuid
 
 from common.repositories.base import BaseRepository
@@ -116,7 +117,6 @@ class EmployeeRepository(BaseRepository):
         existing_employees = self.get_many({"organization_id": organization_id})
         existing_employees_map = {(emp.first_name, emp.last_name, emp.employee_id): emp for emp in existing_employees}
         
-    
         if key in existing_employees_map:
             # Update existing
             

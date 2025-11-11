@@ -9,7 +9,6 @@ from common.helpers.exceptions import InputValidationError
 MIN_DAY_OF_WEEK = 0
 MAX_DAY_OF_WEEK = 6
 
-
 def validate_and_parse_day_of_week(value: Any, field_name: str = "day_of_week", allow_none: bool = False) -> Optional[int]:
     """Validate and return day of week value."""
     if value is None:
@@ -23,7 +22,6 @@ def validate_and_parse_day_of_week(value: Any, field_name: str = "day_of_week", 
         )
     return value
 
-
 def parse_time_field(value: Any, field_name: str) -> time:
     """Parse time from string or time object."""
     if isinstance(value, str):
@@ -35,7 +33,6 @@ def parse_time_field(value: Any, field_name: str) -> time:
         return value
     else:
         raise InputValidationError(f"{field_name} must be a time string in 'HH:MM' format or a time object")
-
 
 def parse_date_field(value: Any, field_name: str, allow_none: bool = True) -> Optional[date]:
     """Parse date from string or date object."""
@@ -55,14 +52,11 @@ def parse_date_field(value: Any, field_name: str, allow_none: bool = True) -> Op
     else:
         raise InputValidationError(f"{field_name} must be a date string in 'YYYY-MM-DD' format or a date object")
 
-
-
 def validate_day_range(start_day: Optional[int], end_day: Optional[int]) -> None:
     """Validate that day range is valid."""
     if start_day is not None and end_day is not None:
         if start_day > end_day and not (start_day == 6 and end_day == 0):
             raise InputValidationError("start_day_of_week cannot be greater than end_day_of_week")
-
 
 def is_valid_time_range(start_time: time, end_time: time) -> bool:
     """
@@ -91,7 +85,6 @@ def is_valid_time_range(start_time: time, end_time: time) -> bool:
     else:
         # Regular same-day slot - start must be before end
         return start_minutes < end_minutes
-
 
 def expand_slots(payload: dict, start_date: str, entity_id: str, entity_type: str = "patient"):
     """
