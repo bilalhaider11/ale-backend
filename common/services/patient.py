@@ -1,3 +1,4 @@
+
 from typing import List, Dict, Optional
 from datetime import date, datetime, timedelta
 import os
@@ -50,31 +51,35 @@ class PatientService:
                 if patient.medical_record_number:
                     existing_patients_map[patient.medical_record_number] = patient
 
-        # Temporary structure to hold patient data with names
-        patient_data = []
         count = 0
         for row in rows:
+            mrn = get_first_matching_column_value(row, ["medical_record_number", "mrn","medical record number"])
             first_name = get_first_matching_column_value(row, ["first name", "first_name"])
             last_name = get_first_matching_column_value(row, ["last name", "last_name"])
             dob_raw = get_first_matching_column_value(row, ["date of birth", "date_of_birth", "dob"])
-            mrn = get_first_matching_column_value(row, ["medical_record_number", "mrn"], match_mode="contains")
             gender = get_first_matching_column_value(row, ["gender"], match_mode="contains")
 
             if not mrn:
                 mrn = self.organization_service.get_next_patient_mrn(organization_id)
+            
+            patient = Patient(
+                changed_by_id=user_id,
+                medical_record_number=mrn,
+                organization_id=organization_id
+            )
                 
             if mrn in existing_patients_map:
                 logger.warning(
                     f"Duplicate patient MRN detected during bulk import"
                 )
-    
                 # Create an alert
                 self.alert_service.create_alert(
                     organization_id=organization_id,
                     title="Duplicate patientMRN Detected",
                     description=(
                         f"Duplicate patient MRN detected during bulk import. "
-                        
+                        f"Employee to be inserted: ID: {patient.entity_id} name: {first_name} {last_name}",
+                        f"existing Employee: {existing_patients_map[mrn]}"
                     ),
                     alert_type=AlertLevelEnum.WARNING.value,
                     status=AlertStatusEnum.ADDRESSED.value,
@@ -82,31 +87,22 @@ class PatientService:
 
             date_of_birth = parse_date(dob_raw)
             
-            
-            patient = Patient(
-                changed_by_id=user_id,
-                medical_record_number=mrn,
-                organization_id=organization_id
-            )
             patient_for_person = patient
             patient_for_person.first_name=first_name
             patient_for_person.last_name=last_name
             patient_for_person.gender=gender
             patient_for_person.date_of_birth=date_of_birth
             
-            mrn_to_person_id = self.person_repo.upsert_persons_from_patients(patient_for_person, user_id)
-            
+            mrn_to_person_id = self.person_repo.upsert_persons_from_patients([patient_for_person], user_id)
             patient.person_id=mrn_to_person_id
             
             self.patient_repo.upsert_patient(patient, organization_id)
             
             count+=1
-   
+            
         logger.info(f"Successfully imported {count} patient records")
         return count
 
-
-    
     def upload_patient_list(self, organization_id: str, person_id: str, file_path: str, original_filename: str = None, file_id=None) -> Dict:
         """
         Upload a patient list file to S3
@@ -159,7 +155,6 @@ class PatientService:
             uploaded_by=person_id,
             status=PatientsFileStatusEnum.PENDING,
         )
-
         # Save file metadata to database
         saved_file = self.patient_file_service.save_patient_file(patients_file)
         
