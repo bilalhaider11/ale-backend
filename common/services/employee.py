@@ -79,6 +79,17 @@ class EmployeeService:
                 skipped_entries.append(row)
                 continue
             
+            employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
+            
+            # Get employee_id or auto-generate
+            if not employee_id or not employee_id.strip():
+                employee_id = organization_service.get_next_employee_id(organization_id)
+    
+            # Parse date fields
+            parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
+            parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
+            parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date_of_birth']))
+    
             # Create Employee record
             
             record = Employee(
@@ -105,11 +116,7 @@ class EmployeeService:
                 social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
             )
-            # Get employee_id or auto-generate
-            employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
-            if not employee_id or not employee_id.strip():
-                employee_id = organization_service.get_next_employee_id(organization_id)
-    
+            
             # Detect duplicates in DB
             if employee_id in existing_employee_ids:
                 existing_employee = existing_employee_ids[employee_id]
@@ -132,11 +139,7 @@ class EmployeeService:
                     alert_type=AlertLevelEnum.WARNING.value,
                     status=AlertStatusEnum.ADDRESSED.value,
                 )
-            # Parse date fields
-            parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
-            parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
-            parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date_of_birth']))
-    
+            
             # Upsert single employee
             self.employee_repo.upsert_employee(record, organization_id)
             success_count += 1
@@ -210,7 +213,26 @@ class EmployeeService:
             s3_key=file_id_key,
             metadata=metadata,
             content_type=content_type
-        )     
+        )
+        
+        send_message(
+            queue_name=self.config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
+            data={
+                'Records': [{
+                    'eventSource': 'aws:s3',
+                    's3': {
+                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
+                        'object': {
+                            'key': file_id_key,
+                            'metadata': {
+                                'organization_id': organization_id,
+                                'file_id': file_id
+                            }
+                        }
+                    }
+                }]
+            }
+        )
         
         result = {
             "file": {
