@@ -4,7 +4,6 @@ import csv
 from flask import request
 from flask_restx import Namespace, Resource
 from openpyxl import load_workbook
-
 from common.app_config import config
 from common.app_logger import logger
 from common.services.employee import EmployeeService
@@ -26,7 +25,6 @@ from common.models import Person
 from datetime import datetime
 
 employee_api = Namespace('employee', description='Employee operations')
-
 
 @employee_api.route('/upload')
 class EmployeeListUpload(Resource):
@@ -94,7 +92,6 @@ class EmployeeListUpload(Resource):
                 file_id=file_id,
                 original_filename=file.filename
             )
-
             # Clean up temporary file
             os.unlink(temp_file_path)
             
@@ -336,7 +333,6 @@ class EmployeeResource(Resource):
             data=employee.as_dict()
         )
 
-
 @employee_api.route('/invite')
 class EmployeeInvite(Resource):
 
@@ -399,8 +395,6 @@ class EmployeeInvite(Resource):
 
         return get_success_response(message="Employee invitation sent successfully.")
 
-
-
 @employee_api.route('/by/slot')
 class EmployeesBySlot(Resource):
 
@@ -410,7 +404,6 @@ class EmployeesBySlot(Resource):
         """
         Get all employees for the organization.
         """
-
         date = request.args['date']
         slot_start_time = request.args['start_time']
         slot_end_time = request.args['end_time']

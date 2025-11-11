@@ -2,9 +2,6 @@ from common.repositories.base import BaseRepository
 from common.models.patient import Patient
 from common.app_logger import logger
 from datetime import time
-from common.models.alert import AlertLevelEnum, AlertStatusEnum
-
-
 
 class PatientRepository(BaseRepository):
     MODEL = Patient
@@ -12,7 +9,6 @@ class PatientRepository(BaseRepository):
     def __init__(self, adapter, message_adapter, message_queue_name, person_id):
         super().__init__(adapter, message_adapter, message_queue_name, person_id)
         
-
     def get_patients_for_organization(self, organization_id: str) -> list:
         """
         Get all patients associated with an organization.
@@ -62,7 +58,6 @@ class PatientRepository(BaseRepository):
         
         return []
 
-
     def upsert_patient(self, record: Patient, organization_id: str) -> list[Patient]:
         """
         Upsert a list of patient records based on medical_record_number
@@ -75,7 +70,6 @@ class PatientRepository(BaseRepository):
         Returns:
             List of upserted Patient records
         """
-        
         if not record:
             return []
 

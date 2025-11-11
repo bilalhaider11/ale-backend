@@ -2,13 +2,9 @@ revision = "0000000059"
 down_revision = "0000000058"
 
 #availability slot
-
 def upgrade(migration):
     
-    
     # Drop availability_slot_key column from care_visit table
-    
-    
     migration.drop_column("availability_slot", "day_of_week")
     
     migration.drop_column("availability_slot", "week_start_date")
@@ -16,10 +12,7 @@ def upgrade(migration):
     migration.drop_column("availability_slot", "week_end_date")
     
     migration.drop_column("availability_slot", "logical_key")
-    
-    
-
-    
+  
     migration.drop_column("availability_slot_audit", "day_of_week")
     
     migration.drop_column("availability_slot_audit", "week_start_date")
@@ -28,13 +21,10 @@ def upgrade(migration):
     
     migration.drop_column("availability_slot_audit", "logical_key")
     
-
     migration.update_version_table(version=revision)
-
 
 def downgrade(migration):
     
-    
     migration.add_column(
         table_name="availability_slot",
         column_name="day_of_week",
@@ -59,16 +49,6 @@ def downgrade(migration):
         datatype="VARCHAR(255) DEFAULT NULL"
     )
     
-    
-    
-    
-    
-    
-
-
-
-
-    
     migration.add_column(
         table_name="availability_slot_audit",
         column_name="day_of_week",
@@ -92,8 +72,5 @@ def downgrade(migration):
         column_name="logical_key",
         datatype="VARCHAR(255) DEFAULT NULL"
     )
-
-
     
-
     migration.update_version_table(version=down_revision)

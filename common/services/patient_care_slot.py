@@ -14,9 +14,7 @@ from common.utils.slot import (
     is_valid_time_range
 )
 
-
 logger = get_logger(__name__)
-
 
 class PatientCareSlotService:
 
@@ -39,7 +37,6 @@ class PatientCareSlotService:
         # Then filter for the specific week in Python
         return [slot for slot in patient_slots if week_start_date == get_week_start_date(slot.start_date) ] 
 
-
     def get_patient_care_slots_by_patient_id(self, patient_id: str) -> List[PatientCareSlot]:
         """
         Get all care slots for a specific patient.
@@ -47,7 +44,6 @@ class PatientCareSlotService:
         return self.patient_care_slot_repo.get_many({
             "patient_id": patient_id
         })
-
 
     def get_patient_care_slots_for_time_slot(self, start_time: time, end_time: time, 
                                   visit_date: date, employee_id: str, organization_ids: List[str]) -> List[PatientCareSlot]:
@@ -201,7 +197,6 @@ class PatientCareSlotService:
         
         # Update day of week fields if provided
         
-        
         if 'start_day_of_week' in slot_data:
             slot.start_day_of_week = validate_and_parse_day_of_week(
                 slot_data['start_day_of_week'], "start_day_of_week", allow_none=True
@@ -225,8 +220,6 @@ class PatientCareSlotService:
         # Validate time range
         if not is_valid_time_range(slot.start_time, slot.end_time):
             raise InputValidationError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
-
-        # Update week_start_date if provided
       
         # Update start_date and end_date if provided
         if 'start_date' in slot_data:
@@ -246,9 +239,6 @@ class PatientCareSlotService:
         logger.info(f"Updating patient care slot {slot_id} for patient {patient_id}")
         return self.patient_care_slot_repo.save(slot)
     
-    
-    
-
     def get_slots_by_series_id(self, series_id: str, entity_id: str, patient_id: str) -> List[PatientCareSlot]:
         """Get all slots with the same series_id for a patient."""
         
@@ -266,7 +256,6 @@ class PatientCareSlotService:
             "active": True
             })
             
-
     def expand_and_save_slots(self, payload, patient_id):
         expanded_slots = expand_slots(
             payload=payload,

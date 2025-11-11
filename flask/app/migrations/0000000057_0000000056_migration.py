@@ -1,7 +1,6 @@
 revision = "0000000057"
 down_revision = "0000000056"
 
-
 def upgrade(migration):
 
     migration.execute("""
@@ -14,9 +13,6 @@ def upgrade(migration):
         drop column availability_slot_key
     """)
     
-    
-    
-    
     migration.execute("""
         ALTER TABLE care_visit_audit
         drop column patient_care_slot_key
@@ -27,9 +23,7 @@ def upgrade(migration):
         drop column availability_slot_key
     """)
 
-
     migration.update_version_table(version=revision)
-
 
 def downgrade(migration):
     migration.execute("""
@@ -51,7 +45,6 @@ def downgrade(migration):
         ALTER TABLE care_visit_audit
         add column availability_slot_key varchar(255)
     """)
-
 
     migration.update_version_table(version=down_revision)
 

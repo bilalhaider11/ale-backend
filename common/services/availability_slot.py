@@ -16,7 +16,6 @@ from common.app_logger import get_logger
 
 logger = get_logger(__name__)
 
-
 class AvailabilitySlotService:
 
     def __init__(self, config):
@@ -44,8 +43,6 @@ class AvailabilitySlotService:
         
         return [slot for slot in availability_slots if week_start_date == get_week_start_date(slot.start_date)]
         
-    
-    
     def get_availability_slots_for_organization(self, organization_id: str):
         availability_slots = self.availability_slot_repo.get_employee_availability_slots([organization_id])
         
@@ -174,7 +171,6 @@ class AvailabilitySlotService:
         # Validate time range
         if not is_valid_time_range(slot.start_time, slot.end_time):
             raise InputValidationError(f"Invalid time range: start_time {slot.start_time} to end_time {slot.end_time}")
-
 
         # Update start_date and end_date if provided
         if 'start_date' in slot_data:

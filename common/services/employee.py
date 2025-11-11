@@ -135,13 +135,11 @@ class EmployeeService:
                 social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
             )
-    
             # Upsert single employee
             self.employee_repo.upsert_employee(record, organization_id)
             success_count += 1
     
         return success_count, skipped_entries
-
 
     def upload_list_file(self, organization_id, person_id, file_path, file_category, file_id=None, original_filename=None):
         """
@@ -202,7 +200,6 @@ class EmployeeService:
             status=CurrentEmployeesFileStatusEnum.PENDING,
             file_category=file_category
         )
-        
         # Save file metadata to database
         saved_file = self.current_employees_file_service.save_employees_file (current_employees_file)
         # Upload the file with timestamp name
@@ -211,7 +208,24 @@ class EmployeeService:
             s3_key=file_id_key,
             metadata=metadata,
             content_type=content_type
-        )        
+        )     
+        send_message(
+            queue_name=self.config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
+            data={
+                'Records': [{
+                    's3': {
+                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
+                        'object': {
+                            'key': file_id_key,
+                            'metadata': {
+                                'organization_id': organization_id,
+                                'file_id': file_id
+                            }
+                        }
+                    }
+                }]
+            }
+        )   
         result = {
             "file": {
                 "url": self.s3_client.generate_presigned_url(file_id_key, filename=original_filename or f"{timestamp}{file_extension}"),

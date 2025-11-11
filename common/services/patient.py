@@ -67,21 +67,18 @@ class PatientService:
                 logger.warning(
                     f"Duplicate patient MRN detected during bulk import"
                 )
-    
                 # Create an alert
                 self.alert_service.create_alert(
                     organization_id=organization_id,
                     title="Duplicate patientMRN Detected",
                     description=(
                         f"Duplicate patient MRN detected during bulk import. "
-                        
                     ),
                     alert_type=AlertLevelEnum.WARNING.value,
                     status=AlertStatusEnum.ADDRESSED.value,
                 )
 
             date_of_birth = parse_date(dob_raw)
-            
             
             patient = Patient(
                 changed_by_id=user_id,
@@ -95,18 +92,14 @@ class PatientService:
             patient_for_person.date_of_birth=date_of_birth
             
             mrn_to_person_id = self.person_repo.upsert_persons_from_patients(patient_for_person, user_id)
-            
             patient.person_id=mrn_to_person_id
-            
             self.patient_repo.upsert_patient(patient, organization_id)
             
             count+=1
-   
+            
         logger.info(f"Successfully imported {count} patient records")
         return count
 
-
-    
     def upload_patient_list(self, organization_id: str, person_id: str, file_path: str, original_filename: str = None, file_id=None) -> Dict:
         """
         Upload a patient list file to S3
@@ -159,7 +152,6 @@ class PatientService:
             uploaded_by=person_id,
             status=PatientsFileStatusEnum.PENDING,
         )
-
         # Save file metadata to database
         saved_file = self.patient_file_service.save_patient_file(patients_file)
         

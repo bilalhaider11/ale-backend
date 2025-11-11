@@ -184,10 +184,7 @@ class PersonRepository(BaseRepository):
             
         Returns:
             Dict mapping MRN to person_id
-        """
-        mrn_to_person_id = ''
-        
-        
+        """        
         # Check if person already exists (if patient has person_id)
         if patient.person_id:
             person = self.get_one({"entity_id": patient.person_id})

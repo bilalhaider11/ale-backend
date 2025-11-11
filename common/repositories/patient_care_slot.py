@@ -159,7 +159,6 @@ class PatientCareSlotRepository(BaseRepository):
                     "care_visits": [] 
                 }
                     
-
             if row.get("visit_date"):  # only if care visit exists
                 slots_map[slot_id]["care_visits"].append({
                     "visit_date": row["visit_date"],
@@ -168,9 +167,7 @@ class PatientCareSlotRepository(BaseRepository):
                     "employee_first_name": row["employee_first_name"],
                     "employee_last_name": row["employee_last_name"]
                 })
-                
-                
-
+             
         return list(slots_map.values())
 
     def delete_future_patient_care_slots(self, patient_id: str, series_id: str, from_date: str) -> int:

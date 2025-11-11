@@ -1,7 +1,6 @@
 revision = "0000000056"
 down_revision = "0000000055"
 
-
 def upgrade(migration):
     # Add employee_id_counter column to organization table
     migration.execute("""
@@ -16,7 +15,6 @@ def upgrade(migration):
     """)
 
     migration.update_version_table(version=revision)
-
 
 def downgrade(migration):
     # Remove employee_id_counter column from organization table

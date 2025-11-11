@@ -106,20 +106,18 @@ class EmployeeHandler:
             ("employee id", "employee_id", "id"),
             ("phone","mobile","contact","contact no","contact_no","mobile no","mobile_no","cell","cell no","cell_no"),
             ("email","e-mail","email_address","email address")
-            
         ]
-    
         with open(file_path, mode="r", encoding="utf-8") as f:
             reader = csv.reader(f)
             all_rows = list(reader)
-    
+            
         header_row_index = None
         header_row = None
     
         for i, row in enumerate(all_rows):
             if not row:
                 continue
-                
+
             row_headers_lower = [cell.lower().strip() if cell else "" for cell in row]
             
             # Check if all required header groups have at least one match

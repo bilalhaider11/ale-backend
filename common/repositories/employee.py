@@ -5,7 +5,6 @@ from common.models import Employee, Person
 from rococo.models import VersionedModel
 from common.app_logger import logger
 
-
 class EmployeeRepository(BaseRepository):
     MODEL = Employee
 
@@ -19,7 +18,6 @@ class EmployeeRepository(BaseRepository):
         Args:
             record: Employee instance to insert
         """
-
         # Build SQL insert statement
         columns = [k for k, v in record.__dict__.items() if v is not None and k != 'id']
 
@@ -35,7 +33,6 @@ class EmployeeRepository(BaseRepository):
             INSERT INTO employee ({cols_str})
             VALUES ({placeholders})
         """
-
         self.adapter.execute_query(query, values)
 
     def get_by_employee_id(self, employee_id: str, organization_id: str) -> Employee:
@@ -184,7 +181,6 @@ class EmployeeRepository(BaseRepository):
                 WHERE e.organization_id = %s AND eem.matched_entity_type = 'employee'
                 GROUP BY e.entity_id
         """
-
         with self.adapter:
             employee_results = self.adapter.execute_query(employee_query, (organization_id,))
 
@@ -218,7 +214,6 @@ class EmployeeRepository(BaseRepository):
             physician_results = self.adapter.execute_query(physician_query, (organization_id,))
 
         results = []
-
         # Process employee results
         if employee_results:
             for row in employee_results:
@@ -274,7 +269,6 @@ class EmployeeRepository(BaseRepository):
 
         return results
 
-
     def get_employees_with_invitation_status(self, organization_ids: list[str], employee_type: str = None):
         """
         Get all employees with their invitation status.
@@ -327,5 +321,4 @@ class EmployeeRepository(BaseRepository):
                 employees.append(employee)
 
             return employees
-
         return []
