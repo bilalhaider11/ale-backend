@@ -73,7 +73,49 @@ class PatientRepository(BaseRepository):
         if not record:
             return []
 
-        self.save(record)
+        existing_patients = self.get_many({"organization_id": organization_id})
+
+        # Convert existing results to a dictionary keyed by MRN
+        existing_patients_map = {}
+        if existing_patients:
+            for patient in existing_patients:
+                if patient.medical_record_number:
+                    key = patient.medical_record_number
+                    existing_patients_map[key] = patient
+
+        # Process each record to determine if it should be inserted or updated
+        # Set organization_id if not already set
+        if not record.organization_id:
+            record.organization_id = organization_id
+            
+        key = record.medical_record_number
+        
+        if key and key in existing_patients_map:
+            # Record exists, prepare for update
+            existing_record = existing_patients_map[key]
+            existing_id = existing_record.entity_id
+            existing_person_id = existing_record.person_id
+            record.entity_id = existing_id  # Ensure the record has the existing ID for update
+            record.version = existing_record.version  # Use the existing version for update
+            record.previous_version = existing_record.previous_version
+            record.person_id = existing_person_id  # Retain the existing person_id
+            
+            # Preserve care-related fields if not provided in the import
+            if not record.care_period_start:
+                record.care_period_start = existing_record.care_period_start
+            if not record.care_period_end:
+                record.care_period_end = existing_record.care_period_end
+            if not record.weekly_quota:
+                record.weekly_quota = existing_record.weekly_quota
+            if not record.current_week_remaining_quota:
+                record.current_week_remaining_quota = existing_record.current_week_remaining_quota
+                
+            self.save(record)
+        else:
+            # Record doesn't exist, prepare for insert
+            self.save(record)
+
+        return record
 
     def get_by_patient_mrn(self, medical_record_number: str, organization_id: str) -> Patient:
         """

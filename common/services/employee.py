@@ -79,38 +79,8 @@ class EmployeeService:
                 skipped_entries.append(row)
                 continue
             
-            # Get employee_id or auto-generate
-            employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
-            if not employee_id or not employee_id.strip():
-                employee_id = organization_service.get_next_employee_id(organization_id)
-    
-            # Detect duplicates in DB
-            if employee_id in existing_employee_ids:
-                existing_employee = existing_employee_ids[employee_id]
-                logger.warning(
-                    f"Duplicate employee ID detected during bulk import: {employee_id} "
-                    f"for organization {organization_id}. Existing employee: "
-                    f"{existing_employee.first_name} {existing_employee.last_name}"
-                )
-                # Create an alert
-                alert_service.create_alert(
-                    organization_id=organization_id,
-                    title="Duplicate Employee ID Detected",
-                    description=(
-                        f"Duplicate employee ID detected during bulk import. "
-                        f"Existing employee: {existing_employee.entity_id} "
-                        f"({existing_employee.first_name} {existing_employee.last_name}). "
-                        f"Imported employee: {first_name} {last_name}."
-                    ),
-                    alert_type=AlertLevelEnum.WARNING.value,
-                    status=AlertStatusEnum.ADDRESSED.value,
-                )
-            # Parse date fields
-            parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
-            parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
-            parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date_of_birth']))
-    
             # Create Employee record
+            
             record = Employee(
                 changed_by_id=user_id,
                 primary_branch=get_first_matching_column_value(row, ['primary branch', 'primary_branch']),
@@ -135,6 +105,38 @@ class EmployeeService:
                 social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
             )
+            # Get employee_id or auto-generate
+            employee_id = get_first_matching_column_value(row, ['employee id', 'employee_id', 'caregiver id', 'caregiver_id'])
+            if not employee_id or not employee_id.strip():
+                employee_id = organization_service.get_next_employee_id(organization_id)
+    
+            # Detect duplicates in DB
+            if employee_id in existing_employee_ids:
+                existing_employee = existing_employee_ids[employee_id]
+                logger.warning(
+                    f"Duplicate employee ID detected during bulk import: {employee_id} on Entity-ID: {record.entity_id}"
+                    f"employee to be created: {record.first_name} {record.last_name}"
+                    f"for organization {organization_id}. Existing employee: "
+                    f"{existing_employee.first_name} {existing_employee.last_name}"
+                )
+                # Create an alert
+                alert_service.create_alert(
+                    organization_id=organization_id,
+                    title="Duplicate Employee ID Detected",
+                    description=(
+                        f"Duplicate employee ID: {record.employee_id} detected during bulk import. "
+                        f"Existing employee: {existing_employee.entity_id} "
+                        f"({existing_employee.first_name} {existing_employee.last_name}). "
+                        f"Imported employee: {record.first_name} {record.last_name}."
+                    ),
+                    alert_type=AlertLevelEnum.WARNING.value,
+                    status=AlertStatusEnum.ADDRESSED.value,
+                )
+            # Parse date fields
+            parsed_hire_date = safe_parse_date(get_first_matching_column_value(row, ['hire date']))
+            parsed_payroll_start_date = safe_parse_date(get_first_matching_column_value(row, ['payroll start date']))
+            parsed_date_of_birth = safe_parse_date(get_first_matching_column_value(row, ['date_of_birth']))
+    
             # Upsert single employee
             self.employee_repo.upsert_employee(record, organization_id)
             success_count += 1
@@ -209,7 +211,7 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )     
-          
+        
         result = {
             "file": {
                 "url": self.s3_client.generate_presigned_url(file_id_key, filename=original_filename or f"{timestamp}{file_extension}"),

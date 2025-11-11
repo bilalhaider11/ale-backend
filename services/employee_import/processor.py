@@ -42,8 +42,8 @@ class EmployeeImportProcessor(BaseServiceProcessor):
 
             for record in message['Records']:
                 
-                #if record.get('eventSource') != 'aws:s3':
-                #    continue
+                if record.get('eventSource') != 'aws:s3':
+                    continue
                    
                 bucket_name = record.get('s3', {}).get('bucket', {}).get('name')
                 key = record.get('s3', {}).get('object', {}).get('key')

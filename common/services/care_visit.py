@@ -3,7 +3,6 @@ from typing import List, Union, Dict, Any
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.care_visit import CareVisit, CareVisitStatusEnum
 
-
 class CareVisitService:
 
     def __init__(self, config):
@@ -148,7 +147,7 @@ class CareVisitService:
         patient_slot_id = visit_data.get('patient_slot_id')
         
         if not patient_id:
-            raise ValueError("care_slot_logical_id and patient_id are required for recurring assignment")
+            raise ValueError(" patient_id is required for recurring assignment")
       
         
         # Find all patient care slots with this series_id
