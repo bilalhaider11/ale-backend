@@ -12,7 +12,7 @@ def upgrade(migration):
         ALTER TABLE care_visit
         drop column availability_slot_key
     """)
-   
+    
     migration.execute("""
         ALTER TABLE care_visit_audit
         drop column patient_care_slot_key

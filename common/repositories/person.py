@@ -219,7 +219,8 @@ class PersonRepository(BaseRepository):
             if patient.medical_record_number:
                 mrn_to_person_id[patient.medical_record_number] = saved_person.entity_id
         
-        return mrn_to_person_id
+        return saved_person.entity_id
+
     def save_multiple(self, persons: list[Person]):
         """
         Save multiple Person records in a single transaction.

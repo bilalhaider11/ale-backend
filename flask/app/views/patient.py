@@ -23,7 +23,6 @@ logger = create_logger()
 
 patient_api = Namespace('patient', description='Patient management endpoints')
 
-
 @patient_api.route('/admin')
 class PatientList(Resource):
     
@@ -175,7 +174,6 @@ class PatientResource(Resource):
         if entity_id:
             patient = patient_service.get_patient_by_id(entity_id, organization.entity_id)
             
-            
             if not patient:
                 return get_failure_response("Patient not found", status_code=404)
             
@@ -231,7 +229,6 @@ class PatientResource(Resource):
             
             patient = patient_service.save_patient(patient)
             action = "created"
-        
         
         return get_success_response(
             message=f"Patient {action} successfully",

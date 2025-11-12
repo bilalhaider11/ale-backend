@@ -13,7 +13,6 @@ class BaseConfig(BaseSettings):
     def ENV(self):
         return self.APP_ENV
 
-
 class Config(BaseConfig):
     DEBUG: bool = Field(default=False)
     TESTING: bool = Field(default=False)

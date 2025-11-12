@@ -11,7 +11,6 @@ from common.models.patients_file import PatientsFileStatusEnum
 
 logger = create_logger()
 
-
 class PatientHandler:
     """Handler for processing patient CSV/XLSX files"""
 
@@ -157,7 +156,6 @@ class PatientHandler:
         patient_file = self.patient_file_service.get_by_id(file_id, organization_id)
 
         logger.info(f"File Object {patient_file}")
-
 
         file_extension = f".{patient_file.file_type.lower()}"
 

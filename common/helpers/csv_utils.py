@@ -22,7 +22,6 @@ def clean_string(value) -> Optional[str]:
     cleaned = str(value).strip()
     return cleaned if cleaned else None
 
-
 def get_first_matching_column_value(
     row: Dict[str, str],
     column_headers: List[str],
@@ -64,7 +63,6 @@ def parse_date(date_str: str) -> Optional[date]:
         except ValueError:
             continue
     return None
-
 
 def parse_date_string(date_str) -> Optional[str]:
     """Parse date string and return as string for storage"""
