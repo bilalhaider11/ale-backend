@@ -16,9 +16,10 @@ from app.views.patient_care_slot import patient_care_slot_api
 from app.views.form_data import form_data_api
 from app.views.fax_template import fax_template_api
 from app.views.person_organization_roles import person_organization_roles_api
-
+from app.views.alert import alert_api
 
 def initialize_views(api):
+    api.add_namespace(alert_api)
     api.add_namespace(auth_api)
     api.add_namespace(organization_api)
     api.add_namespace(person_api)
