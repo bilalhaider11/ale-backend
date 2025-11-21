@@ -153,8 +153,8 @@ class PatientResource(Resource):
             title = 'Patient'
             logger.warning(
                 f"Duplicate detected: {medical_record_number} for organization {organization.entity_id}. "
-                f"Existing employee: {existing_patient.entity_id} . "
-                f"Creating new employee anyway as per requirements."   
+                f"Existing patient: {existing_patient.entity_id} . "
+                f"Creating new patient anyway as per requirements."   
             )
             
             alert_service = AlertService(config)
@@ -165,7 +165,7 @@ class PatientResource(Resource):
                     description = description,
                     alert_type = level,
                     status = status_,
-                    assigned_to_id = medical_record_number
+                    assigned_to_id = existing_patient.entity_id
                 
                 )
             except Exception as e:

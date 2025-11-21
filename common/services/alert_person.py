@@ -1,7 +1,7 @@
 from typing import List, Optional
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.alert_person import AlertPerson
-
+from common.tasks.send_message import send_message
 class AlertPersonService:
     
     def __init__(self, config):
@@ -26,6 +26,10 @@ class AlertPersonService:
     def get_alert_person_by_alert_and_person(self, alert_id: str, person_id: str) -> Optional[AlertPerson]:
         return self.alert_person_repo.get_one({"alert_id": alert_id, "person_id": person_id})
     
+    def mark_read(self,  alert_id: str, person_id: str):
+        #send message here rabbit mq
+        return
+
     def mark_alert_as_read(self, alert_id: str, person_id: str) -> AlertPerson:
         alert_person = self.get_alert_person_by_alert_and_person(alert_id, person_id)
         if not alert_person:
