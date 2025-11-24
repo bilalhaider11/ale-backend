@@ -130,25 +130,6 @@ class EmployeeService:
                     f"{existing_employee.first_name} {existing_employee.last_name}"
                 )
                 # Create an alert
-                send_message(
-                        queue_name=self.config.PREFIXED_ALERT_PROCESSOR_QUEUE_NAME,
-                        data={
-                            'action':'create_alert',
-                            'status': AlertStatusEnum.ADDRESSED.value,
-                            'level': AlertLevelEnum.WARNING.value,
-                            'organization_id': organization_id,
-                            'assigned_to_id': record.entity_id,
-                    
-                            'area': "Duplicate Employee ID Detected",
-                            'message': (
-                                f"Duplicate employee ID: {record.employee_id} detected during bulk import. "
-                                f"Existing employee: {existing_employee.entity_id} "
-                                f"({existing_employee.first_name} {existing_employee.last_name}). "
-                                f"Imported employee: {record.first_name} {record.last_name}."
-                            ),
-                        }
-                    )
-   
             success_count += 1
     
         return success_count, skipped_entries

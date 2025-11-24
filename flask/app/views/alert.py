@@ -39,17 +39,16 @@ class AlertList(Resource):
             logger.exception("Error fetching alerts for organization_id=%s", organization_id)
             return get_failure_response("error fetching data, raised exception: ",e)
         
-@alert_api.route('/unread-count')
+@alert_api.route('/unread-count/<string:person_id>')
 class AlertPersonOperations(Resource):
     @login_required()
     @organization_required(with_roles= [PersonOrganizationRoleEnum.ADMIN])
-    def get(self):
+    def get(self,person_id:str):
         try: 
             person_service = PersonService(config)
             alert_person_service = AlertPersonService(config)
             
             Unread_alerts = alert_person_service.get_unread_alerts_for_person(person_id)
-            print("unread alerts: ",Unread_alerts)
             return get_success_response(  
                 message="alerts retrieved successfully", 
                 data=Unread_alerts,
@@ -73,8 +72,7 @@ class AlertPersonOperations(Resource):
                 alert_id = person['alert_id']
                 person_id = person['person_id']
                 
-                print(alert_id,person_id)
-                seen_alerts = alert_person_service.mark_read(
+                seen_alerts = alert_person_service.mark_read( 
                     alert_id=alert_id,
                     person_id=person_id
                 )
@@ -82,8 +80,7 @@ class AlertPersonOperations(Resource):
                 
             return get_success_response(
                 message="alerts retrieved successfully", 
-                data=Seen_alerts
-                
+                data=Seen_alerts 
             )
         except Exception as e:
             logger.exception("Error fetching alerts")

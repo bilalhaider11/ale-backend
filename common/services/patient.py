@@ -88,7 +88,7 @@ class PatientService:
                     f"Duplicate patient MRN detected during bulk import"
                 )
                 # Create an alert
-              
+            
             count+=1
             
         logger.info(f"Successfully imported {count} patient records")

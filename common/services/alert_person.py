@@ -28,6 +28,7 @@ class AlertPersonService:
     
     def mark_read(self,  alert_id: str, person_id: str):
         #send message here rabbit mq
+        
         return
 
     def mark_alert_as_read(self, alert_id: str, person_id: str) -> AlertPerson:
