@@ -38,11 +38,13 @@ class EmployeeService:
     
         from common.services.organization import OrganizationService
         from common.services import PersonService, AlertService
+        from common.services.alert_person import AlertPersonService
         from common.models import AlertLevelEnum, AlertStatusEnum
         from common.app_config import config
     
         organization_service = OrganizationService(self.config)
         alert_service = AlertService(config)
+        alert_person_service = AlertPersonService(config)
     
         def safe_parse_date(date_string: str):
             if not date_string or not date_string.strip():
@@ -128,21 +130,6 @@ class EmployeeService:
                     f"{existing_employee.first_name} {existing_employee.last_name}"
                 )
                 # Create an alert
-                alert_service.create_alert(
-                    organization_id=organization_id,
-                    title="Duplicate Employee ID Detected",
-                    description=(
-                        f"Duplicate employee ID: {record.employee_id} detected during bulk import. "
-                        f"Existing employee: {existing_employee.entity_id} "
-                        f"({existing_employee.first_name} {existing_employee.last_name}). "
-                        f"Imported employee: {record.first_name} {record.last_name}."
-                    ),
-                    alert_type=AlertLevelEnum.WARNING.value,
-                    status=AlertStatusEnum.ADDRESSED.value,
-                )
-            
-            # Upsert single employee
-            self.employee_repo.upsert_employee(record, organization_id)
             success_count += 1
     
         return success_count, skipped_entries

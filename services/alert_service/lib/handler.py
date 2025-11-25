@@ -25,10 +25,12 @@ class AlertMessageHandler:
         
         action = message.get('action')
         if action == 'create_alert':
+            
             self.handle_create_alert(message)
         elif action == 'update_alert':
             self.handle_update_alert(message)
         elif action == 'mark_read':
+            
             self.handle_mark_read(message)
         else:
             logger.warning("Unknown action in message: %s", action)
@@ -40,7 +42,7 @@ class AlertMessageHandler:
         Args:
             message: The message containing alert data
         """
-        data = message.get('data', {})
+        data = message
 
         status = data.get('status', AlertStatusEnum.OPEN.value)
         level = data.get('level', AlertLevelEnum.INFO.value)
@@ -56,7 +58,7 @@ class AlertMessageHandler:
             level_enum = AlertLevelEnum.INFO.value
             
         saved_alert = self.alert_service.create_alert(
-            organization_id=data.get('organization_id'),
+            organization_id=data.get('organization_id',None),
             title=data.get('area', ''),
             description=data.get('message', ''),
             status=status_enum,
@@ -117,7 +119,7 @@ class AlertMessageHandler:
         Args:
             message: The message containing read data
         """
-        data = message.get('data', {})
+        data = message
         alert_id = data.get('alert_id')
         person_id = data.get('person_id')
         

@@ -8,7 +8,7 @@ ENV PYTHONPATH /app
 
 # Set execution type to MESSAGING
 ENV EXECUTION_TYPE=MESSAGING
-ENV MESSAGING_TYPE=SqsConnection
+ENV MESSAGING_TYPE=RabbitMqConnection
 ENV PROCESSOR_TYPE=EmployeeImportProcessor
 ENV PROCESSOR_MODULE=processor
 
