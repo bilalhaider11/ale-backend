@@ -83,7 +83,7 @@ class AlertMessageHandler:
         Args:
             message: The message containing update data
         """
-        data = message.get('data', {})
+        data = message#.get('data', {})
         alert_id = data.get('alert_id')
         
         if not alert_id:
