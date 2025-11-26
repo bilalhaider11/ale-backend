@@ -88,7 +88,22 @@ class PatientService:
                     f"Duplicate patient MRN detected during bulk import"
                 )
                 # Create an alert
+            send_message(
+                queue_name=self.config.PREFIXED_ALERT_PROCESSOR_QUEUE_NAME,
+                data={
+                    'action':'create_alert',
+                    'status': AlertStatusEnum.ADDRESSED.value,
+                    'level': AlertLevelEnum.WARNING.value,
+                    'organization_id': organization_id,
+                    'assigned_to_id': patient.entity_id,
             
+                    'area': "Duplicate Employee ID Detected",
+                    'message': (
+                        f"Duplicate employee ID: {patient.medical_record_number} detected during bulk import. "
+                        f"Existing employee: {exist_patient.entity_id} "
+                    ),
+                }
+            )
             count+=1
             
         logger.info(f"Successfully imported {count} patient records")
@@ -156,6 +171,24 @@ class PatientService:
             metadata=metadata,
             content_type=content_type
         )
+        send_message(
+            queue_name=self.config.PREFIXED_PATIENT_IMPORT_PROCESSOR_QUEUE_NAME,
+            data={
+                'Records': [{
+                    'eventSource': 'aws:s3',  # <--- add this
+                    's3': {
+                        'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
+                        'object': {
+                            'key': s3_key,
+                            'metadata': {
+                                'organization_id': organization_id,
+                                'file_id': file_id
+                            }
+                        }
+                    }
+                }]
+            }
+        )
         
         result = {
             "file": {
@@ -165,6 +198,18 @@ class PatientService:
         }
         
         return result  
+    
+    def get_patient_by_person_id(self, organization_id:str, person_id:str):
+        """
+        Get patient for a specific person.
+
+        Args:
+            person_id (str): The ID of the person to filter by.
+
+        Returns:
+            Patient: The Patient object belonging to the person.
+        """
+        return self.patient_repo.get_one({'person_id': person_id, 'organization_id': organization_id})
 
     def get_all_patients_for_organization(self, organization_id: str) -> List[Patient]:
         """

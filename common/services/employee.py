@@ -128,8 +128,27 @@ class EmployeeService:
                     f"employee to be created: {record.first_name} {record.last_name}"
                     f"for organization {organization_id}. Existing employee: "
                     f"{existing_employee.first_name} {existing_employee.last_name}"
-                )
+                ) 
                 # Create an alert rabbitmq msg
+                send_message(
+                        queue_name=self.config.PREFIXED_ALERT_PROCESSOR_QUEUE_NAME,
+                        data={
+                            'action':'create_alert',
+                            'status': AlertStatusEnum.ADDRESSED.value,
+                            'level': AlertLevelEnum.WARNING.value,
+                            'organization_id': organization_id,
+                            'assigned_to_id': record.entity_id,
+                    
+                            'area': "Employee",
+                            'message': (
+                                f"Duplicate employee ID: {record.employee_id} detected during bulk import. "
+                                f"Existing employee: {existing_employee.entity_id} "
+                                f"({existing_employee.first_name} {existing_employee.last_name}). "
+                                f"Imported employee: {record.first_name} {record.last_name}."
+                            ),
+                        }
+                    )
+   
             success_count += 1
     
         return success_count, skipped_entries
@@ -202,7 +221,24 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
-        # send_message alert
+        send_message(
+                queue_name=self.config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
+                data={
+                    'Records': [{
+                        'eventSource': 'aws:s3',  # <--- add this
+                        's3': {
+                            'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
+                            'object': {
+                                'key': file_id_key,
+                                'metadata': {
+                                    'organization_id': organization_id,
+                                    'file_id': file_id
+                                }
+                            }
+                        }
+                    }]
+                }
+            )
         
         result = {
             "file": {

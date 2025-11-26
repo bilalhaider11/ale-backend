@@ -28,7 +28,14 @@ class AlertPersonService:
     
     def mark_read(self,  alert_id: str, person_id: str):
         #send message here rabbit mq
-        
+        send_message(
+            queue_name=self.config.PREFIXED_ALERT_PROCESSOR_QUEUE_NAME,
+            data={
+                'action':'mark_read',
+                'alert_id':alert_id,
+                'person_id':person_id
+            }
+        )
         return
 
     def mark_alert_as_read(self, alert_id: str, person_id: str) -> AlertPerson:

@@ -200,6 +200,7 @@ class EmployeeResource(Resource):
             'phone_1',
             'employee_type'
         ])
+        print("parsed body: ",parsed_body)
 
         date_of_birth = parsed_body.pop('date_of_birth', None)
         email_address = parsed_body.pop('email_address', None)
@@ -431,3 +432,83 @@ class EmployeesBySlot(Resource):
             slots=availability_slots,
             count=len(availability_slots)
         )
+
+@employee_api.route('/update')
+class EmployeeResource(Resource):
+
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person, organization):
+        """
+        Create a new employee record. 
+        """
+        employee_service = EmployeeService(config)
+        organization_service = OrganizationService(config)
+        person_service = PersonService(config)
+        
+        # Parse request body
+        parsed_body = parse_request_body(request, [
+            'first_name',
+            'last_name',
+            'employee_id',
+            'date_of_birth',
+            'email_address',
+            'phone_1',
+            'employee_type',
+            'entity_id',
+            'person_id'
+        ])
+        print("parsed body: ",parsed_body)
+
+        date_of_birth = parsed_body.pop('date_of_birth', None)
+        email_address = parsed_body.pop('email_address', None)
+        phone_1 = parsed_body.pop('phone_1', None)
+        employee_id = parsed_body.pop('employee_id', None)
+        first_name = parsed_body.pop('first_name',None)
+        last_name = parsed_body.pop('last_name',None)
+        entity_id = parsed_body.get('entity_id',None)
+        person_id = parsed_body.get("person_id",None)
+        
+        validate_required_fields(parsed_body)
+        employees = employee_service.get_employees_by_organization_id(organization.entity_id)
+        list_of_employee_ids = [emp.employee_id for emp in employees if getattr(emp, 'employee_id', None) is not None]
+        print("list of ids: ",list_of_employee_ids)
+        
+        # Auto-generate employee_id if not provided
+        if not employee_id or not employee_id.strip():
+            # If new_employee_id is None or collides generate until unique
+            while (employee_id in list_of_employee_ids) or (employee_id is None):
+                employee_id = organization_service.get_next_employee_id(organization.entity_id)
+                 
+            
+        else:
+            if employee_id in list_of_employee_ids:
+                return get_success_response(
+                    message="Employee ID already exist, Enter other",
+                )    
+        person = Person(
+            first_name=employee.first_name,
+            last_name=employee.last_name,
+            entity_id=person_id
+        )
+        person = person_service.save_person(person)      
+        employee = Employee(
+            first_name=first_name,
+            last_name=last_name,
+            employee_id=employee_id,
+            date_of_birth=date_of_birth,
+            email_address=email_address,
+            phone_1=phone_1,
+            organization_id=organization.entity_id,
+            entity_id=entity_id,
+            person_id=person_id,
+            employee_type=parsed_body['employee_type']
+        )
+        employee = employee_service.save_employee(employee)
+        
+        return get_success_response(
+            message="Employee created successfully",
+            data=employee.as_dict()
+        )    
+        
+        
