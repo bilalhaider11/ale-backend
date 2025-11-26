@@ -200,7 +200,6 @@ class EmployeeResource(Resource):
             'phone_1',
             'employee_type'
         ])
-        print("parsed body: ",parsed_body)
 
         date_of_birth = parsed_body.pop('date_of_birth', None)
         email_address = parsed_body.pop('email_address', None)
@@ -458,7 +457,6 @@ class EmployeeResource(Resource):
             'entity_id',
             'person_id'
         ])
-        print("parsed body: ",parsed_body)
 
         date_of_birth = parsed_body.pop('date_of_birth', None)
         email_address = parsed_body.pop('email_address', None)
@@ -472,7 +470,6 @@ class EmployeeResource(Resource):
         validate_required_fields(parsed_body)
         employees = employee_service.get_employees_by_organization_id(organization.entity_id)
         list_of_employee_ids = [emp.employee_id for emp in employees if getattr(emp, 'employee_id', None) is not None]
-        print("list of ids: ",list_of_employee_ids)
         
         # Auto-generate employee_id if not provided
         if not employee_id or not employee_id.strip():
@@ -487,8 +484,8 @@ class EmployeeResource(Resource):
                     message="Employee ID already exist, Enter other",
                 )    
         person = Person(
-            first_name=employee.first_name,
-            last_name=employee.last_name,
+            first_name=first_name,
+            last_name=last_name,
             entity_id=person_id
         )
         person = person_service.save_person(person)      

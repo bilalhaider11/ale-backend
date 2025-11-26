@@ -119,9 +119,9 @@ class EmployeeService:
                 social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
             )
-            
+            upsert_data = self.employee_repo.upsert_employee(record, organization_id)
             # Detect duplicates in DB
-            if employee_id in existing_employee_ids:
+            if employee_id in existing_employee_ids and upsert_data['status'] == 'inserted':
                 existing_employee = existing_employee_ids[employee_id]
                 logger.warning(
                     f"Duplicate employee ID detected during bulk import: {employee_id} on Entity-ID: {record.entity_id}"
@@ -130,24 +130,6 @@ class EmployeeService:
                     f"{existing_employee.first_name} {existing_employee.last_name}"
                 ) 
                 # Create an alert rabbitmq msg
-                send_message(
-                        queue_name=self.config.PREFIXED_ALERT_PROCESSOR_QUEUE_NAME,
-                        data={
-                            'action':'create_alert',
-                            'status': AlertStatusEnum.ADDRESSED.value,
-                            'level': AlertLevelEnum.WARNING.value,
-                            'organization_id': organization_id,
-                            'assigned_to_id': record.entity_id,
-                    
-                            'area': "Employee",
-                            'message': (
-                                f"Duplicate employee ID: {record.employee_id} detected during bulk import. "
-                                f"Existing employee: {existing_employee.entity_id} "
-                                f"({existing_employee.first_name} {existing_employee.last_name}). "
-                                f"Imported employee: {record.first_name} {record.last_name}."
-                            ),
-                        }
-                    )
    
             success_count += 1
     
@@ -221,25 +203,7 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
-        send_message(
-                queue_name=self.config.PREFIXED_EMPLOYEE_IMPORT_PROCESSOR_QUEUE_NAME,
-                data={
-                    'Records': [{
-                        'eventSource': 'aws:s3',  # <--- add this
-                        's3': {
-                            'bucket': {'name': self.config.AWS_S3_BUCKET_NAME},
-                            'object': {
-                                'key': file_id_key,
-                                'metadata': {
-                                    'organization_id': organization_id,
-                                    'file_id': file_id
-                                }
-                            }
-                        }
-                    }]
-                }
-            )
-        
+
         result = {
             "file": {
                 "url": self.s3_client.generate_presigned_url(file_id_key, filename=original_filename or f"{timestamp}{file_extension}"),
