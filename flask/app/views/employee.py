@@ -474,10 +474,8 @@ class EmployeeResource(Resource):
         # Auto-generate employee_id if not provided
         if not employee_id or not employee_id.strip():
             # If new_employee_id is None or collides generate until unique
-            while (employee_id in list_of_employee_ids) or (employee_id is None):
+            while (employee_id in list_of_employee_ids) or (employee_id == ''):
                 employee_id = organization_service.get_next_employee_id(organization.entity_id)
-                 
-            
         else:
             if employee_id in list_of_employee_ids:
                 return get_success_response(

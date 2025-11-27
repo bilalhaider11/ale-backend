@@ -320,7 +320,7 @@ class PatientResource(Resource):
         # Auto-generate employee_id if not provided 
         if not medical_record_number or not medical_record_number.strip():
             # If new_employee_id is None or collides generate until unique
-            while (medical_record_number in list_of_patient_mrn) or (medical_record_number is None):
+            while (medical_record_number in list_of_patient_mrn) or (medical_record_number == ''):
                 medical_record_number = organization_service.get_next_patient_mrn(organization.entity_id)
                  
             
