@@ -38,11 +38,13 @@ class EmployeeService:
     
         from common.services.organization import OrganizationService
         from common.services import PersonService, AlertService
+        from common.services.alert_person import AlertPersonService
         from common.models import AlertLevelEnum, AlertStatusEnum
         from common.app_config import config
     
         organization_service = OrganizationService(self.config)
         alert_service = AlertService(config)
+        alert_person_service = AlertPersonService(config)
     
         def safe_parse_date(date_string: str):
             if not date_string or not date_string.strip():
@@ -117,32 +119,18 @@ class EmployeeService:
                 social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
             )
-            
+            upsert_data = self.employee_repo.upsert_employee(record, organization_id)
             # Detect duplicates in DB
-            if employee_id in existing_employee_ids:
+            if employee_id in existing_employee_ids and upsert_data['status'] == 'inserted':
                 existing_employee = existing_employee_ids[employee_id]
                 logger.warning(
                     f"Duplicate employee ID detected during bulk import: {employee_id} on Entity-ID: {record.entity_id}"
                     f"employee to be created: {record.first_name} {record.last_name}"
                     f"for organization {organization_id}. Existing employee: "
                     f"{existing_employee.first_name} {existing_employee.last_name}"
-                )
-                # Create an alert
-                alert_service.create_alert(
-                    organization_id=organization_id,
-                    title="Duplicate Employee ID Detected",
-                    description=(
-                        f"Duplicate employee ID: {record.employee_id} detected during bulk import. "
-                        f"Existing employee: {existing_employee.entity_id} "
-                        f"({existing_employee.first_name} {existing_employee.last_name}). "
-                        f"Imported employee: {record.first_name} {record.last_name}."
-                    ),
-                    alert_type=AlertLevelEnum.WARNING.value,
-                    status=AlertStatusEnum.ADDRESSED.value,
-                )
-            
-            # Upsert single employee
-            self.employee_repo.upsert_employee(record, organization_id)
+                ) 
+                # Create an alert rabbitmq msg
+   
             success_count += 1
     
         return success_count, skipped_entries
@@ -215,7 +203,7 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
-        
+
         result = {
             "file": {
                 "url": self.s3_client.generate_presigned_url(file_id_key, filename=original_filename or f"{timestamp}{file_extension}"),
@@ -237,6 +225,20 @@ class EmployeeService:
         """
         return self.employee_repo.get_one({
             'entity_id': entity_id,
+            'organization_id': organization_id
+        })
+    def get_employees_by_organization_id(self, organization_id: str) -> Employee:
+        """
+        Retrieve an employee record by employee ID.
+        
+        Args:
+            entity_id (str): The unique identifier for the employee.
+            organization_id (str): The ID of the organization to filter by.
+        
+        Returns:
+            Employee: The employee record if found, otherwise None.
+        """
+        return self.employee_repo.get_many({
             'organization_id': organization_id
         })
 
