@@ -96,10 +96,8 @@ class PatientRepository(BaseRepository):
             existing_record = existing_patients_map[key]
             existing_id = existing_record.entity_id
             existing_person_id = existing_record.person_id
-            record.entity_id = existing_id  # Ensure the record has the existing ID for update
             record.version = existing_record.version  # Use the existing version for update
             record.previous_version = existing_record.previous_version
-            record.person_id = existing_person_id  # Retain the existing person_id
             
             # Preserve care-related fields if not provided in the import
             if not record.care_period_start:

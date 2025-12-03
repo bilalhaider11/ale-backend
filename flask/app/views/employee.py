@@ -233,6 +233,7 @@ class EmployeeResource(Resource):
                 ),
                 alert_type=AlertLevelEnum.WARNING.value,
                 status=AlertStatusEnum.ADDRESSED.value,
+                assigned_to_id=existing_employee.entity_id
             )
         
         person = Person(

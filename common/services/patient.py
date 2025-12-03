@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 import os
 import uuid
 from common.models.alert import AlertLevelEnum, AlertStatusEnum
+from common.services.alert_person import AlertPersonService
 from common.helpers.csv_utils import parse_date
 from common.app_logger import get_logger
 from common.repositories.factory import RepositoryFactory, RepoType
@@ -32,6 +33,7 @@ class PatientService:
         self.patients_prefix = f"{config.AWS_S3_KEY_PREFIX}patients-list/" 
         self.patient_file_service = PatientsFileService(config)
         self.person_service = PersonService(config)
+        self.alert_person_service = AlertPersonService(config)
         self.alert_service = AlertService(config)
         self.organization_service = OrganizationService(config)
 
@@ -66,24 +68,7 @@ class PatientService:
                 medical_record_number=mrn,
                 organization_id=organization_id
             )
-                
-            if mrn in existing_patients_map:
-                logger.warning(
-                    f"Duplicate patient MRN detected during bulk import"
-                )
-                # Create an alert
-                self.alert_service.create_alert(
-                    organization_id=organization_id,
-                    title="Duplicate patientMRN Detected",
-                    description=(
-                        f"Duplicate patient MRN detected during bulk import. "
-                        f"Employee to be inserted: ID: {patient.entity_id} name: {first_name} {last_name}",
-                        f"existing Employee: {existing_patients_map[mrn]}"
-                    ),
-                    alert_type=AlertLevelEnum.WARNING.value,
-                    status=AlertStatusEnum.ADDRESSED.value,
-                )
-
+            
             date_of_birth = parse_date(dob_raw)
             
             patient_for_person = patient
@@ -96,6 +81,13 @@ class PatientService:
             patient.person_id=mrn_to_person_id
             
             self.patient_repo.upsert_patient(patient, organization_id)
+              
+            if mrn in existing_patients_map:
+                exist_patient = existing_patients_map[mrn]
+                logger.warning(
+                    f"Duplicate patient MRN detected during bulk import"
+                )
+                # Create an alert
             
             count+=1
             

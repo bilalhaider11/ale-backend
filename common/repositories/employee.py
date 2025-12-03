@@ -129,7 +129,7 @@ class EmployeeRepository(BaseRepository):
             
             self.save(record)
             
-            return {"status": "updated", "employee_id": record.employee_id}
+            return {"status": "updated", "employee_id": record.employee_id,"person_id":record.person_id}
         else:
             # Create new person and employee
             if record.email_address:
@@ -146,7 +146,7 @@ class EmployeeRepository(BaseRepository):
                 person_service.save_persons([new_person])
     
             self.save(record)
-            return {"status": "inserted", "employee_id": record.employee_id}
+            return {"status": "inserted", "employee_id": record.employee_id, "person_id":record.person_id}
 
 
     def get_employees_with_matches(self, organization_id: str):
@@ -322,3 +322,18 @@ class EmployeeRepository(BaseRepository):
 
             return employees
         return []
+    
+    def update_employee_id(self, employee_id, organization_id:str, entity_id: str,):
+        
+        query = """
+        
+        update employee set employee_id = %s where organization_id = %s and entity_id = %s
+        
+        """
+        with self.adapter:
+            result = self.adapter.execute_query(query, (employee_id, organization_id, entity_id))
+
+        if result:
+            return Employee(**result[0])
+
+        return None
