@@ -129,7 +129,7 @@ class EmployeeService:
                     f"for organization {organization_id}. Existing employee: "
                     f"{existing_employee.first_name} {existing_employee.last_name}"
                 )
-                # Create an alert
+                # Create an alert rabbitmq msg
             success_count += 1
     
         return success_count, skipped_entries
@@ -202,6 +202,7 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
+        # send_message alert
         
         result = {
             "file": {
@@ -224,6 +225,20 @@ class EmployeeService:
         """
         return self.employee_repo.get_one({
             'entity_id': entity_id,
+            'organization_id': organization_id
+        })
+    def get_employees_by_organization_id(self, organization_id: str) -> Employee:
+        """
+        Retrieve an employee record by employee ID.
+        
+        Args:
+            entity_id (str): The unique identifier for the employee.
+            organization_id (str): The ID of the organization to filter by.
+        
+        Returns:
+            Employee: The employee record if found, otherwise None.
+        """
+        return self.employee_repo.get_many({
             'organization_id': organization_id
         })
 

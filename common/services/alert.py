@@ -3,7 +3,7 @@ from typing import List, Optional
 from common.repositories.factory import RepositoryFactory, RepoType
 from common.models.alert import Alert, AlertStatusEnum
 from common.models.alert_person import AlertPerson
-
+from common.tasks.send_message import send_message
 from datetime import datetime
 
 class AlertService:
@@ -75,3 +75,7 @@ class AlertService:
                 setattr(alert, field, value)
                 
         return self.save_alert(alert)
+    
+    def update_alert(self,status,level,message,assigned_to_id,alert_id):
+        # send rabbitmq msg
+        return
