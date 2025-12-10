@@ -271,3 +271,84 @@ class PatientsBySlot(Resource):
             slots=patient_care_slots,
             count=len(patient_care_slots)
         )
+
+@patient_api.route('/update')
+class PatientResource(Resource):
+    
+    @login_required()
+    @organization_required(with_roles=[PersonOrganizationRoleEnum.ADMIN])
+    def post(self, person, organization):
+        """Update or create a patient record"""  
+        
+        patient_service = PatientService(config)
+        person_service = PersonService(config)
+        alert_service = AlertService(config)
+        organization_service = OrganizationService(config)
+        parsed_body = parse_request_body(request, [
+            'entity_id',
+            'first_name',
+            'last_name',
+            'date_of_birth',
+            'medical_record_number',
+            'gender',
+            'care_period_start',
+            'care_period_end',
+            'weekly_quota',
+            'person_id'
+        ])
+
+        entity_id = parsed_body.pop('entity_id', None)
+        first_name = parsed_body.pop('first_name', None)
+        last_name = parsed_body.pop('last_name', None)
+        date_of_birth = parsed_body.pop('date_of_birth', None)
+        gender = parsed_body.pop('gender', None)
+        medical_record_number = parsed_body.pop('medical_record_number', None)
+        care_period_start = parsed_body.pop('care_period_start', None)
+        care_period_end = parsed_body.pop('care_period_end', None)
+        weekly_quota = parsed_body.pop('weekly_quota', None)
+        person_id = parsed_body.get('person_id',None)
+
+        validate_required_fields(parsed_body)
+        
+        patients = patient_service.get_all_patients_for_organization(organization.entity_id)
+        list_of_patient_mrn = [
+            pat.get("medical_record_number") 
+            for pat in patients
+            if pat.get("medical_record_number") is not None
+        ]
+        
+        # Auto-generate employee_id if not provided 
+        if not medical_record_number or not medical_record_number.strip():
+            # If new_employee_id is None or collides generate until unique
+            while (medical_record_number in list_of_patient_mrn) or (medical_record_number == ''):
+                medical_record_number = organization_service.get_next_patient_mrn(organization.entity_id)
+                 
+            
+        else:
+            if medical_record_number in list_of_patient_mrn:
+                return get_success_response(
+                    message="Medical record number already exist, Enter other",
+                )    
+        person = Person(
+            first_name=first_name,
+            last_name=last_name,
+            entity_id=person_id,
+            date_of_birth=date_of_birth,
+            
+            gender=gender,
+        )
+        person = person_service.save_person(person)      
+        patient = Patient(
+            medical_record_number=medical_record_number,
+            organization_id=organization.entity_id,
+            entity_id=entity_id,
+            person_id=person_id,
+            care_period_start=care_period_start,
+            care_period_end=care_period_end,
+            weekly_quota=weekly_quota
+            )
+        patient = patient_service.save_patient(patient) 
+        return get_success_response(
+            message=f"Patient updated successfully",
+            data=patient.as_dict()
+        )

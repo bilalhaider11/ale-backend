@@ -165,6 +165,18 @@ class PatientService:
         }
         
         return result  
+    
+    def get_patient_by_person_id(self, organization_id:str, person_id:str):
+        """
+        Get patient for a specific person.
+
+        Args:
+            person_id (str): The ID of the person to filter by.
+
+        Returns:
+            Patient: The Patient object belonging to the person.
+        """
+        return self.patient_repo.get_one({'person_id': person_id, 'organization_id': organization_id})
 
     def get_all_patients_for_organization(self, organization_id: str) -> List[Patient]:
         """

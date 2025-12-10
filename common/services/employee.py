@@ -119,17 +119,18 @@ class EmployeeService:
                 social_security_number=get_first_matching_column_value(row, ['social security number', 'ssn'], match_mode='contains'),
                 organization_id=organization_id
             )
-            
+            upsert_data = self.employee_repo.upsert_employee(record, organization_id)
             # Detect duplicates in DB
-            if employee_id in existing_employee_ids:
+            if employee_id in existing_employee_ids and upsert_data['status'] == 'inserted':
                 existing_employee = existing_employee_ids[employee_id]
                 logger.warning(
                     f"Duplicate employee ID detected during bulk import: {employee_id} on Entity-ID: {record.entity_id}"
                     f"employee to be created: {record.first_name} {record.last_name}"
                     f"for organization {organization_id}. Existing employee: "
                     f"{existing_employee.first_name} {existing_employee.last_name}"
-                )
+                ) 
                 # Create an alert rabbitmq msg
+   
             success_count += 1
     
         return success_count, skipped_entries
@@ -202,8 +203,7 @@ class EmployeeService:
             metadata=metadata,
             content_type=content_type
         )
-        # send_message alert
-        
+
         result = {
             "file": {
                 "url": self.s3_client.generate_presigned_url(file_id_key, filename=original_filename or f"{timestamp}{file_extension}"),
